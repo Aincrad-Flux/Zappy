@@ -1,30 +1,48 @@
 build-job:
   stage: build
   script:
-    - echo "Vérification des fichiers dans l'environnement"
+    - echo "Checking environment files"
     - ls -la
-    - echo "Lancement du build"
+    - echo "Installing dependencies for GUI component"
+    - apt-get update && apt-get install -y libsfml-dev g++
+    - echo "Starting build process"
     - make re
   artifacts:
     paths:
-      - hello
-    expire_in: 1 hour
+      - zappy_server
+      - zappy_gui
+      - zappy_ai
+    expire_in: 1 day
 
-verify-executable:
+verify-executables:
   stage: test
   needs:
     - job: build-job
       artifacts: true
   script:
-    - echo "Vérification des fichiers dans l'environnement de test"
+    - echo "Checking files in test environment"
     - ls -la
-    - echo "Vérification de la présence de l'exécutable hello"
+    - echo "Verifying server executable"
     - |
-      if [ -f "hello" ] && [ -x "hello" ]; then
-        echo "L'exécutable hello existe et est exécutable";
+      if [ -f "zappy_server" ] && [ -x "zappy_server" ]; then
+        echo "✅ zappy_server exists and is executable";
       else
-        echo "ERREUR: L'exécutable hello n'existe pas ou n'est pas exécutable";
+        echo "❌ ERROR: zappy_server doesn't exist or isn't executable";
         exit 1;
       fi
-    - echo "Vérification du fonctionnement de l'exécutable"
-    - ./hello || { echo "L'exécutable a échoué"; exit 1; }
+    - echo "Verifying GUI executable"
+    - |
+      if [ -f "zappy_gui" ] && [ -x "zappy_gui" ]; then
+        echo "✅ zappy_gui exists and is executable";
+      else
+        echo "❌ ERROR: zappy_gui doesn't exist or isn't executable";
+        exit 1;
+      fi
+    - echo "Verifying AI executable"
+    - |
+      if [ -f "zappy_ai" ] && [ -x "zappy_ai" ]; then
+        echo "✅ zappy_ai exists and is executable";
+      else
+        echo "❌ ERROR: zappy_ai doesn't exist or isn't executable";
+        exit 1;
+      fi
