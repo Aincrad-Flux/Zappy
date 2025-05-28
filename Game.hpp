@@ -24,6 +24,7 @@ private:
     void update();
     void render();
     void initializeMockData();
+    void centerCamera(); // Nouvelle méthode pour centrer la caméra
 
 public:
     Game(int width = 1200, int height = 800);
