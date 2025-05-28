@@ -16,18 +16,18 @@ enum class ResourceType {
 class Resource {
 private:
     ResourceType type;
-    Vector2 position;
+    Vector3 position;
     Color color;
     std::string name;
 
 public:
-    Resource(ResourceType resType, Vector2 pos);
+    Resource(ResourceType resType, Vector3 pos);
     ~Resource();
 
-    void draw(Vector2 worldPos, int tileSize) const;
+    void draw(Vector3 worldPos, int tileSize) const;
 
     ResourceType getType() const;
-    Vector2 getPosition() const;
+    Vector3 getPosition() const;
     Color getColor() const;
     std::string getName() const;
 
