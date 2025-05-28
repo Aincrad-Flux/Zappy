@@ -1,5 +1,6 @@
 #include "Map.hpp"
 #include <cmath>
+#include <algorithm> // Pour std::min
 
 Map::Map(int mapWidth, int mapHeight, int tileSz)
     : width(mapWidth), height(mapHeight), tileSize(tileSz) {
@@ -8,7 +9,7 @@ Map::Map(int mapWidth, int mapHeight, int tileSz)
     for (int y = 0; y < height; y++) {
         tiles[y].resize(width);
         for (int x = 0; x < width; x++) {
-            tiles[y][x].position = {(float)x, (float)y};
+            tiles[y][x].position = {(float)x, 0.0f, (float)y}; // En 3D, y devient la hauteur (0) et z la profondeur
             tiles[y][x].baseColor = ((x + y) % 2 == 0) ? DARKGREEN : GREEN;
             tiles[y][x].hasResource = false;
             tiles[y][x].hasPlayer = false;
@@ -22,46 +23,71 @@ Map::~Map() {
     // Destructeur automatique pour les vectors
 }
 
-void Map::draw(Camera2D& camera) {
-    // Calculer les tiles visibles pour optimiser le rendu
-    Vector2 topLeft = GetScreenToWorld2D({0, 0}, camera);
-    Vector2 bottomRight = GetScreenToWorld2D({(float)GetScreenWidth(), (float)GetScreenHeight()}, camera);
-
-    int startX = std::max(0, (int)(topLeft.x / tileSize) - 1);
-    int endX = std::min(width, (int)(bottomRight.x / tileSize) + 2);
-    int startY = std::max(0, (int)(topLeft.y / tileSize) - 1);
-    int endY = std::min(height, (int)(bottomRight.y / tileSize) + 2);
-
-    for (int y = startY; y < endY; y++) {
-        for (int x = startX; x < endX; x++) {
-            Vector2 worldPos = getWorldPosition(x, y);
-            Rectangle tileRect = {worldPos.x, worldPos.y, (float)tileSize, (float)tileSize};
+void Map::draw() {
+    // En 3D, nous dessinons toutes les tuiles car le culling est géré par le moteur 3D
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            Vector3 worldPos = getWorldPosition(x, y);
 
             Color tileColor = tiles[y][x].baseColor;
 
             // Modifier la couleur si il y a des joueurs
             if (tiles[y][x].hasPlayer) {
-                tileColor = ColorTint(tileColor, {255, 255, 255, 200});
+                tileColor.r = (tileColor.r + 255) / 2;
+                tileColor.g = (tileColor.g + 255) / 2;
+                tileColor.b = (tileColor.b + 255) / 2;
             }
 
-            DrawRectangleRec(tileRect, tileColor);
-            DrawRectangleLinesEx(tileRect, 1.0f, DARKGRAY);
+            // Dessiner une tuile 3D (cuboide plat)
+            DrawCube(
+                Vector3{worldPos.x + tileSize/2.0f, -0.1f, worldPos.z + tileSize/2.0f}, // centre
+                (float)tileSize, 0.2f, (float)tileSize, // largeur, hauteur, profondeur
+                tileColor); // couleur
 
-            // Dessiner le nombre de joueurs s'il y en a plusieurs
+            // Dessiner les bordures (optionnel)
+            DrawLine3D(
+                Vector3{worldPos.x, 0, worldPos.z},
+                Vector3{worldPos.x + tileSize, 0, worldPos.z},
+                DARKGRAY);
+            DrawLine3D(
+                Vector3{worldPos.x, 0, worldPos.z},
+                Vector3{worldPos.x, 0, worldPos.z + tileSize},
+                DARKGRAY);
+            DrawLine3D(
+                Vector3{worldPos.x + tileSize, 0, worldPos.z},
+                Vector3{worldPos.x + tileSize, 0, worldPos.z + tileSize},
+                DARKGRAY);
+            DrawLine3D(
+                Vector3{worldPos.x, 0, worldPos.z + tileSize},
+                Vector3{worldPos.x + tileSize, 0, worldPos.z + tileSize},
+                DARKGRAY);
+
+            // Afficher un indicateur visuel 3D pour le nombre de joueurs
             if (tiles[y][x].playerCount > 1) {
-                DrawText(TextFormat("%d", tiles[y][x].playerCount),
-                        (int)worldPos.x + 2, (int)worldPos.y + 2, 12, BLACK);
+                // Dessiner une petite sphère pour indiquer la présence de plusieurs joueurs
+                Vector3 indicatorPos = {worldPos.x + tileSize/2.0f, 0.5f, worldPos.z + tileSize/2.0f};
+                DrawSphere(indicatorPos, tileSize * 0.15f, RED);
+
+                // On pourrait ajouter des petites sphères supplémentaires pour indiquer le nombre exact
+                for (int i = 1; i < std::min(tiles[y][x].playerCount, 4); i++) {
+                    Vector3 dotPos = {
+                        indicatorPos.x + cosf((float)i * 3.14159f * 0.5f) * 0.2f * tileSize,
+                        indicatorPos.y,
+                        indicatorPos.z + sinf((float)i * 3.14159f * 0.5f) * 0.2f * tileSize
+                    };
+                    DrawSphere(dotPos, tileSize * 0.1f, WHITE);
+                }
             }
         }
     }
 }
 
-Vector2 Map::getWorldPosition(int x, int y) {
-    return {(float)(x * tileSize), (float)(y * tileSize)};
+Vector3 Map::getWorldPosition(int x, int y) {
+    return {(float)(x * tileSize), 0.0f, (float)(y * tileSize)};
 }
 
-Vector2 Map::getTileCoords(Vector2 worldPos) {
-    return {(float)((int)worldPos.x / tileSize), (float)((int)worldPos.y / tileSize)};
+Vector2 Map::getTileCoords(Vector3 worldPos) {
+    return {(float)((int)worldPos.x / tileSize), (float)((int)worldPos.z / tileSize)};
 }
 
 Tile& Map::getTile(int x, int y) {

@@ -4,7 +4,7 @@
 #include <vector>
 
 struct Tile {
-    Vector2 position;
+    Vector3 position;
     Color baseColor;
     bool hasResource;
     bool hasPlayer;
@@ -23,9 +23,9 @@ public:
     Map(int mapWidth = 20, int mapHeight = 15, int tileSz = 32);
     ~Map();
 
-    void draw(Camera2D& camera);
-    Vector2 getWorldPosition(int x, int y);
-    Vector2 getTileCoords(Vector2 worldPos);
+    void draw();
+    Vector3 getWorldPosition(int x, int y);
+    Vector2 getTileCoords(Vector3 worldPos);
     Tile& getTile(int x, int y);
     void setTileResource(int x, int y, int resourceType);
     void setTilePlayer(int x, int y, int playerCount);
