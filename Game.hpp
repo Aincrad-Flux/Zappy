@@ -17,7 +17,7 @@ private:
     std::unique_ptr<UI> gameUI;
     std::vector<Player> players;
     std::vector<Resource> resources;
-    Camera2D camera;
+    Camera3D camera;
     bool running;
 
     void handleInput();
