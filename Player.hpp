@@ -25,7 +25,7 @@ class Player {
 private:
     int id;
     std::string teamName;
-    Vector2 position;
+    Vector3 position;
     PlayerDirection direction;
     int level;
     Inventory inventory;
@@ -35,12 +35,12 @@ private:
     bool isIncanting;
 
 public:
-    Player(int playerId, const std::string& team, Vector2 pos, Color color);
+    Player(int playerId, const std::string& team, Vector3 pos, Color color);
     ~Player();
 
-    void draw(Vector2 worldPos, int tileSize) const;
+    void draw(Vector3 worldPos, int tileSize) const;
     void update(float deltaTime);
-    void move(Vector2 newPos);
+    void move(Vector3 newPos);
     void rotate(PlayerDirection newDir);
     void setLevel(int newLevel);
     void setIncanting(bool incanting);
@@ -48,7 +48,7 @@ public:
     // Getters
     int getId() const;
     std::string getTeamName() const;
-    Vector2 getPosition() const;
+    Vector3 getPosition() const;
     PlayerDirection getDirection() const;
     int getLevel() const;
     Inventory getInventory() const;

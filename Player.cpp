@@ -1,7 +1,7 @@
 #include "Player.hpp"
 #include <cmath>
 
-Player::Player(int playerId, const std::string& team, Vector2 pos, Color color)
+Player::Player(int playerId, const std::string& team, Vector3 pos, Color color)
     : id(playerId), teamName(team), position(pos), direction(PlayerDirection::NORTH),
       level(1), teamColor(color), isAlive(true), lifeTime(1260.0f), isIncanting(false) {
 
@@ -13,13 +13,15 @@ Player::~Player() {
     // Rien à faire
 }
 
-void Player::draw(Vector2 worldPos, int tileSize) const {
+void Player::draw(Vector3 worldPos, int tileSize) const {
     if (!isAlive) return;
 
-    Vector2 center = {worldPos.x + tileSize/2.0f, worldPos.y + tileSize/2.0f};
+    // Positionner le joueur en 3D
+    Vector3 center = {worldPos.x + tileSize/2.0f, 0.5f, worldPos.z + tileSize/2.0f};
     float radius = tileSize * 0.3f;
+    float height = tileSize * 0.6f;
 
-    // Dessiner le corps du joueur
+    // Dessiner le corps du joueur en 3D (cylindre)
     Color playerColor = teamColor;
     if (isIncanting) {
         // Effet de pulsation pour l'incantation
@@ -27,30 +29,50 @@ void Player::draw(Vector2 worldPos, int tileSize) const {
         playerColor = ColorAlpha(playerColor, pulse);
     }
 
-    DrawCircleV(center, radius, playerColor);
-    DrawCircleLinesV(center, radius, BLACK);
+    // Dessiner un cylindre pour le corps du joueur
+    DrawCylinder(center, radius, radius, height, 8, playerColor);
+    DrawCylinderWires(center, radius, radius, height, 8, BLACK);
+
+    // Dessiner une sphère sur le dessus pour la tête
+    Vector3 headPos = {center.x, center.y + height/2.0f + radius*0.5f, center.z};
+    DrawSphere(headPos, radius*0.5f, playerColor);
 
     // Dessiner l'indicateur de direction
-    Vector2 dirOffset = {0, 0};
+    Vector3 dirOffset = {0, 0, 0};
     switch (direction) {
-        case PlayerDirection::NORTH: dirOffset = {0, -radius * 0.7f}; break;
-        case PlayerDirection::EAST:  dirOffset = {radius * 0.7f, 0}; break;
-        case PlayerDirection::SOUTH: dirOffset = {0, radius * 0.7f}; break;
-        case PlayerDirection::WEST:  dirOffset = {-radius * 0.7f, 0}; break;
+        case PlayerDirection::NORTH: dirOffset = {0, 0, -radius * 0.9f}; break;
+        case PlayerDirection::EAST:  dirOffset = {radius * 0.9f, 0, 0}; break;
+        case PlayerDirection::SOUTH: dirOffset = {0, 0, radius * 0.9f}; break;
+        case PlayerDirection::WEST:  dirOffset = {-radius * 0.9f, 0, 0}; break;
     }
 
-    Vector2 dirPos = {center.x + dirOffset.x, center.y + dirOffset.y};
-    DrawCircleV(dirPos, 3, WHITE);
+    Vector3 frontPos = {
+        center.x + dirOffset.x,
+        center.y,
+        center.z + dirOffset.z
+    };
+    DrawSphere(frontPos, radius * 0.2f, WHITE);
 
-    // Dessiner le niveau
-    DrawText(TextFormat("%d", level), (int)(center.x - 5), (int)(center.y - 8), 16, BLACK);
+    // Dessiner le niveau du joueur en 3D avec un simple cube
+    Vector3 levelPos = {center.x, center.y + height + radius, center.z};
 
-    // Dessiner la barre de vie
+    // Au lieu d'afficher du texte en 3D (qui nécessite GetCamera()),
+    // nous représentons le niveau avec des formes 3D simples
+    DrawSphere(levelPos, radius * 0.3f, BLACK);
+
+    // Dessiner un nombre de petites sphères correspondant au niveau
+    for(int i = 0; i < level && i < 5; i++) {
+        DrawSphere({levelPos.x + (i-2)*radius*0.4f, levelPos.y, levelPos.z + radius*0.4f},
+                   radius * 0.15f, WHITE);
+    }
+
+    // Dessiner la barre de vie au-dessus du joueur
     float lifePercent = lifeTime / 1260.0f;
-    Rectangle lifeBar = {worldPos.x, worldPos.y - 8, tileSize * lifePercent, 4};
     Color lifeColor = (lifePercent > 0.5f) ? GREEN : (lifePercent > 0.25f) ? YELLOW : RED;
-    DrawRectangleRec(lifeBar, lifeColor);
-    DrawRectangleLinesEx({worldPos.x, worldPos.y - 8, (float)tileSize, 4}, 1, BLACK);
+
+    Vector3 lifeBarStart = {center.x - tileSize/2.0f, center.y + height + radius*1.5f, center.z};
+    Vector3 lifeBarEnd = {center.x - tileSize/2.0f + tileSize * lifePercent, center.y + height + radius*1.5f, center.z};
+    DrawLine3D(lifeBarStart, lifeBarEnd, lifeColor);
 }
 
 void Player::update(float deltaTime) {
@@ -74,7 +96,7 @@ void Player::update(float deltaTime) {
     }
 }
 
-void Player::move(Vector2 newPos) {
+void Player::move(Vector3 newPos) {
     position = newPos;
 }
 
@@ -93,7 +115,7 @@ void Player::setIncanting(bool incanting) {
 // Getters
 int Player::getId() const { return id; }
 std::string Player::getTeamName() const { return teamName; }
-Vector2 Player::getPosition() const { return position; }
+Vector3 Player::getPosition() const { return position; }
 PlayerDirection Player::getDirection() const { return direction; }
 int Player::getLevel() const { return level; }
 Inventory Player::getInventory() const { return inventory; }
