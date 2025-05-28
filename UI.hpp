@@ -13,12 +13,16 @@ private:
     Player* selectedPlayer;
     bool showPlayerInfo;
     bool showTeamStats;
+    bool showMenu;
+    bool showHelp;
     std::vector<std::string> teams;
 
     void drawPlayerInfo();
     void drawTeamStats();
     void drawResourceLegend();
     void drawGameStats();
+    void drawMenu();
+    void drawHelp();
 
 public:
     UI(int width, int height);
@@ -30,4 +34,6 @@ public:
     void addTeam(const std::string& teamName);
     void togglePlayerInfo();
     void toggleTeamStats();
+    void toggleMenu();
+    void toggleHelp();
 };

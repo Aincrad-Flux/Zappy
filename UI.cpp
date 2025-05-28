@@ -3,9 +3,12 @@
 #include <algorithm>
 
 UI::UI(int width, int height) : screenWidth(width), screenHeight(height),
-                                selectedPlayer(nullptr), showPlayerInfo(true), showTeamStats(false) {
+                                selectedPlayer(nullptr), showPlayerInfo(true), showTeamStats(false),
+                                showMenu(true), showHelp(false) {
     font = GetFontDefault();
 }
+
+
 
 UI::~UI() {
     // Rien à faire pour le font par défaut
@@ -14,23 +17,41 @@ UI::~UI() {
 void UI::draw(const std::vector<Player>& players) {
     (void)players;
 
-    drawResourceLegend();
-    drawGameStats();
+    // Récupérer les dimensions actuelles de l'écran à chaque frame
+    screenWidth = GetScreenWidth();
+    screenHeight = GetScreenHeight();
 
-    if (showPlayerInfo) {
-        drawPlayerInfo();
-    }
+    if (!showHelp) {
+        // Les statistiques de jeu sont toujours affichées
+        drawGameStats();
 
-    if (showTeamStats) {
-        drawTeamStats();
+        // La légende des ressources et le menu sont affichés ensemble
+        if (showMenu) {
+            drawMenu();
+            drawResourceLegend();
+        }
+
+        if (showPlayerInfo) {
+            drawPlayerInfo();
+        }
+
+        if (showTeamStats) {
+            drawTeamStats();
+        }
+    } else {
+        // Help screen takes priority over everything else
+        drawHelp();
     }
 }
 
 void UI::drawPlayerInfo() {
-    int panelWidth = 300;
-    int panelHeight = 400;
-    int panelX = screenWidth - panelWidth - 10;
-    int panelY = 50;
+    int actualScreenWidth = GetScreenWidth();
+    int actualScreenHeight = GetScreenHeight();
+
+    int panelWidth = 250; // Réduire un peu la taille
+    int panelHeight = 380;
+    int panelX = 10; // Positionné à gauche
+    int panelY = 230; // En dessous de la légende des ressources
 
     // Panel background
     DrawRectangle(panelX, panelY, panelWidth, panelHeight, ColorAlpha(BLACK, 0.8f));
@@ -105,10 +126,13 @@ void UI::drawPlayerInfo() {
 }
 
 void UI::drawTeamStats() {
+    int actualScreenWidth = GetScreenWidth();
+    int actualScreenHeight = GetScreenHeight();
+
     int panelWidth = 250;
     int panelHeight = 300;
-    int panelX = 10;
-    int panelY = 50;
+    int panelX = actualScreenWidth - panelWidth - 10; // Droite
+    int panelY = 240; // Sous le menu principal
 
     // Panel background
     DrawRectangle(panelX, panelY, panelWidth, panelHeight, ColorAlpha(BLACK, 0.8f));
@@ -132,17 +156,20 @@ void UI::drawTeamStats() {
 }
 
 void UI::drawResourceLegend() {
-    int legendX = 10;
-    int legendY = screenHeight - 200;
-    int legendWidth = 200;
-    int legendHeight = 180;
+    int actualScreenHeight = GetScreenHeight();
+    int actualScreenWidth = GetScreenWidth();
+
+    int legendWidth = 180;
+    int legendHeight = 210;
+    int legendX = 10; // Place la légende à gauche
+    int legendY = 10; // En haut à gauche
 
     // Panel background
     DrawRectangle(legendX, legendY, legendWidth, legendHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(legendX, legendY, legendWidth, legendHeight, WHITE);
 
     // Title
-    DrawText("Resource Legend", legendX + 10, legendY + 10, 16, WHITE);
+    DrawText("Resource Legend", legendX + 10, legendY + 10, 18, WHITE);
 
     int yOffset = legendY + 35;
     int lineHeight = 20;
@@ -189,15 +216,21 @@ void UI::drawResourceLegend() {
 }
 
 void UI::drawGameStats() {
-    int statsX = screenWidth - 200;
-    int statsY = 10;
+    int actualScreenWidth = GetScreenWidth();
+    int actualScreenHeight = GetScreenHeight();
 
-    DrawText("Zappy Game", statsX, statsY, 20, WHITE);
-    DrawText(TextFormat("Time: %.1fs", GetTime()), statsX, statsY + 25, 16, WHITE);
+    int statsX = actualScreenWidth / 2 - 100; // Centré en haut de l'écran
+    int statsY = 15;
+
+    DrawText("Zappy Game", statsX, statsY, 24, WHITE);
+    DrawText(TextFormat("Time: %.1fs", GetTime()), statsX, statsY + 30, 18, WHITE);
 }
 
 void UI::handleInput() {
-    // Gestion des inputs spécifiques à l'UI si nécessaire
+    // Fermer la fenêtre d'aide avec la touche ESCAPE
+    if (showHelp && IsKeyPressed(KEY_ESCAPE)) {
+        showHelp = false;
+    }
 }
 
 void UI::setSelectedPlayer(Player* player) {
@@ -216,4 +249,136 @@ void UI::togglePlayerInfo() {
 
 void UI::toggleTeamStats() {
     showTeamStats = !showTeamStats;
+}
+
+void UI::toggleMenu() {
+    showMenu = !showMenu;
+}
+
+void UI::toggleHelp() {
+    showHelp = !showHelp;
+}
+
+void UI::drawMenu() {
+    int actualScreenWidth = GetScreenWidth();
+    int actualScreenHeight = GetScreenHeight();
+
+    // Dimensions du menu adaptées à la taille de l'écran
+    int menuWidth = 220;
+    int menuHeight = 210;
+
+    // Position du menu dans le coin supérieur droit
+    int menuX = actualScreenWidth - menuWidth - 10;
+    int menuY = 10;
+
+    // Panel de fond
+    DrawRectangle(menuX, menuY, menuWidth, menuHeight, ColorAlpha(BLACK, 0.8f));
+    DrawRectangleLines(menuX, menuY, menuWidth, menuHeight, WHITE);
+
+    // Titre du menu
+    DrawText("Zappy GUI Controls", menuX + 10, menuY + 10, 20, WHITE);
+
+    // Options du menu
+    int yOffset = menuY + 40;
+    int lineHeight = 25;
+
+    DrawText("M - Toggle Menu & Legend", menuX + 20, yOffset, 16, WHITE);
+    yOffset += lineHeight;
+
+    DrawText("I - Toggle Player Info Panel", menuX + 20, yOffset, 16, WHITE);
+    yOffset += lineHeight;
+
+    DrawText("T - Toggle Team Statistics", menuX + 20, yOffset, 16, WHITE);
+    yOffset += lineHeight;
+
+    DrawText("H - Show Help Screen", menuX + 20, yOffset, 16, WHITE);
+    yOffset += lineHeight;
+
+    // Information sur les commandes de base
+    DrawText("WASD/Arrows - Move Camera", menuX + 20, yOffset, 16, WHITE);
+    yOffset += lineHeight;
+
+    DrawText("Mouse Wheel - Zoom In/Out", menuX + 20, yOffset, 16, WHITE);
+    yOffset += lineHeight;
+
+    DrawText("SPACE - Center Camera View", menuX + 20, yOffset, 16, WHITE);
+    yOffset += lineHeight;
+
+    // Petit indicateur pour fermer le menu
+    DrawText("Press M to hide this menu", menuX + menuWidth - 150, menuY + menuHeight - 20, 14, YELLOW);
+}
+
+void UI::drawHelp() {
+    int actualScreenWidth = GetScreenWidth();
+    int actualScreenHeight = GetScreenHeight();
+
+    int helpWidth = 700;
+    int helpHeight = 550;
+    int helpX = (actualScreenWidth - helpWidth) / 2;
+    int helpY = (actualScreenHeight - helpHeight) / 2;
+
+    // Panel de fond semi-transparent sur tout l'écran
+    DrawRectangle(0, 0, actualScreenWidth, actualScreenHeight, ColorAlpha(BLACK, 0.7f));
+
+    // Panel de l'aide
+    DrawRectangle(helpX, helpY, helpWidth, helpHeight, ColorAlpha(DARKGRAY, 0.9f));
+    DrawRectangleLines(helpX, helpY, helpWidth, helpHeight, WHITE);
+
+    // Titre
+    DrawText("Zappy GUI - Help & Controls", helpX + 20, helpY + 20, 28, WHITE);
+
+    // Commandes
+    int yOffset = helpY + 70;
+    int lineHeight = 25;
+    int colWidth = 280;
+
+    // Colonne 1
+    DrawText("Camera Controls:", helpX + 20, yOffset, 18, YELLOW);
+    yOffset += 30;
+
+    DrawText("WASD / Arrow Keys", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Move Camera", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    yOffset += lineHeight;
+
+    DrawText("Mouse Wheel", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Zoom In / Out", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    yOffset += lineHeight * 1.5f;
+
+    // Interface Controls
+    DrawText("Interface Controls:", helpX + 20, yOffset, 18, YELLOW);
+    yOffset += 30;
+
+    DrawText("M", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Toggle Menu", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    yOffset += lineHeight;
+
+    DrawText("I", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Toggle Player Information", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    yOffset += lineHeight;
+
+    DrawText("T", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Toggle Team Statistics", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    yOffset += lineHeight;
+
+    DrawText("H", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Toggle This Help Screen", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    yOffset += lineHeight;
+
+    DrawText("ESC", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Close Help Screen", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    yOffset += lineHeight;
+
+    DrawText("Left Click", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Select Player", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    yOffset += lineHeight * 1.5f;
+
+    // Information sur l'application
+    DrawText("About:", helpX + 20, yOffset, 18, YELLOW);
+    yOffset += 30;
+
+    DrawText("Zappy GUI - A graphical visualization tool", helpX + 40, yOffset, 16, WHITE);
+    yOffset += lineHeight;
+
+    // Instructions pour fermer
+    DrawText("Press H or ESC to close this window", helpX + helpWidth/2 - 140, helpY + helpHeight - 30, 16, WHITE);
 }

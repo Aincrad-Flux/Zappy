@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
     }
 
     try {
-        Game game(1200, 800);
+        Game game(1600, 900);
         game.run();
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
