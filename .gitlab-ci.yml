@@ -1,0 +1,11 @@
+stages:
+  - build
+  - test
+  - sync
+
+variables:
+  GIT_DEPTH: 0
+
+include:
+  - local: 'ci/build.yml'
+  - local: 'ci/mirror.yml'

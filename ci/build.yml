@@ -1,0 +1,30 @@
+build-job:
+  stage: build
+  script:
+    - echo "Vérification des fichiers dans l'environnement"
+    - ls -la
+    - echo "Lancement du build"
+    - make re
+  artifacts:
+    paths:
+      - hello
+    expire_in: 1 hour
+
+verify-executable:
+  stage: test
+  needs:
+    - job: build-job
+      artifacts: true
+  script:
+    - echo "Vérification des fichiers dans l'environnement de test"
+    - ls -la
+    - echo "Vérification de la présence de l'exécutable hello"
+    - |
+      if [ -f "hello" ] && [ -x "hello" ]; then
+        echo "L'exécutable hello existe et est exécutable";
+      else
+        echo "ERREUR: L'exécutable hello n'existe pas ou n'est pas exécutable";
+        exit 1;
+      fi
+    - echo "Vérification du fonctionnement de l'exécutable"
+    - ./hello || { echo "L'exécutable a échoué"; exit 1; }
