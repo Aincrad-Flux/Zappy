@@ -25,7 +25,11 @@ Game::Game(int width, int height) : screenWidth(width), screenHeight(height), ru
     camera.fovy = 45.0f;
     camera.projection = CAMERA_PERSPECTIVE;
 
+    // Initialiser les données de test
     initializeMockData();
+
+    // Centrer correctement la caméra pour voir toute la carte
+    centerCamera();
 }
 
 Game::~Game() {}
