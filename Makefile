@@ -10,19 +10,26 @@ CC = gcc
 CXX = g++
 
 # Options de compilation
-CFLAGS = -Wall -Wextra -std=c99 -I./include
-CXXFLAGS = -Wall -Wextra -std=c++17 -I./include
+CFLAGS = -Wall -Wextra -std=c99
+CXXFLAGS = -Wall -Wextra -std=c++17 -I./gui
 LDFLAGS =
 
 # Bibliothèques
 LIBS_SERVER =
-LIBS_GUI = -lsfml-graphics -lsfml-window -lsfml-system
+# Detect OS for GUI libs
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+    LIBS_GUI = -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+endif
+ifeq ($(UNAME_S),Darwin)
+    LIBS_GUI = -lraylib -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
+endif
 LIBS_AI =
 
 # Répertoires
 SRC_DIR = src
 SERVER_DIR = $(SRC_DIR)/server
-GUI_DIR = $(SRC_DIR)/gui
+GUI_DIR = gui
 AI_DIR = $(SRC_DIR)/ai
 OBJ_DIR = obj
 INCLUDE_DIR = include
