@@ -1,83 +1,123 @@
 #include "Resource.hpp"
 
-Resource::Resource(ResourceType resType, Vector2 pos) : type(resType), position(pos) {
+Resource::Resource(ResourceType resType, Vector3 pos) : type(resType), position(pos)
+{
     color = getResourceColor(resType);
     name = getResourceName(resType);
 }
 
-Resource::~Resource() {
-    // Rien à faire
-}
+Resource::~Resource() {}
 
-void Resource::draw(Vector2 worldPos, int tileSize) const {
-    Vector2 center = {worldPos.x + tileSize/2.0f, worldPos.y + tileSize/2.0f};
+void Resource::draw(Vector3 worldPos, int tileSize) const
+{
+    Vector3 center = {worldPos.x + tileSize/2.0f, 0.3f, worldPos.z + tileSize/2.0f};
+    const float scaleFactor = 10.0f;
 
-    // Différentes formes selon le type de ressource
-    switch (type) {
+    switch (type)
+    {
         case ResourceType::FOOD:
-            // Cercle pour la nourriture
-            DrawCircleV(center, 6, color);
-            DrawCircleLinesV(center, 6, BLACK);
+            DrawSphere(center, 0.6f * scaleFactor, color);
+            DrawSphereWires(center, 0.6f * scaleFactor, 8, 8, BLACK);
             break;
 
         case ResourceType::LINEMATE:
-            // Triangle pour linemate
-            DrawTriangle({center.x, center.y - 8}, {center.x - 6, center.y + 4}, {center.x + 6, center.y + 4}, color);
-            DrawTriangleLines({center.x, center.y - 8}, {center.x - 6, center.y + 4}, {center.x + 6, center.y + 4}, BLACK);
+            DrawCube(center, 0.8f * scaleFactor, 0.8f * scaleFactor, 0.8f * scaleFactor, color);
+            DrawCubeWires(center, 0.8f * scaleFactor, 0.8f * scaleFactor, 0.8f * scaleFactor, BLACK);
             break;
 
-        case ResourceType::DERAUMERE:
-            // Carré pour deraumere
-            DrawRectangle((int)(center.x - 6), (int)(center.y - 6), 12, 12, color);
-            DrawRectangleLines((int)(center.x - 6), (int)(center.y - 6), 12, 12, BLACK);
-            break;
+        case ResourceType::DERAUMERE: {
+            DrawCube(center, 0.6f * scaleFactor, 0.4f * scaleFactor, 0.6f * scaleFactor, color);
+            DrawCubeWires(center, 0.6f * scaleFactor, 0.4f * scaleFactor, 0.6f * scaleFactor, BLACK);
 
-        case ResourceType::SIBUR:
-            // Diamant pour sibur
-            DrawPoly(center, 4, 8, 45, color);
-            DrawPolyLines(center, 4, 8, 45, BLACK);
+            Vector3 topCenter = {center.x, center.y + 0.4f * scaleFactor, center.z};
+            DrawCube(topCenter, 0.3f * scaleFactor, 0.3f * scaleFactor, 0.3f * scaleFactor, color);
+            DrawCubeWires(topCenter, 0.3f * scaleFactor, 0.3f * scaleFactor, 0.3f * scaleFactor, BLACK);
             break;
+        }
+        case ResourceType::SIBUR: {
+            float size = 0.7f * scaleFactor;
 
-        case ResourceType::MENDIANE:
-            // Hexagone pour mendiane
-            DrawPoly(center, 6, 7, 0, color);
-            DrawPolyLines(center, 6, 7, 0, BLACK);
+            DrawCube(center, size, size, size, color);
+            DrawCubeWires(center, size, size, size, BLACK);
+            DrawSphere(center, 0.5f * scaleFactor, color);
+            DrawSphereWires(center, 0.5f * scaleFactor, 4, 4, BLACK);
             break;
+        }
+        case ResourceType::MENDIANE: {
+            float baseSize = 0.6f * scaleFactor;
 
-        case ResourceType::PHIRAS:
-            // Étoile pour phiras
-            DrawPoly(center, 5, 8, 0, color);
-            DrawPolyLines(center, 5, 8, 0, BLACK);
+            DrawCube(center, baseSize, 0.2f * scaleFactor, baseSize, color);
+            DrawCubeWires(center, baseSize, 0.2f * scaleFactor, baseSize, BLACK);
+            Vector3 topCenter = {center.x, center.y + 0.3f * scaleFactor, center.z};
+            DrawCube(topCenter, 0.2f * scaleFactor, 0.4f * scaleFactor, 0.2f * scaleFactor, color);
+            DrawCubeWires(topCenter, 0.2f * scaleFactor, 0.4f * scaleFactor, 0.2f * scaleFactor, BLACK);
             break;
+        }
+        case ResourceType::PHIRAS: {
+            DrawSphere(center, 0.5f * scaleFactor, color);
 
-        case ResourceType::THYSTAME:
-            // Croix pour thystame
-            DrawRectangle((int)(center.x - 2), (int)(center.y - 8), 4, 16, color);
-            DrawRectangle((int)(center.x - 8), (int)(center.y - 2), 16, 4, color);
-            DrawRectangleLines((int)(center.x - 2), (int)(center.y - 8), 4, 16, BLACK);
-            DrawRectangleLines((int)(center.x - 8), (int)(center.y - 2), 16, 4, BLACK);
+            for (int i = 0; i < 4; i++) {
+                float angleDeg = i * 90.0f;
+                float angleRad = angleDeg * 3.14159f / 180.0f;
+                float radius = 0.3f * scaleFactor;
+
+                Vector3 pos = {
+                    center.x + cosf(angleRad) * radius,
+                    center.y + 0.2f * scaleFactor,
+                    center.z + sinf(angleRad) * radius
+                };
+
+                DrawSphere(pos, 0.2f * scaleFactor, color);
+            }
             break;
+        }
+        case ResourceType::THYSTAME: {
+            DrawCube({center.x, center.y, center.z}, 0.8f * scaleFactor, 0.2f * scaleFactor, 0.2f * scaleFactor, color);
+            DrawCube({center.x, center.y, center.z}, 0.2f * scaleFactor, 0.2f * scaleFactor, 0.8f * scaleFactor, color);
+            DrawSphere({center.x, center.y + 0.3f * scaleFactor, center.z}, 0.3f * scaleFactor, color);
+
+            for (int i = 0; i < 4; i++) {
+                float angleDeg = i * 90.0f + 45.0f;
+                float angleRad = angleDeg * 3.14159f / 180.0f;
+                float radius = 0.4f * scaleFactor;
+
+                Vector3 pos = {
+                    center.x + cosf(angleRad) * radius,
+                    center.y + 0.3f * scaleFactor,
+                    center.z + sinf(angleRad) * radius
+                };
+
+                DrawSphere(pos, 0.15f * scaleFactor, color);
+            }
+            break;
+        }
     }
 }
 
-ResourceType Resource::getType() const {
+ResourceType Resource::getType() const
+{
     return type;
 }
 
-Vector2 Resource::getPosition() const {
+Vector3 Resource::getPosition() const
+{
     return position;
 }
 
-Color Resource::getColor() const {
+Color Resource::getColor() const
+{
     return color;
 }
 
-std::string Resource::getName() const {
+std::string Resource::getName() const
+{
     return name;
 }
 
-Color Resource::getResourceColor(ResourceType type) {
-    switch (type) {
+Color Resource::getResourceColor(ResourceType type)
+{
+    switch (type)
+    {
         case ResourceType::FOOD: return BROWN;
         case ResourceType::LINEMATE: return LIGHTGRAY;
         case ResourceType::DERAUMERE: return BLUE;
@@ -89,7 +129,8 @@ Color Resource::getResourceColor(ResourceType type) {
     }
 }
 
-std::string Resource::getResourceName(ResourceType type) {
+std::string Resource::getResourceName(ResourceType type)
+{
     switch (type) {
         case ResourceType::FOOD: return "food";
         case ResourceType::LINEMATE: return "linemate";
