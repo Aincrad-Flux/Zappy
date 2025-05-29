@@ -17,15 +17,12 @@ UI::~UI() {
 void UI::draw(const std::vector<Player>& players) {
     (void)players;
 
-    // Récupérer les dimensions actuelles de l'écran à chaque frame
     screenWidth = GetScreenWidth();
     screenHeight = GetScreenHeight();
 
     if (!showHelp) {
-        // Les statistiques de jeu sont toujours affichées
         drawGameStats();
 
-        // La légende des ressources et le menu sont affichés ensemble
         if (showMenu) {
             drawMenu();
             drawResourceLegend();
@@ -39,7 +36,6 @@ void UI::draw(const std::vector<Player>& players) {
             drawTeamStats();
         }
     } else {
-        // Help screen takes priority over everything else
         drawHelp();
     }
 }
@@ -48,23 +44,20 @@ void UI::drawPlayerInfo() {
     int actualScreenWidth = GetScreenWidth();
     int actualScreenHeight = GetScreenHeight();
 
-    int panelWidth = 250; // Réduire un peu la taille
+    int panelWidth = 250;
     int panelHeight = 380;
-    int panelX = 10; // Positionné à gauche
-    int panelY = 230; // En dessous de la légende des ressources
+    int panelX = 10;
+    int panelY = 230;
 
-    // Panel background
     DrawRectangle(panelX, panelY, panelWidth, panelHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(panelX, panelY, panelWidth, panelHeight, WHITE);
 
-    // Title
     DrawText("Player Information", panelX + 10, panelY + 10, 20, WHITE);
 
     if (selectedPlayer && selectedPlayer->getIsAlive()) {
         int yOffset = panelY + 40;
         int lineHeight = 20;
 
-        // Basic info
         DrawText(TextFormat("ID: %d", selectedPlayer->getId()), panelX + 10, yOffset, 16, WHITE);
         yOffset += lineHeight;
 
@@ -78,20 +71,17 @@ void UI::drawPlayerInfo() {
                 panelX + 10, yOffset, 16, WHITE);
         yOffset += lineHeight;
 
-        // Direction
         const char* dirNames[] = {"North", "East", "South", "West"};
         DrawText(TextFormat("Direction: %s", dirNames[(int)selectedPlayer->getDirection()]),
                 panelX + 10, yOffset, 16, WHITE);
         yOffset += lineHeight;
 
-        // Life time
         float lifePercent = selectedPlayer->getLifeTime() / 1260.0f * 100.0f;
         Color lifeColor = (lifePercent > 50.0f) ? GREEN : (lifePercent > 25.0f) ? YELLOW : RED;
         DrawText(TextFormat("Life: %.1f%% (%.0f units)", lifePercent, selectedPlayer->getLifeTime()),
                 panelX + 10, yOffset, 16, lifeColor);
         yOffset += lineHeight + 10;
 
-        // Status
         if (selectedPlayer->getIsIncanting()) {
             DrawText("STATUS: INCANTING", panelX + 10, yOffset, 16, YELLOW);
             yOffset += lineHeight;
@@ -99,7 +89,6 @@ void UI::drawPlayerInfo() {
 
         yOffset += 10;
 
-        // Inventory
         DrawText("Inventory:", panelX + 10, yOffset, 18, WHITE);
         yOffset += 25;
 
@@ -161,20 +150,17 @@ void UI::drawResourceLegend() {
 
     int legendWidth = 180;
     int legendHeight = 210;
-    int legendX = 10; // Place la légende à gauche
-    int legendY = 10; // En haut à gauche
+    int legendX = 10;
+    int legendY = 10;
 
-    // Panel background
     DrawRectangle(legendX, legendY, legendWidth, legendHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(legendX, legendY, legendWidth, legendHeight, WHITE);
 
-    // Title
     DrawText("Resource Legend", legendX + 10, legendY + 10, 18, WHITE);
 
     int yOffset = legendY + 35;
     int lineHeight = 20;
 
-    // Liste des ressources avec leurs couleurs
     struct ResourceInfo {
         const char* name;
         Color color;
@@ -263,22 +249,17 @@ void UI::drawMenu() {
     int actualScreenWidth = GetScreenWidth();
     int actualScreenHeight = GetScreenHeight();
 
-    // Dimensions du menu adaptées à la taille de l'écran
     int menuWidth = 220;
     int menuHeight = 210;
 
-    // Position du menu dans le coin supérieur droit
     int menuX = actualScreenWidth - menuWidth - 10;
     int menuY = 10;
 
-    // Panel de fond
     DrawRectangle(menuX, menuY, menuWidth, menuHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(menuX, menuY, menuWidth, menuHeight, WHITE);
 
-    // Titre du menu
     DrawText("Zappy GUI Controls", menuX + 10, menuY + 10, 20, WHITE);
 
-    // Options du menu
     int yOffset = menuY + 40;
     int lineHeight = 25;
 
@@ -294,7 +275,6 @@ void UI::drawMenu() {
     DrawText("H - Show Help Screen", menuX + 20, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    // Information sur les commandes de base
     DrawText("WASD/Arrows - Move Camera", menuX + 20, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
@@ -304,7 +284,6 @@ void UI::drawMenu() {
     DrawText("SPACE - Center Camera View", menuX + 20, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    // Petit indicateur pour fermer le menu
     DrawText("Press M to hide this menu", menuX + menuWidth - 150, menuY + menuHeight - 20, 14, YELLOW);
 }
 
@@ -317,22 +296,17 @@ void UI::drawHelp() {
     int helpX = (actualScreenWidth - helpWidth) / 2;
     int helpY = (actualScreenHeight - helpHeight) / 2;
 
-    // Panel de fond semi-transparent sur tout l'écran
     DrawRectangle(0, 0, actualScreenWidth, actualScreenHeight, ColorAlpha(BLACK, 0.7f));
 
-    // Panel de l'aide
     DrawRectangle(helpX, helpY, helpWidth, helpHeight, ColorAlpha(DARKGRAY, 0.9f));
     DrawRectangleLines(helpX, helpY, helpWidth, helpHeight, WHITE);
 
-    // Titre
     DrawText("Zappy GUI - Help & Controls", helpX + 20, helpY + 20, 28, WHITE);
 
-    // Commandes
     int yOffset = helpY + 70;
     int lineHeight = 25;
     int colWidth = 280;
 
-    // Colonne 1
     DrawText("Camera Controls:", helpX + 20, yOffset, 18, YELLOW);
     yOffset += 30;
 
@@ -344,7 +318,6 @@ void UI::drawHelp() {
     DrawText("Zoom In / Out", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight * 1.5f;
 
-    // Interface Controls
     DrawText("Interface Controls:", helpX + 20, yOffset, 18, YELLOW);
     yOffset += 30;
 
@@ -372,13 +345,11 @@ void UI::drawHelp() {
     DrawText("Select Player", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight * 1.5f;
 
-    // Information sur l'application
     DrawText("About:", helpX + 20, yOffset, 18, YELLOW);
     yOffset += 30;
 
     DrawText("Zappy GUI - A graphical visualization tool", helpX + 40, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    // Instructions pour fermer
     DrawText("Press H or ESC to close this window", helpX + helpWidth/2 - 140, helpY + helpHeight - 30, 16, WHITE);
 }
