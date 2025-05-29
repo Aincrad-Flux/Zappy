@@ -18,7 +18,7 @@ INC_DIR = include
 OBJ_DIR = obj
 
 # Fichiers source
-SOURCES = main.cpp Game.cpp Map.cpp Player.cpp Resource.cpp UI.cpp
+SOURCES = main.cpp Game.cpp Map.cpp Player.cpp Resource.cpp UI.cpp Inventory.cpp Tile.cpp ResourceInfo.cpp
 OBJECTS = $(SOURCES:%.cpp=$(OBJ_DIR)/%.o)
 
 # Nom de l'exécutable
