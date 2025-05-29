@@ -5,28 +5,24 @@
 #include <raymath.h>     // Pour Vector3Add, Vector3Subtract, etc.
 
 Game::Game(int width, int height) : screenWidth(width), screenHeight(height), running(false) {
-    // Démarrer avec une fenêtre encore plus grande pour s'assurer que tout est visible
     InitWindow(1400, 900, "Zappy GUI 3D - Raylib");
-    screenWidth = 1400; // S'assurer que screenWidth est mis à jour
-    screenHeight = 900; // S'assurer que screenHeight est mis à jour
+    screenWidth = 1400;
+    screenHeight = 900;
     SetTargetFPS(60);
 
-    // Permettre le redimensionnement de la fenêtre
-    SetWindowState(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_MAXIMIZED); // Commencer en mode maximisé
+    SetWindowState(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_MAXIMIZED);
 
     gameMap = std::make_unique<Map>(20, 15, 32);
     gameUI = std::make_unique<UI>(screenWidth, screenHeight);
 
-    // Initialize 3D camera
-    // Position de la caméra dans un angle pour voir le plateau de jeu
     float mapWidth = gameMap->getWidth() * gameMap->getTileSize();
     float mapHeight = gameMap->getHeight() * gameMap->getTileSize();
 
     camera.position = Vector3{ mapWidth / 2.0f, mapHeight * 1.2f, mapHeight * 0.8f };
-    camera.target = Vector3{ mapWidth / 2.0f, 0.0f, mapHeight / 2.0f }; // Regarder vers le centre de la carte
-    camera.up = Vector3{ 0.0f, 1.0f, 0.0f };                           // Axe Y est vers le haut
-    camera.fovy = 45.0f;                                               // Champ de vision
-    camera.projection = CAMERA_PERSPECTIVE;                             // Mode de projection
+    camera.target = Vector3{ mapWidth / 2.0f, 0.0f, mapHeight / 2.0f };
+    camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
+    camera.fovy = 45.0f;
+    camera.projection = CAMERA_PERSPECTIVE;
 
     // Initialiser les données de test
     initializeMockData();
