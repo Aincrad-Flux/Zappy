@@ -3,9 +3,9 @@
 
 Player::Player(int playerId, const std::string& team, Vector3 pos, Color color)
     : id(playerId), teamName(team), position(pos), direction(PlayerDirection::NORTH),
-      level(1), teamColor(color), isAlive(true), lifeTime(1260.0f), isIncanting(false)
+      level(1), inventory(10, 0, 0, 0, 0, 0, 0), teamColor(color), isAlive(true),
+      lifeTime(1260.0f), isIncanting(false)
 {
-    inventory = {10, 0, 0, 0, 0, 0, 0};
 }
 
 Player::~Player() {}
@@ -73,8 +73,8 @@ void Player::update(float deltaTime)
     static float foodTimer = 0;
     foodTimer += deltaTime;
     if (foodTimer >= 126.0f) {
-        if (inventory.food > 0) {
-            inventory.food--;
+        if (inventory.getFood() > 0) {
+            inventory.removeFood(1);
             lifeTime = std::min(lifeTime + 126.0f, 1260.0f);
         }
         foodTimer = 0;
@@ -160,12 +160,12 @@ void Player::setInventory(const Inventory& inv)
 void Player::addToInventory(int resourceType, int amount)
 {
     switch (resourceType) {
-        case 0: inventory.food += amount; break;
-        case 1: inventory.linemate += amount; break;
-        case 2: inventory.deraumere += amount; break;
-        case 3: inventory.sibur += amount; break;
-        case 4: inventory.mendiane += amount; break;
-        case 5: inventory.phiras += amount; break;
-        case 6: inventory.thystame += amount; break;
+        case 0: inventory.addFood(amount); break;
+        case 1: inventory.addLinemate(amount); break;
+        case 2: inventory.addDeraumere(amount); break;
+        case 3: inventory.addSibur(amount); break;
+        case 4: inventory.addMendiane(amount); break;
+        case 5: inventory.addPhiras(amount); break;
+        case 6: inventory.addThystame(amount); break;
     }
 }
