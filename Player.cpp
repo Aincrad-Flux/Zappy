@@ -5,26 +5,21 @@ Player::Player(int playerId, const std::string& team, Vector3 pos, Color color)
     : id(playerId), teamName(team), position(pos), direction(PlayerDirection::NORTH),
       level(1), teamColor(color), isAlive(true), lifeTime(1260.0f), isIncanting(false) {
 
-    // Initialiser l'inventaire
-    inventory = {10, 0, 0, 0, 0, 0, 0}; // 10 unités de nourriture au début
+    inventory = {10, 0, 0, 0, 0, 0, 0};
 }
 
 Player::~Player() {
-    // Rien à faire
 }
 
 void Player::draw(Vector3 worldPos, int tileSize) const {
     if (!isAlive) return;
 
-    // Positionner le joueur en 3D
     Vector3 center = {worldPos.x + tileSize/2.0f, 0.5f, worldPos.z + tileSize/2.0f};
     float radius = tileSize * 0.3f;
     float height = tileSize * 0.6f;
 
-    // Dessiner le corps du joueur en 3D (cylindre)
     Color playerColor = teamColor;
     if (isIncanting) {
-        // Effet de pulsation pour l'incantation
         float pulse = sinf(GetTime() * 5.0f) * 0.3f + 0.7f;
         playerColor = ColorAlpha(playerColor, pulse);
     }
@@ -33,11 +28,9 @@ void Player::draw(Vector3 worldPos, int tileSize) const {
     DrawCylinder(center, radius, radius, height, 8, playerColor);
     DrawCylinderWires(center, radius, radius, height, 8, BLACK);
 
-    // Dessiner une sphère sur le dessus pour la tête
     Vector3 headPos = {center.x, center.y + height/2.0f + radius*0.5f, center.z};
     DrawSphere(headPos, radius*0.5f, playerColor);
 
-    // Dessiner l'indicateur de direction
     Vector3 dirOffset = {0, 0, 0};
     switch (direction) {
         case PlayerDirection::NORTH: dirOffset = {0, 0, -radius * 0.9f}; break;
@@ -53,11 +46,7 @@ void Player::draw(Vector3 worldPos, int tileSize) const {
     };
     DrawSphere(frontPos, radius * 0.2f, WHITE);
 
-    // Dessiner le niveau du joueur en 3D avec un simple cube
     Vector3 levelPos = {center.x, center.y + height + radius, center.z};
-
-    // Au lieu d'afficher du texte en 3D (qui nécessite GetCamera()),
-    // nous représentons le niveau avec des formes 3D simples
     DrawSphere(levelPos, radius * 0.3f, BLACK);
 
     // Dessiner un nombre de petites sphères correspondant au niveau
