@@ -2,24 +2,12 @@
 
 #include <raylib.h>
 #include <vector>
-
-/**
- * @struct Tile
- * @brief Represents a single tile on the game map
- */
-struct Tile {
-    Vector3 position;   ///< Position in 3D world space
-    Color baseColor;    ///< Base color of the tile
-    bool hasResource;   ///< Whether the tile has a resource
-    bool hasPlayer;     ///< Whether a player is on the tile
-    int resourceType;   ///< Type of resource on the tile
-    int playerCount;    ///< Number of players on the tile
-};
+#include "Tile.hpp"
 
 /**
  * @class Map
  * @brief Represents the game world map
- * 
+ *
  * This class handles the grid-based map and provides methods for
  * interacting with tiles and positioning entities.
  */
@@ -38,7 +26,7 @@ public:
      * @param tileSz Size of each tile
      */
     Map(int mapWidth = 20, int mapHeight = 15, int tileSz = 32);
-    
+
     /**
      * @brief Destructor for Map
      */
@@ -48,7 +36,7 @@ public:
      * @brief Draws the map on screen
      */
     void draw();
-    
+
     /**
      * @brief Converts grid coordinates to world position
      * @param x X coordinate in the grid
@@ -56,14 +44,14 @@ public:
      * @return World position as a Vector3
      */
     Vector3 getWorldPosition(int x, int y);
-    
+
     /**
      * @brief Converts world position to grid coordinates
      * @param worldPos Position in world space
      * @return Grid coordinates as a Vector2
      */
     Vector2 getTileCoords(Vector3 worldPos);
-    
+
     /**
      * @brief Gets a reference to a tile at specific coordinates
      * @param x X coordinate in the grid
@@ -71,7 +59,7 @@ public:
      * @return Reference to the tile
      */
     Tile& getTile(int x, int y);
-    
+
     /**
      * @brief Sets resource information for a tile
      * @param x X coordinate in the grid
@@ -79,7 +67,7 @@ public:
      * @param resourceType Type of resource to set
      */
     void setTileResource(int x, int y, int resourceType);
-    
+
     /**
      * @brief Updates player information for a tile
      * @param x X coordinate in the grid
