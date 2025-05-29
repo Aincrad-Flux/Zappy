@@ -62,13 +62,96 @@ void Game::handleInput()
 {
     const float cameraSpeed = 0.5f;
     const float rotationSpeed = 0.03f;
+    const float verticalSpeed = 0.5f;
 
-    if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) camera.position.x += cameraSpeed;
-    if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) camera.position.x -= cameraSpeed;
-    if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) camera.position.z += cameraSpeed;
-    if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) camera.position.z -= cameraSpeed;
-    if (IsKeyDown(KEY_PAGE_UP)) camera.position.y += cameraSpeed;
-    if (IsKeyDown(KEY_PAGE_DOWN)) camera.position.y -= cameraSpeed;
+    if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
+        Vector3 dir;
+        dir.x = camera.position.x - camera.target.x;
+        dir.y = camera.position.y - camera.target.y;
+        dir.z = camera.position.z - camera.target.z;
+
+        float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+        float len = distance;
+        if (len > 0) {
+            dir.x /= len;
+            dir.y /= len;
+            dir.z /= len;
+        }
+
+        float cosA = cosf(rotationSpeed);
+        float sinA = sinf(rotationSpeed);
+        float newX = dir.x * cosA - dir.z * sinA;
+        float newZ = dir.x * sinA + dir.z * cosA;
+
+        dir.x = newX;
+        dir.z = newZ;
+
+        camera.position.x = camera.target.x + dir.x * distance;
+        camera.position.y = camera.target.y + dir.y * distance;
+        camera.position.z = camera.target.z + dir.z * distance;
+    }
+
+    if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) {
+        Vector3 dir;
+        dir.x = camera.position.x - camera.target.x;
+        dir.y = camera.position.y - camera.target.y;
+        dir.z = camera.position.z - camera.target.z;
+
+        float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+        float len = distance;
+        if (len > 0) {
+            dir.x /= len;
+            dir.y /= len;
+            dir.z /= len;
+        }
+
+        float cosA = cosf(-rotationSpeed);
+        float sinA = sinf(-rotationSpeed);
+        float newX = dir.x * cosA - dir.z * sinA;
+        float newZ = dir.x * sinA + dir.z * cosA;
+
+        dir.x = newX;
+        dir.z = newZ;
+
+        camera.position.x = camera.target.x + dir.x * distance;
+        camera.position.y = camera.target.y + dir.y * distance;
+        camera.position.z = camera.target.z + dir.z * distance;
+    }
+
+    if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) {
+        Vector3 dir;
+        dir.x = camera.position.x - camera.target.x;
+        dir.y = camera.position.y - camera.target.y;
+        dir.z = camera.position.z - camera.target.z;
+
+        float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+        float azimuth = atan2f(dir.z, dir.x);
+        float elevation = atan2f(dir.y, sqrtf(dir.x*dir.x + dir.z*dir.z));
+        elevation += rotationSpeed;
+
+        if (elevation > 1.5f) elevation = 1.5f;
+
+        camera.position.x = camera.target.x + distance * cosf(elevation) * cosf(azimuth);
+        camera.position.y = camera.target.y + distance * sinf(elevation);
+        camera.position.z = camera.target.z + distance * cosf(elevation) * sinf(azimuth);
+    }
+
+    if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) {
+        Vector3 dir;
+        dir.x = camera.position.x - camera.target.x;
+        dir.y = camera.position.y - camera.target.y;
+        dir.z = camera.position.z - camera.target.z;
+
+        float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+        float azimuth = atan2f(dir.z, dir.x);
+        float elevation = atan2f(dir.y, sqrtf(dir.x*dir.x + dir.z*dir.z));
+        elevation -= rotationSpeed;
+
+        if (elevation < 0.1f) elevation = 0.1f;
+        camera.position.x = camera.target.x + distance * cosf(elevation) * cosf(azimuth);
+        camera.position.y = camera.target.y + distance * sinf(elevation);
+        camera.position.z = camera.target.z + distance * cosf(elevation) * sinf(azimuth);
+    }
 
     if (IsKeyDown(KEY_Q)) {
         Vector3 dir;
@@ -157,6 +240,36 @@ void Game::handleInput()
         float mapHeight = gameMap->getHeight() * gameMap->getTileSize();
         camera.position = Vector3{ mapWidth / 2.0f, mapHeight * 1.2f, mapHeight * 0.8f };
         camera.target = Vector3{ mapWidth / 2.0f, 0.0f, mapHeight / 2.0f };
+    }
+
+    static Vector2 prevMousePos = { 0, 0 };
+    const float mouseSensitivity = 0.02f;
+
+    if (IsMouseButtonDown(MOUSE_RIGHT_BUTTON)) {
+        Vector2 mousePos = GetMousePosition();
+
+        if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
+            prevMousePos = mousePos;
+        } else {
+            float dx = mousePos.x - prevMousePos.x;
+            float dy = mousePos.y - prevMousePos.y;
+
+            Vector3 forward = Vector3Subtract(camera.target, camera.position);
+            forward = Vector3Normalize(forward);
+
+            Vector3 right = Vector3CrossProduct(forward, camera.up);
+            right = Vector3Normalize(right);
+
+            Vector3 moveRight = Vector3Scale(right, -dx * mouseSensitivity);
+            Vector3 moveUp = Vector3Scale(camera.up, dy * mouseSensitivity);
+
+            camera.target = Vector3Add(camera.target, moveRight);
+            camera.target = Vector3Add(camera.target, moveUp);
+            camera.position = Vector3Add(camera.position, moveRight);
+            camera.position = Vector3Add(camera.position, moveUp);
+
+            prevMousePos = mousePos;
+        }
     }
 }
 

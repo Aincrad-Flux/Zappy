@@ -308,8 +308,16 @@ void UI::drawHelp()
     DrawText("Camera Controls:", helpX + 20, yOffset, 18, YELLOW);
     yOffset += 30;
 
-    DrawText("WASD / Arrow Keys", helpX + 40, yOffset, 16, WHITE);
-    DrawText("Move Camera", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    DrawText("Left / Right Arrows (or A/D)", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Rotate Camera", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    yOffset += lineHeight;
+
+    DrawText("Up / Down Arrows (or W/S)", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Rotate Camera Pitch (Up/Down)", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    yOffset += lineHeight;
+
+    DrawText("Right Mouse Button + Drag", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Pan Camera View", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight;
 
     DrawText("Mouse Wheel", helpX + 40, yOffset, 16, WHITE);
