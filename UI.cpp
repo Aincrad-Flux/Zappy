@@ -1,5 +1,6 @@
 #include "UI.hpp"
 #include "Resource.hpp"
+#include "ResourceInfo.hpp"
 #include <algorithm>
 
 UI::UI(int width, int height) : screenWidth(width), screenHeight(height),
@@ -91,19 +92,19 @@ void UI::drawPlayerInfo()
         yOffset += 25;
 
         Inventory inv = selectedPlayer->getInventory();
-        DrawText(TextFormat("Food: %d", inv.food), panelX + 20, yOffset, 14, BROWN);
+        DrawText(TextFormat("Food: %d", inv.getFood()), panelX + 20, yOffset, 14, BROWN);
         yOffset += 18;
-        DrawText(TextFormat("Linemate: %d", inv.linemate), panelX + 20, yOffset, 14, LIGHTGRAY);
+        DrawText(TextFormat("Linemate: %d", inv.getLinemate()), panelX + 20, yOffset, 14, LIGHTGRAY);
         yOffset += 18;
-        DrawText(TextFormat("Deraumere: %d", inv.deraumere), panelX + 20, yOffset, 14, BLUE);
+        DrawText(TextFormat("Deraumere: %d", inv.getDeraumere()), panelX + 20, yOffset, 14, BLUE);
         yOffset += 18;
-        DrawText(TextFormat("Sibur: %d", inv.sibur), panelX + 20, yOffset, 14, YELLOW);
+        DrawText(TextFormat("Sibur: %d", inv.getSibur()), panelX + 20, yOffset, 14, YELLOW);
         yOffset += 18;
-        DrawText(TextFormat("Mendiane: %d", inv.mendiane), panelX + 20, yOffset, 14, PURPLE);
+        DrawText(TextFormat("Mendiane: %d", inv.getMendiane()), panelX + 20, yOffset, 14, PURPLE);
         yOffset += 18;
-        DrawText(TextFormat("Phiras: %d", inv.phiras), panelX + 20, yOffset, 14, ORANGE);
+        DrawText(TextFormat("Phiras: %d", inv.getPhiras()), panelX + 20, yOffset, 14, ORANGE);
         yOffset += 18;
-        DrawText(TextFormat("Thystame: %d", inv.thystame), panelX + 20, yOffset, 14, PINK);
+        DrawText(TextFormat("Thystame: %d", inv.getThystame()), panelX + 20, yOffset, 14, PINK);
 
     } else {
         DrawText("No player selected", panelX + 10, panelY + 50, 16, GRAY);
@@ -156,20 +157,14 @@ void UI::drawResourceLegend()
     int yOffset = legendY + 35;
     int lineHeight = 20;
 
-    struct ResourceInfo {
-        const char* name;
-        Color color;
-        const char* shape;
-    };
-
     ResourceInfo resources[] = {
-        {"Food", BROWN, "Circle"},
-        {"Linemate", LIGHTGRAY, "Triangle"},
-        {"Deraumere", BLUE, "Square"},
-        {"Sibur", YELLOW, "Diamond"},
-        {"Mendiane", PURPLE, "Hexagon"},
-        {"Phiras", ORANGE, "Star"},
-        {"Thystame", PINK, "Cross"}
+        ResourceInfo("Food", BROWN, "Circle"),
+        ResourceInfo("Linemate", LIGHTGRAY, "Triangle"),
+        ResourceInfo("Deraumere", BLUE, "Square"),
+        ResourceInfo("Sibur", YELLOW, "Diamond"),
+        ResourceInfo("Mendiane", PURPLE, "Hexagon"),
+        ResourceInfo("Phiras", ORANGE, "Star"),
+        ResourceInfo("Thystame", PINK, "Cross")
     };
 
     for (int i = 0; i < 7; i++) {
@@ -177,20 +172,20 @@ void UI::drawResourceLegend()
 
         switch (i) {
             case 0: // Food
-                DrawCircleV(center, 4, resources[i].color);
+                DrawCircleV(center, 4, resources[i].getColor());
                 break;
             case 1: // Linemate
-                DrawTriangle({center.x, center.y - 4}, {center.x - 3, center.y + 2}, {center.x + 3, center.y + 2}, resources[i].color);
+                DrawTriangle({center.x, center.y - 4}, {center.x - 3, center.y + 2}, {center.x + 3, center.y + 2}, resources[i].getColor());
                 break;
             case 2: // Deraumere
-                DrawRectangle((int)(center.x - 3), (int)(center.y - 3), 6, 6, resources[i].color);
+                DrawRectangle((int)(center.x - 3), (int)(center.y - 3), 6, 6, resources[i].getColor());
                 break;
             default:
-                DrawCircleV(center, 4, resources[i].color);
+                DrawCircleV(center, 4, resources[i].getColor());
                 break;
         }
 
-        DrawText(resources[i].name, legendX + 40, yOffset, 14, WHITE);
+        DrawText(resources[i].getName(), legendX + 40, yOffset, 14, WHITE);
         yOffset += lineHeight;
     }
 }
