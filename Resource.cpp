@@ -94,24 +94,30 @@ void Resource::draw(Vector3 worldPos, int tileSize) const
     }
 }
 
-ResourceType Resource::getType() const {
+ResourceType Resource::getType() const
+{
     return type;
 }
 
-Vector3 Resource::getPosition() const {
+Vector3 Resource::getPosition() const
+{
     return position;
 }
 
-Color Resource::getColor() const {
+Color Resource::getColor() const
+{
     return color;
 }
 
-std::string Resource::getName() const {
+std::string Resource::getName() const
+{
     return name;
 }
 
-Color Resource::getResourceColor(ResourceType type) {
-    switch (type) {
+Color Resource::getResourceColor(ResourceType type)
+{
+    switch (type)
+    {
         case ResourceType::FOOD: return BROWN;
         case ResourceType::LINEMATE: return LIGHTGRAY;
         case ResourceType::DERAUMERE: return BLUE;
@@ -123,7 +129,8 @@ Color Resource::getResourceColor(ResourceType type) {
     }
 }
 
-std::string Resource::getResourceName(ResourceType type) {
+std::string Resource::getResourceName(ResourceType type)
+{
     switch (type) {
         case ResourceType::FOOD: return "food";
         case ResourceType::LINEMATE: return "linemate";

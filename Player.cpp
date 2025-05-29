@@ -3,15 +3,15 @@
 
 Player::Player(int playerId, const std::string& team, Vector3 pos, Color color)
     : id(playerId), teamName(team), position(pos), direction(PlayerDirection::NORTH),
-      level(1), teamColor(color), isAlive(true), lifeTime(1260.0f), isIncanting(false) {
-
+      level(1), teamColor(color), isAlive(true), lifeTime(1260.0f), isIncanting(false)
+{
     inventory = {10, 0, 0, 0, 0, 0, 0};
 }
 
-Player::~Player() {
-}
+Player::~Player() {}
 
-void Player::draw(Vector3 worldPos, int tileSize) const {
+void Player::draw(Vector3 worldPos, int tileSize) const
+{
     if (!isAlive) return;
 
     Vector3 center = {worldPos.x + tileSize/2.0f, 0.5f, worldPos.z + tileSize/2.0f};
@@ -24,7 +24,6 @@ void Player::draw(Vector3 worldPos, int tileSize) const {
         playerColor = ColorAlpha(playerColor, pulse);
     }
 
-    // Dessiner un cylindre pour le corps du joueur
     DrawCylinder(center, radius, radius, height, 8, playerColor);
     DrawCylinderWires(center, radius, radius, height, 8, BLACK);
 
@@ -49,13 +48,11 @@ void Player::draw(Vector3 worldPos, int tileSize) const {
     Vector3 levelPos = {center.x, center.y + height + radius, center.z};
     DrawSphere(levelPos, radius * 0.3f, BLACK);
 
-    // Dessiner un nombre de petites sphères correspondant au niveau
     for(int i = 0; i < level && i < 5; i++) {
         DrawSphere({levelPos.x + (i-2)*radius*0.4f, levelPos.y, levelPos.z + radius*0.4f},
                    radius * 0.15f, WHITE);
     }
 
-    // Dessiner la barre de vie au-dessus du joueur
     float lifePercent = lifeTime / 1260.0f;
     Color lifeColor = (lifePercent > 0.5f) ? GREEN : (lifePercent > 0.25f) ? YELLOW : RED;
 
@@ -64,19 +61,18 @@ void Player::draw(Vector3 worldPos, int tileSize) const {
     DrawLine3D(lifeBarStart, lifeBarEnd, lifeColor);
 }
 
-void Player::update(float deltaTime) {
+void Player::update(float deltaTime)
+{
     if (!isAlive) return;
 
-    // Décrémenter le temps de vie
     lifeTime -= deltaTime;
     if (lifeTime <= 0) {
         isAlive = false;
     }
 
-    // Consommer de la nourriture automatiquement
     static float foodTimer = 0;
     foodTimer += deltaTime;
-    if (foodTimer >= 126.0f) { // Une unité de nourriture dure 126 unités de temps
+    if (foodTimer >= 126.0f) {
         if (inventory.food > 0) {
             inventory.food--;
             lifeTime = std::min(lifeTime + 126.0f, 1260.0f);
@@ -85,39 +81,84 @@ void Player::update(float deltaTime) {
     }
 }
 
-void Player::move(Vector3 newPos) {
+void Player::move(Vector3 newPos)
+{
     position = newPos;
 }
 
-void Player::rotate(PlayerDirection newDir) {
+void Player::rotate(PlayerDirection newDir)
+{
     direction = newDir;
 }
 
-void Player::setLevel(int newLevel) {
+void Player::setLevel(int newLevel)
+{
     level = newLevel;
 }
 
-void Player::setIncanting(bool incanting) {
+void Player::setIncanting(bool incanting)
+{
     isIncanting = incanting;
 }
 
-// Getters
-int Player::getId() const { return id; }
-std::string Player::getTeamName() const { return teamName; }
-Vector3 Player::getPosition() const { return position; }
-PlayerDirection Player::getDirection() const { return direction; }
-int Player::getLevel() const { return level; }
-Inventory Player::getInventory() const { return inventory; }
-bool Player::getIsAlive() const { return isAlive; }
-float Player::getLifeTime() const { return lifeTime; }
-Color Player::getTeamColor() const { return teamColor; }
-bool Player::getIsIncanting() const { return isIncanting; }
 
-void Player::setInventory(const Inventory& inv) {
+int Player::getId() const
+{
+    return id;
+}
+
+std::string Player::getTeamName() const
+{
+    return teamName;
+}
+
+Vector3 Player::getPosition() const
+{
+    return position;
+}
+
+PlayerDirection Player::getDirection() const
+{
+    return direction;
+}
+
+int Player::getLevel() const
+{
+    return level;
+}
+
+Inventory Player::getInventory() const
+{
+    return inventory;
+}
+
+bool Player::getIsAlive() const
+{
+    return isAlive;
+}
+
+float Player::getLifeTime() const
+{
+    return lifeTime;
+}
+
+Color Player::getTeamColor() const
+{
+    return teamColor;
+}
+
+bool Player::getIsIncanting() const
+{
+    return isIncanting;
+}
+
+void Player::setInventory(const Inventory& inv)
+{
     inventory = inv;
 }
 
-void Player::addToInventory(int resourceType, int amount) {
+void Player::addToInventory(int resourceType, int amount)
+{
     switch (resourceType) {
         case 0: inventory.food += amount; break;
         case 1: inventory.linemate += amount; break;

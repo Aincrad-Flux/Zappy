@@ -4,17 +4,17 @@
 
 UI::UI(int width, int height) : screenWidth(width), screenHeight(height),
                                 selectedPlayer(nullptr), showPlayerInfo(true), showTeamStats(false),
-                                showMenu(true), showHelp(false) {
+                                showMenu(true), showHelp(false)
+{
     font = GetFontDefault();
 }
 
 
 
-UI::~UI() {
-    // Rien à faire pour le font par défaut
-}
+UI::~UI() {}
 
-void UI::draw(const std::vector<Player>& players) {
+void UI::draw(const std::vector<Player>& players)
+{
     (void)players;
 
     screenWidth = GetScreenWidth();
@@ -22,16 +22,13 @@ void UI::draw(const std::vector<Player>& players) {
 
     if (!showHelp) {
         drawGameStats();
-
         if (showMenu) {
             drawMenu();
             drawResourceLegend();
         }
-
         if (showPlayerInfo) {
             drawPlayerInfo();
         }
-
         if (showTeamStats) {
             drawTeamStats();
         }
@@ -40,7 +37,8 @@ void UI::draw(const std::vector<Player>& players) {
     }
 }
 
-void UI::drawPlayerInfo() {
+void UI::drawPlayerInfo()
+{
     int actualScreenWidth = GetScreenWidth();
     int actualScreenHeight = GetScreenHeight();
 
@@ -114,20 +112,19 @@ void UI::drawPlayerInfo() {
     }
 }
 
-void UI::drawTeamStats() {
+void UI::drawTeamStats()
+{
     int actualScreenWidth = GetScreenWidth();
     int actualScreenHeight = GetScreenHeight();
 
     int panelWidth = 250;
     int panelHeight = 300;
-    int panelX = actualScreenWidth - panelWidth - 10; // Droite
-    int panelY = 240; // Sous le menu principal
+    int panelX = actualScreenWidth - panelWidth - 10;
+    int panelY = 240;
 
-    // Panel background
     DrawRectangle(panelX, panelY, panelWidth, panelHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(panelX, panelY, panelWidth, panelHeight, WHITE);
 
-    // Title
     DrawText("Team Statistics", panelX + 10, panelY + 10, 20, WHITE);
 
     int yOffset = panelY + 40;
@@ -138,13 +135,11 @@ void UI::drawTeamStats() {
     for (size_t i = 0; i < teams.size() && i < 6; i++) {
         DrawText(TextFormat("%s Team", teams[i].c_str()), panelX + 10, yOffset, 16, teamColors[i]);
         yOffset += lineHeight;
-
-        // Ici on pourrait ajouter des statistiques par équipe
-        // Nombre de joueurs, niveau moyen, etc.
     }
 }
 
-void UI::drawResourceLegend() {
+void UI::drawResourceLegend()
+{
     int actualScreenHeight = GetScreenHeight();
     int actualScreenWidth = GetScreenWidth();
 
@@ -178,7 +173,6 @@ void UI::drawResourceLegend() {
     };
 
     for (int i = 0; i < 7; i++) {
-        // Dessiner un petit échantillon de la ressource
         Vector2 center = {(float)(legendX + 20), (float)(yOffset + 8)};
 
         switch (i) {
@@ -201,51 +195,59 @@ void UI::drawResourceLegend() {
     }
 }
 
-void UI::drawGameStats() {
+void UI::drawGameStats()
+{
     int actualScreenWidth = GetScreenWidth();
     int actualScreenHeight = GetScreenHeight();
 
-    int statsX = actualScreenWidth / 2 - 100; // Centré en haut de l'écran
+    int statsX = actualScreenWidth / 2 - 100;
     int statsY = 15;
 
     DrawText("Zappy Game", statsX, statsY, 24, WHITE);
     DrawText(TextFormat("Time: %.1fs", GetTime()), statsX, statsY + 30, 18, WHITE);
 }
 
-void UI::handleInput() {
-    // Fermer la fenêtre d'aide avec la touche ESCAPE
+void UI::handleInput()
+{
     if (showHelp && IsKeyPressed(KEY_ESCAPE)) {
         showHelp = false;
     }
 }
 
-void UI::setSelectedPlayer(Player* player) {
+void UI::setSelectedPlayer(Player* player)
+{
     selectedPlayer = player;
 }
 
-void UI::addTeam(const std::string& teamName) {
+void UI::addTeam(const std::string& teamName)
+{
     if (std::find(teams.begin(), teams.end(), teamName) == teams.end()) {
         teams.push_back(teamName);
     }
 }
 
-void UI::togglePlayerInfo() {
+void UI::togglePlayerInfo()
+{
     showPlayerInfo = !showPlayerInfo;
 }
 
-void UI::toggleTeamStats() {
+void UI::toggleTeamStats()
+{
     showTeamStats = !showTeamStats;
 }
 
-void UI::toggleMenu() {
+void UI::toggleMenu()
+{
     showMenu = !showMenu;
 }
 
-void UI::toggleHelp() {
+void UI::toggleHelp()
+{
     showHelp = !showHelp;
 }
 
-void UI::drawMenu() {
+void UI::drawMenu()
+{
     int actualScreenWidth = GetScreenWidth();
     int actualScreenHeight = GetScreenHeight();
 
@@ -287,7 +289,8 @@ void UI::drawMenu() {
     DrawText("Press M to hide this menu", menuX + menuWidth - 150, menuY + menuHeight - 20, 14, YELLOW);
 }
 
-void UI::drawHelp() {
+void UI::drawHelp()
+{
     int actualScreenWidth = GetScreenWidth();
     int actualScreenHeight = GetScreenHeight();
 
