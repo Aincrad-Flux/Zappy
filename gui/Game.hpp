@@ -62,6 +62,34 @@ private:
     void centerCamera();
 
     /**
+     * @brief Renders the 3D elements of the game
+     */
+    void render3DElements();
+
+    /**
+     * @brief Renders the debug information
+     */
+    void renderDebugInfo();
+
+    /**
+     * @brief Renders the UI elements
+     */
+    void renderUIElements();
+
+    /**
+     * @brief Checks for intersection between a ray and a cylinder
+     * @param ray The ray to test
+     * @param center Center point of the cylinder
+     * @param radius Radius of the cylinder
+     * @param height Height of the cylinder
+     * @param t Output parameter for intersection distance
+     * @param hitPoint Output parameter for intersection point
+     * @return True if intersection occurs within cylinder bounds
+     */
+    bool checkRayCylinderIntersection(const Ray& ray, const Vector3& center,
+                                     float radius, float height, float& t, Vector3& hitPoint);
+
+    /**
      * @brief Checks if player is clicked
      * @param mouseRay Ray from mouse position
      * @return ID of clicked player, or -1 if none

@@ -11,7 +11,7 @@
 #include <cmath>
 #include <raymath.h>
 
-Game::Game(int width, int height) : screenWidth(width), screenHeight(height), running(false), lastClickPosition({0, -1, 0}), selectedPlayerId(-1), debugMode(true)
+Game::Game(int width, int height) : screenWidth(width), screenHeight(height), running(false), lastClickPosition({0, -1, 0}), selectedPlayerId(-1), debugMode(false)
 {
     InitWindow(1400, 900, "Zappy GUI 3D - Raylib");
     screenWidth = 1400;
@@ -343,19 +343,8 @@ void Game::update()
     }
 }
 
-void Game::render()
+void Game::render3DElements()
 {
-    int newWidth = GetScreenWidth();
-    int newHeight = GetScreenHeight();
-
-    if (abs(newWidth - screenWidth) > 10 || abs(newHeight - screenHeight) > 10) {
-        screenWidth = newWidth;
-        screenHeight = newHeight;
-        camera.fovy = 45.0f;
-    }
-
-    BeginDrawing();
-    ClearBackground(DARKGRAY);
     BeginMode3D(camera);
     gameMap->draw();
 
@@ -369,27 +358,26 @@ void Game::render()
         DrawLine3D({0, 0, i * spacing}, {slices * spacing, 0, i * spacing}, LIGHTGRAY);
     }
 
-    DrawLine3D({0, 0, 0}, {10, 0, 0}, RED);   // X axis
-    DrawLine3D({0, 0, 0}, {0, 10, 0}, GREEN); // Y axis
-    DrawLine3D({0, 0, 0}, {0, 0, 10}, BLUE);  // Z axis
+    // Dessiner les axes
+    DrawLine3D({0, 0, 0}, {10, 0, 0}, RED);   // Axe X
+    DrawLine3D({0, 0, 0}, {0, 10, 0}, GREEN); // Axe Y
+    DrawLine3D({0, 0, 0}, {0, 0, 10}, BLUE);  // Axe Z
 
     for (const auto& resource : resources) {
         Vector3 worldPos = gameMap->getWorldPosition((int)resource.getPosition().x, (int)resource.getPosition().z);
         resource.draw(worldPos, gameMap->getTileSize());
     }
 
-    // Dessiner un indicateur pour le dernier clic
+    // Indicateur de clic
     if (lastClickPosition.y >= -0.5f) {
-        // Pulse effect for the click indicator
-        float pulseSize = 0.3f + sinf(GetTime() * 5.0f) * 0.1f;
+        float pulseSize = 0.5f + sinf(GetTime() * 5.0f) * 0.15f;
         DrawSphere(lastClickPosition, pulseSize, RED);
-
-        // Draw connecting lines to make it more visible
         DrawLine3D(lastClickPosition,
-                  Vector3{lastClickPosition.x, lastClickPosition.y + 1.0f, lastClickPosition.z},
+                  Vector3{lastClickPosition.x, lastClickPosition.y + 1.5f, lastClickPosition.z},
                   RED);
     }
 
+    // Players and their hitboxes
     for (const auto& player : players) {
         Vector3 worldPos = gameMap->getWorldPosition((int)player.getPosition().x, (int)player.getPosition().z);
         player.draw(worldPos, gameMap->getTileSize());
@@ -399,18 +387,14 @@ void Game::render()
             0.5f,
             worldPos.z + gameMap->getTileSize()/2.0f
         };
-        float radius = gameMap->getTileSize() * 0.4f; // Même rayon que pour la détection
 
-        // Dessiner la hitbox en mode debug
         if (debugMode) {
-            // Dessiner un cylindre wireframe pour représenter la hitbox
             float height = gameMap->getTileSize() * 0.6f;
-            DrawCylinderWires(center, radius, radius, height, 16, RED);
-            DrawCircle3D({center.x, center.y - height/2.0f, center.z}, radius, {1, 0, 0}, 90.0f, RED);
-            DrawCircle3D({center.x, center.y + height/2.0f, center.z}, radius, {1, 0, 0}, 90.0f, RED);
+            float hitboxRadius = gameMap->getTileSize() * 0.5f;
+            DrawCylinderWires(center, hitboxRadius, hitboxRadius, height, 16, RED);
+            DrawCircle3D({center.x, center.y - height/2.0f, center.z}, hitboxRadius, {1, 0, 0}, 90.0f, RED);
+            DrawCircle3D({center.x, center.y + height/2.0f, center.z}, hitboxRadius, {1, 0, 0}, 90.0f, RED);
         }
-
-        // Dessiner un indicateur pour le joueur sélectionné
         if (selectedPlayerId == player.getId()) {
             Vector3 markerPos = {
                 worldPos.x + gameMap->getTileSize()/2.0f,
@@ -420,61 +404,86 @@ void Game::render()
             DrawSphere(markerPos, 0.4f, YELLOW);
         }
     }
-
     EndMode3D();
+}
 
-    // Afficher les informations du joueur sélectionné
+void Game::renderDebugInfo()
+{
+    if (!debugMode) {
+        return;
+    }
+
+    int debugPanelWidth = 300;
+    int debugPanelHeight = 100;
+    int debugPanelX = screenWidth - debugPanelWidth - 10;
+    int debugPanelY = screenHeight - debugPanelHeight - 10;
+
+
+    DrawRectangle(debugPanelX, debugPanelY, debugPanelWidth, debugPanelHeight, ColorAlpha(BLACK, 0.7f));
+    DrawRectangleLines(debugPanelX, debugPanelY, debugPanelWidth, debugPanelHeight, RED);
+    DrawText("DEBUG MODE (F1 to toggle)", debugPanelX + 10, debugPanelY + 10, 16, RED);
+    DrawText("Click sphere & cylinder hitboxes shown in red", debugPanelX + 10, debugPanelY + 30, 14, YELLOW);
+
     if (selectedPlayerId >= 0) {
+        DrawText(TextFormat("Selected player ID: %d", selectedPlayerId), debugPanelX + 10, debugPanelY + 50, 14, GREEN);
+
         for (const auto& player : players) {
             if (player.getId() == selectedPlayerId) {
-                // Fond semi-transparent pour le panneau d'information
-                DrawRectangle(10, 60, 250, 210, ColorAlpha(DARKGRAY, 0.8f));
-                DrawRectangleLines(10, 60, 250, 210, WHITE);
-
-                // Titre du panneau
-                DrawText("PLAYER INFORMATION", 20, 70, 18, YELLOW);
-                DrawLine(20, 90, 240, 90, WHITE);
-
-                // Informations du joueur
-                DrawText(TextFormat("Player ID: %d", player.getId()), 20, 100, 16, WHITE);
-                DrawText(TextFormat("Team: %s", player.getTeamName().c_str()), 20, 120, 16, WHITE);
-                DrawText(TextFormat("Level: %d", player.getLevel()), 20, 140, 16, WHITE);
-
-                // Inventaire du joueur
-                DrawText("Inventory:", 20, 160, 16, WHITE);
-                DrawText(TextFormat("Food: %d", player.getInventory().getFood()), 40, 180, 16, WHITE);
-                DrawText(TextFormat("Linemate: %d", player.getInventory().getLinemate()), 40, 200, 16, WHITE);
-                DrawText(TextFormat("Deraumere: %d", player.getInventory().getDeraumere()), 40, 220, 16, WHITE);
-                DrawText(TextFormat("Sibur: %d", player.getInventory().getSibur()), 40, 240, 16, WHITE);
-
-                // Position du joueur
-                DrawText(TextFormat("Position: (%.1f, %.1f)", player.getPosition().x, player.getPosition().z), 20, 260, 16, WHITE);
+                Vector3 pos = player.getPosition();
+                DrawText(TextFormat("Player position: (%.1f, %.1f, %.1f)", pos.x, pos.y, pos.z),
+                         debugPanelX + 10, debugPanelY + 70, 14, GREEN);
                 break;
             }
         }
+    } else {
+        DrawText("No player selected - Click on a player", debugPanelX + 10, debugPanelY + 50, 14, YELLOW);
+    }
+
+    if (lastClickPosition.y >= -0.5f) {
+        int yPos = selectedPlayerId >= 0 ? 90 : 70;
+        DrawText(TextFormat("Last click: (%.1f, %.1f, %.1f)",
+                 lastClickPosition.x, lastClickPosition.y, lastClickPosition.z),
+                 debugPanelX + 10, debugPanelY + yPos, 14, WHITE);
+    }
+}
+
+void Game::renderUIElements()
+{
+    if (selectedPlayerId >= 0) {
+        for (const auto& player : players) {
+            if (player.getId() == selectedPlayerId) {
+                gameUI->setSelectedPlayer(const_cast<Player*>(&player));
+                break;
+            }
+        }
+    } else {
+        gameUI->setSelectedPlayer(nullptr);
     }
 
     gameUI->draw(players);
     DrawText(TextFormat("FPS: %i", GetFPS()), 10, 10, 20, LIME);
-
-    // Afficher un message d'aide si aucun joueur n'est sélectionné
-    if (selectedPlayerId < 0) {
-        DrawText("Click on a player to see their information", screenWidth/2 - 180, 30, 20, YELLOW);
+    if (selectedPlayerId < 0 && !debugMode) {
+        DrawText("Click on a player to see their information", screenWidth/2 - 180, 30, 20, ColorAlpha(YELLOW, 0.7f));
     }
-
-    if (debugMode) {
-        DrawText("DEBUG MODE ON (F1 to toggle)", 10, 35, 16, YELLOW);
-        DrawText("Click position shown with red sphere", 10, 55, 16, YELLOW);
-        DrawText("Player hitboxes shown in red", 10, 75, 16, YELLOW);
-
-        if (selectedPlayerId >= 0) {
-            DrawText(TextFormat("CLICKED ON PLAYER ID: %d", selectedPlayerId), 10, 95, 16, GREEN);
-        } else {
-            DrawText("NO PLAYER SELECTED - TRY CLICKING ON A PLAYER", 10, 95, 16, RED);
-        }
-    }
-
     DrawText("Press H for help.", 10, screenHeight - 30, 16, WHITE);
+}
+
+void Game::render()
+{
+    int newWidth = GetScreenWidth();
+    int newHeight = GetScreenHeight();
+
+    if (abs(newWidth - screenWidth) > 10 || abs(newHeight - screenHeight) > 10) {
+        screenWidth = newWidth;
+        screenHeight = newHeight;
+        camera.fovy = 45.0f;
+    }
+
+    BeginDrawing();
+    ClearBackground(DARKGRAY);
+    render3DElements();
+    renderDebugInfo();
+    renderUIElements();
     EndDrawing();
 }
 
@@ -512,13 +521,60 @@ void Game::centerCamera()
     camera.projection = CAMERA_PERSPECTIVE;
 }
 
+bool Game::checkRayCylinderIntersection(const Ray& ray, const Vector3& center, float radius, float height, float& t, Vector3& hitPoint)
+{
+    Vector2 rayPos2D = {ray.position.x, ray.position.z};
+    Vector2 rayDir2D = {ray.direction.x, ray.direction.z};
+    Vector2 cylinderPos2D = {center.x, center.z};
+
+    Vector2 v = {rayPos2D.x - cylinderPos2D.x, rayPos2D.y - cylinderPos2D.y};
+
+    float a = rayDir2D.x * rayDir2D.x + rayDir2D.y * rayDir2D.y;
+
+    if (fabs(a) < 0.00001f) {
+        return false;
+    }
+
+    float b = 2.0f * (v.x * rayDir2D.x + v.y * rayDir2D.y);
+    float c = v.x * v.x + v.y * v.y - radius * radius;
+    float discriminant = b * b - 4 * a * c;
+
+    if (discriminant < 0) {
+        return false;
+    }
+
+    float sqrtDiscriminant = sqrtf(discriminant);
+    float t1 = (-b - sqrtDiscriminant) / (2 * a);
+    float t2 = (-b + sqrtDiscriminant) / (2 * a);
+
+    if (t1 > 0 && t2 > 0) {
+        t = fmin(t1, t2);
+    } else if (t1 > 0) {
+        t = t1;
+    } else if (t2 > 0) {
+        t = t2;
+    } else {
+        return false;
+    }
+
+    hitPoint = {
+        ray.position.x + t * ray.direction.x,
+        ray.position.y + t * ray.direction.y,
+        ray.position.z + t * ray.direction.z
+    };
+
+    return (hitPoint.y >= center.y - height/2 && hitPoint.y <= center.y + height/2);
+}
+
 int Game::checkPlayerClick(Ray mouseRay)
 {
     float closestHit = 1000.0f;
     int hitPlayerId = -1;
 
     for (const auto& player : players) {
-        if (!player.getIsAlive()) continue;
+        if (!player.getIsAlive()) {
+            continue;
+        }
 
         Vector3 worldPos = gameMap->getWorldPosition((int)player.getPosition().x, (int)player.getPosition().z);
         Vector3 center = {
@@ -528,75 +584,38 @@ int Game::checkPlayerClick(Ray mouseRay)
         };
 
         float tileSize = gameMap->getTileSize();
-        float radius = tileSize * 0.3f;  // Utiliser le même rayon que celui du cylindre dessiné
-        float height = tileSize * 0.6f;  // Utiliser la même hauteur que celle du cylindre dessiné
+        float radius = tileSize * 0.5f;
+        float height = tileSize * 0.8f;
+        float sphereRadius = radius * 1.2f;
+        RayCollision sphereCollision = GetRayCollisionSphere(mouseRay, center, sphereRadius);
 
-        // Calcul d'intersection rayon-cylindre
-        // Équation paramétrique d'un rayon: p(t) = ray.position + t * ray.direction
-        // Pour un cylindre vertical: (x - center.x)² + (z - center.z)² = radius²
-
-        // Nous ne considérons que les coordonnées x et z pour le cylindre
-        Vector2 rayPos2D = {mouseRay.position.x, mouseRay.position.z};
-        Vector2 rayDir2D = {mouseRay.direction.x, mouseRay.direction.z};
-        Vector2 cylinderPos2D = {center.x, center.z};
-
-        // Vecteur de rayPos2D à cylinderPos2D
-        Vector2 v = {rayPos2D.x - cylinderPos2D.x, rayPos2D.y - cylinderPos2D.y};
-
-        // Coefficients de l'équation quadratique pour l'intersection
-        float a = rayDir2D.x * rayDir2D.x + rayDir2D.y * rayDir2D.y;
-        float b = 2.0f * (v.x * rayDir2D.x + v.y * rayDir2D.y);
-        float c = v.x * v.x + v.y * v.y - radius * radius;
-
-        float discriminant = b * b - 4 * a * c;
-
-        if (discriminant < 0) {
-            // Pas d'intersection avec le cylindre infini
+        if (!sphereCollision.hit) {
             continue;
         }
 
-        float t1 = (-b - sqrt(discriminant)) / (2 * a);
-        float t2 = (-b + sqrt(discriminant)) / (2 * a);
-
-        // On prend la plus petite valeur positive de t
         float t;
-        if (t1 > 0 && t2 > 0) {
-            t = fmin(t1, t2);
-        } else if (t1 > 0) {
-            t = t1;
-        } else if (t2 > 0) {
-            t = t2;
-        } else {
-            // Les deux intersections sont derrière la caméra
-            continue;
+        Vector3 intersection;
+        bool hitCylinder = checkRayCylinderIntersection(mouseRay, center, radius, height, t, intersection);
+
+        if (!hitCylinder) {
+            intersection = sphereCollision.point;
+            t = sphereCollision.distance;
         }
 
-        // Vérifier si l'intersection est à l'intérieur de la hauteur du cylindre
-        Vector3 intersection = {
-            mouseRay.position.x + t * mouseRay.direction.x,
-            mouseRay.position.y + t * mouseRay.direction.y,
-            mouseRay.position.z + t * mouseRay.direction.z
-        };
-
-        if (intersection.y < center.y - height/2 || intersection.y > center.y + height/2) {
-            // L'intersection n'est pas dans la hauteur du cylindre
-            continue;
-        }
-
-        // Si cette intersection est la plus proche jusqu'à présent
         if (t < closestHit) {
             closestHit = t;
             hitPlayerId = player.getId();
-
-            // Actualiser le point de clic
             lastClickPosition = intersection;
 
             if (debugMode) {
                 printf("Hit player %d at position (%.2f, %.2f, %.2f)\n",
-                       player.getId(),
-                       intersection.x, intersection.y, intersection.z);
+                       player.getId(), intersection.x, intersection.y, intersection.z);
             }
         }
+    }
+
+    if (hitPlayerId >= 0 && debugMode) {
+        printf("✓ PLAYER %d SUCCESSFULLY SELECTED! Hit distance: %.2f\n", hitPlayerId, closestHit);
     }
 
     return hitPlayerId;
