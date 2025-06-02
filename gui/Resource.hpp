@@ -1,3 +1,10 @@
+/*
+** EPITECH PROJECT, 2024
+** zappy
+** File description:
+** Resource.hpp
+*/
+
 #pragma once
 
 #include <raylib.h>
@@ -20,7 +27,7 @@ enum class ResourceType {
 /**
  * @class Resource
  * @brief Represents a resource item in the game world
- * 
+ *
  * This class handles resource rendering and properties.
  */
 class Resource {
@@ -37,7 +44,7 @@ public:
      * @param pos Position in the world
      */
     Resource(ResourceType resType, Vector3 pos);
-    
+
     /**
      * @brief Destructor for Resource
      */
@@ -55,13 +62,13 @@ public:
      * @return The resource type
      */
     ResourceType getType() const;
-    
+
     /**
      * @brief Gets the resource position
      * @return The position vector
      */
     Vector3 getPosition() const;
-    
+
     /**
      * @brief Gets the resource color
      * @return The color

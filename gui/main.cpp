@@ -1,3 +1,10 @@
+/*
+** EPITECH PROJECT, 2024
+** zappy
+** File description:
+** main.cpp
+*/
+
 #include "Game.hpp"
 #include <iostream>
 #include <cstring>

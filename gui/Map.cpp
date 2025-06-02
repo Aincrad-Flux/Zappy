@@ -1,3 +1,10 @@
+/*
+** EPITECH PROJECT, 2024
+** zappy
+** File description:
+** Map.cpp
+*/
+
 #include "Map.hpp"
 #include <cmath>
 #include <algorithm>

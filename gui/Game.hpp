@@ -1,3 +1,10 @@
+/*
+** EPITECH PROJECT, 2024
+** zappy
+** File description:
+** Game.hpp
+*/
+
 #pragma once
 
 #include <raylib.h>
@@ -12,7 +19,7 @@
 /**
  * @class Game
  * @brief Main game class that handles the game loop and state
- * 
+ *
  * This class manages the overall game state, entities, rendering, and input handling.
  */
 class Game {
@@ -30,22 +37,22 @@ private:
      * @brief Processes user input
      */
     void handleInput();
-    
+
     /**
      * @brief Updates game state
      */
     void update();
-    
+
     /**
      * @brief Renders the game
      */
     void render();
-    
+
     /**
      * @brief Initializes test data for the game
      */
     void initializeMockData();
-    
+
     /**
      * @brief Centers the camera on the map
      */
@@ -58,7 +65,7 @@ public:
      * @param height Height of the game window
      */
     Game(int width = 1200, int height = 800);
-    
+
     /**
      * @brief Destructor for Game
      */
@@ -68,7 +75,7 @@ public:
      * @brief Runs the main game loop
      */
     void run();
-    
+
     /**
      * @brief Safely shuts down the game
      */

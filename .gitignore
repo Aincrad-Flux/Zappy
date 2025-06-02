@@ -23,3 +23,4 @@ obj/
 *.cache
 *.DS_Store
 zappy_gui
+.vscode/

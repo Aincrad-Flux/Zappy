@@ -1,3 +1,10 @@
+/*
+** EPITECH PROJECT, 2024
+** zappy
+** File description:
+** Resource.cpp
+*/
+
 #include "Resource.hpp"
 
 Resource::Resource(ResourceType resType, Vector3 pos) : type(resType), position(pos)

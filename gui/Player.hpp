@@ -1,3 +1,11 @@
+/*
+** EPITECH PROJECT, 2024
+** zappy
+** File description:
+** Player.hpp
+*/
+
+
 #pragma once
 
 #include <raylib.h>

@@ -1,3 +1,10 @@
+/*
+** EPITECH PROJECT, 2024
+** zappy
+** File description:
+** UI.cpp
+*/
+
 #include "UI.hpp"
 #include "Resource.hpp"
 #include "ResourceInfo.hpp"

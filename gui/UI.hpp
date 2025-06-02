@@ -1,3 +1,10 @@
+/*
+** EPITECH PROJECT, 2024
+** zappy
+** File description:
+** UI.hpp
+*/
+
 #pragma once
 
 #include <raylib.h>
@@ -8,7 +15,7 @@
 /**
  * @class UI
  * @brief Class handling all UI elements and display for the Zappy GUI
- * 
+ *
  * This class manages the user interface elements including menus, player information,
  * team statistics, and help screens.
  */
@@ -28,27 +35,27 @@ private:
      * @brief Draws the player information panel
      */
     void drawPlayerInfo();
-    
+
     /**
      * @brief Draws the team statistics panel
      */
     void drawTeamStats();
-    
+
     /**
      * @brief Draws the resource legend
      */
     void drawResourceLegend();
-    
+
     /**
      * @brief Draws the game statistics
      */
     void drawGameStats();
-    
+
     /**
      * @brief Draws the menu with controls
      */
     void drawMenu();
-    
+
     /**
      * @brief Draws the help screen
      */
@@ -61,7 +68,7 @@ public:
      * @param height Initial screen height
      */
     UI(int width, int height);
-    
+
     /**
      * @brief Destructor for UI class
      */
@@ -72,39 +79,39 @@ public:
      * @param players Vector of all players in the game
      */
     void draw(const std::vector<Player>& players);
-    
+
     /**
      * @brief Handles user input for UI interactions
      */
     void handleInput();
-    
+
     /**
      * @brief Sets the currently selected player
      * @param player Pointer to the selected player
      */
     void setSelectedPlayer(Player* player);
-    
+
     /**
      * @brief Adds a team to the list of teams
      * @param teamName Name of the team to add
      */
     void addTeam(const std::string& teamName);
-    
+
     /**
      * @brief Toggles the player information panel visibility
      */
     void togglePlayerInfo();
-    
+
     /**
      * @brief Toggles the team statistics panel visibility
      */
     void toggleTeamStats();
-    
+
     /**
      * @brief Toggles the menu visibility
      */
     void toggleMenu();
-    
+
     /**
      * @brief Toggles the help screen visibility
      */

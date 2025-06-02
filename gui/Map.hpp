@@ -1,3 +1,10 @@
+/*
+** EPITECH PROJECT, 2024
+** zappy
+** File description:
+** Map.hpp
+*/
+
 #pragma once
 
 #include <raylib.h>

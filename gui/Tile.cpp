@@ -1,3 +1,10 @@
+/*
+** EPITECH PROJECT, 2024
+** zappy
+** File description:
+** Tile.cpp
+*/
+
 #include "Tile.hpp"
 
 Tile::Tile(Vector3 position, Color baseColor, bool hasResource,

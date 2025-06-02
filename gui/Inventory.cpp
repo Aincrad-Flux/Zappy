@@ -1,3 +1,10 @@
+/*
+** EPITECH PROJECT, 2024
+** zappy
+** File description:
+** Inventory.cpp
+*/
+
 #include "Inventory.hpp"
 
 Inventory::Inventory(int food, int linemate, int deraumere,

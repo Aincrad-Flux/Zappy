@@ -1,3 +1,10 @@
+/*
+** EPITECH PROJECT, 2024
+** zappy
+** File description:
+** Player.cpp
+*/
+
 #include "Player.hpp"
 #include <cmath>
 
