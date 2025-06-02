@@ -32,6 +32,9 @@ private:
     std::vector<Resource> resources;     ///< List of resources
     Camera3D camera;                     ///< 3D camera for world view
     bool running;                        ///< Flag indicating if the game is running
+    Vector3 lastClickPosition;           ///< Position of the last mouse click
+    int selectedPlayerId;                ///< ID of the currently selected player
+    bool debugMode;                      ///< Flag for showing debug information
 
     /**
      * @brief Processes user input
@@ -57,6 +60,13 @@ private:
      * @brief Centers the camera on the map
      */
     void centerCamera();
+
+    /**
+     * @brief Checks if player is clicked
+     * @param mouseRay Ray from mouse position
+     * @return ID of clicked player, or -1 if none
+     */
+    int checkPlayerClick(Ray mouseRay);
 
 public:
     /**
