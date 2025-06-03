@@ -1,0 +1,21 @@
+sync_to_github:
+  stage: sync
+  image: epitechcontent/epitest-docker:latest
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  before_script:
+    - echo "Installation des dépendances..."
+    - git config --global user.name "GitLab CI"
+    - git config --global user.email "ci@gitlab.com"
+  script:
+    - echo "Début de la synchronisation vers GitHub"
+    - echo "Clonage du repository..."
+    - git clone $CI_REPOSITORY_URL /tmp/sync_repo
+    - cd /tmp/sync_repo
+    - echo "Ajout du remote GitHub..."
+    - git remote add github https://$GITHUB_TOKEN@github.com/EpitechPromo2028/B-YEP-400-LIL-4-1-zappy-thibault.pouch.git
+    - echo "Push vers GitHub..."
+    - git push github main:main --force
+    - echo "Synchronisation terminée !"
+  variables:
+    GITHUB_REPO: "EpitechPromo2028/B-YEP-400-LIL-4-1-zappy-thibault.pouch.git"
