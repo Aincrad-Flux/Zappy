@@ -30,6 +30,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install Raylib dependencies
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends libglfw3 libglfw3-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libpulse-dev build-essential cmake
+
+      - name: Install Raylib
+        run: |
+          git clone https://github.com/raysan5/raylib.git raylib
+          cd raylib
+          mkdir build && cd build
+          cmake -DBUILD_SHARED_LIBS=ON ..
+          make
+          make install
+          ldconfig
+
       - name: Build GUI
         run: |
           cd gui
@@ -73,6 +88,21 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
+      - name: Install Raylib dependencies
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends libglfw3 libglfw3-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libpulse-dev build-essential cmake
+
+      - name: Install Raylib
+        run: |
+          git clone https://github.com/raysan5/raylib.git raylib
+          cd raylib
+          mkdir build && cd build
+          cmake -DBUILD_SHARED_LIBS=ON ..
+          make
+          make install
+          ldconfig
 
       - name: Run GUI tests
         run: |
