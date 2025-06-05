@@ -6,6 +6,8 @@
 */
 
 #include "../../include/server/server.h"
+#include "../../include/server/time/tick.h"
+
 #define BUFFER_SIZE 1024
 
 void print_usage(char *program_name) {
@@ -101,6 +103,7 @@ int init_server(Server *server) {
 
     init_fd_sets(server);
     print_server_info(server);
+    init_map(server);
     return 0;
 }
 
@@ -206,6 +209,7 @@ void run_server(Server *server) {
         check_new_connections(server, &read_fds);
         check_client_messages(server, &read_fds);
         process_pending_action(server);
+        update_ticks(server);
     }
 }
 

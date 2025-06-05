@@ -10,16 +10,18 @@
 
 int get_command_duration(const char *command)
 {
-     static CommandDuration durations[] = {{"avance", 7}, {"droite", 7},
-            {"gauche", 7}, {"voir", 7}, {"inventaire", 1}, {"prend", 7},
-            {"pose", 7}, {"expulse", 7}, {"broadcast", 7}, {"incantation", 300},
-            {"fork", 42}, {"connect_nbr", 0}, {NULL, 0}
-    };
+    size_t len = 0;
+    static CommandDuration durations[] = {{"Forward", 7}, {"Right", 7},
+        {"Left", 7}, {"Look", 7}, {"Inventory", 1},
+            {"Take", 7}, {"Set", 7}, {"Eject", 7},
+                {"Broadcast", 7}, {"Incantation", 300},
+                    {"Fork", 42}, {"Connect_nbr", 0}, {NULL, 0} };
 
     for (int i = 0; durations[i].name != NULL; i++) {
-        if (strcmp(command, durations[i].name) == 0)
+        len = strlen(durations[i].name);
+        if (strncmp(command, durations[i].name, len) == 0 &&
+            (command[len] == '\0' || command[len] == ' '))
             return durations[i].duration;
     }
     return -1;
 }
-

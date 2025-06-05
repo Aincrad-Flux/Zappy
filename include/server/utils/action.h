@@ -23,5 +23,4 @@ typedef struct Action {
 
 void process_pending_action(Server *server);
 void add_action_to_queue(Player *player, const char *command, int freq);
-void handle_action_command(const char *command, char *response);
 #endif

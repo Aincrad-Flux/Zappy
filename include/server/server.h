@@ -25,6 +25,7 @@
 #include <sys/select.h>
 #include <time.h>
 #include "utils/action.h"
+#include "map/map.h"
 
 typedef struct Server {
     int width, height;
@@ -37,7 +38,11 @@ typedef struct Server {
     int server_socket;
     fd_set master_fds;
     int max_fd;
+    time_t last_tick;
+    int tick_count;
+    Map *map;
 } Server;
 
 void send_connection_info(Server *server, int client_socket, int team_id);
+
 #endif
