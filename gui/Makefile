@@ -1,7 +1,7 @@
 # Makefile pour Zappy GUI avec Raylib
 
 CXX = g++
-CXXFLAGS = -Wall -Wextra -std=c++17 -O2
+CXXFLAGS = -Wall -Wextra -std=c++17 -O2 -I./include
 # Detect OS
 UNAME_S := $(shell uname -s)
 
@@ -18,7 +18,7 @@ INC_DIR = include
 OBJ_DIR = obj
 
 # Fichiers source
-SOURCES = main.cpp Game.cpp Map.cpp Player.cpp Resource.cpp UI.cpp Inventory.cpp Tile.cpp ResourceInfo.cpp
+SOURCES = src/main.cpp src/Game.cpp src/Map.cpp src/Player.cpp src/Resource.cpp src/UI.cpp src/Inventory.cpp src/Tile.cpp src/ResourceInfo.cpp
 OBJECTS = $(SOURCES:%.cpp=$(OBJ_DIR)/%.o)
 
 # Nom de l'exécutable
