@@ -6,6 +6,7 @@
 */
 
 #include "Resource.hpp"
+#include <cmath>
 
 Resource::Resource(ResourceType resType, Vector3 pos) : type(resType), position(pos)
 {
