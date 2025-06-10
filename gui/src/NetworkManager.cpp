@@ -45,7 +45,6 @@ bool NetworkManager::connect(const std::string& hostname, int port)
         return false;
     }
 
-    // Loop through all the results and connect to the first one we can
     for(p = serverInfo; p != NULL; p = p->ai_next) {
         if ((socketFd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
             std::cerr << "socket: " << strerror(errno) << std::endl;
@@ -68,14 +67,12 @@ bool NetworkManager::connect(const std::string& hostname, int port)
 
     freeaddrinfo(serverInfo);
 
-    // Make socket non-blocking
     int flags = fcntl(socketFd, F_GETFL, 0);
     fcntl(socketFd, F_SETFL, flags | O_NONBLOCK);
 
     connected = true;
     running = true;
 
-    // Start the network thread
     networkThread = std::thread(&NetworkManager::networkLoop, this);
 
     std::cout << "Connected to server at " << hostname << ":" << port << std::endl;
@@ -125,8 +122,6 @@ bool NetworkManager::getMapSize(int& width, int& height)
         std::cerr << "Not connected to server" << std::endl;
         return false;
     }
-
-    // Send msz command to request map size
     return sendCommand("msz\n");
 }
 
@@ -143,7 +138,6 @@ void NetworkManager::requestMapContent()
 {
     if (!connected)
         return;
-
     sendCommand("mct\n");
 }
 
@@ -151,7 +145,6 @@ void NetworkManager::requestTeamNames()
 {
     if (!connected)
         return;
-
     sendCommand("tna\n");
 }
 
@@ -159,7 +152,6 @@ void NetworkManager::requestTimeUnit()
 {
     if (!connected)
         return;
-
     sendCommand("sgt\n");
 }
 
@@ -167,7 +159,6 @@ void NetworkManager::setTimeUnit(int timeUnit)
 {
     if (!connected)
         return;
-
     std::string command = "sst " + std::to_string(timeUnit) + "\n";
     sendCommand(command);
 }
@@ -201,44 +192,31 @@ void NetworkManager::networkLoop()
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
-
-        // Try to receive data
         int bytesReceived = recv(socketFd, tempBuffer, bufferSize - 1, 0);
 
         if (bytesReceived > 0) {
-            // Add null terminator and append to buffer
             tempBuffer[bytesReceived] = '\0';
             buffer += tempBuffer;
-
-            // Process complete messages
             size_t pos = buffer.find('\n');
             while (pos != std::string::npos) {
                 std::string message = buffer.substr(0, pos);
                 buffer = buffer.substr(pos + 1);
-
-                // Add message to queue
                 {
                     std::lock_guard<std::mutex> lock(mutex);
                     messageQueue.push(message);
                 }
-
-                // Look for next message
                 pos = buffer.find('\n');
             }
         } else if (bytesReceived == 0) {
-            // Connection closed by server
             std::cerr << "Connection closed by server" << std::endl;
             connected = false;
             break;
         } else {
-            // No data available or error
             if (errno != EAGAIN && errno != EWOULDBLOCK) {
                 std::cerr << "recv error: " << strerror(errno) << std::endl;
                 connected = false;
                 break;
             }
-
-            // Sleep to avoid busy waiting
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     }
@@ -248,11 +226,9 @@ void NetworkManager::processMessage(const std::string& message)
 {
     std::string command;
     std::vector<std::string> args;
-
     parseMessage(message, command, args);
-
-    // Check if there's a registered callback for this command
     auto it = callbacks.find(command);
+
     if (it != callbacks.end()) {
         it->second(args);
     } else {
@@ -263,19 +239,15 @@ void NetworkManager::processMessage(const std::string& message)
 void NetworkManager::parseMessage(const std::string& message, std::string& command, std::vector<std::string>& args)
 {
     std::istringstream iss(message);
-
-    // Extract the command
     iss >> command;
-
-    // Extract arguments
     std::string arg;
+
     while (iss >> arg) {
         args.push_back(arg);
     }
 }
 
-template<typename Func>
-void NetworkManager::registerCallback(const std::string& type, Func callback)
+void NetworkManager::registerCallback(const std::string& command, Callback callback)
 {
-    callbacks[type] = callback;
+    callbacks[command] = callback;
 }
