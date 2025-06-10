@@ -101,7 +101,9 @@ public:
      * @param callback Function to call when message is received
      */
     template<typename Func>
-    void registerCallback(const std::string& type, Func callback);
+    void registerCallback(const std::string& type, Func callback) {
+        callbacks[type] = callback;
+    }
 
 private:
     int socketFd;                              ///< Socket file descriptor
@@ -114,6 +116,8 @@ private:
     std::queue<std::string> messageQueue;      ///< Queue for received messages
 
     std::unordered_map<std::string, std::function<void(const std::vector<std::string>&)>> callbacks;
+    
+    typedef std::function<void(const std::vector<std::string>&)> Callback;
 
     /**
      * @brief Sends a command to the server

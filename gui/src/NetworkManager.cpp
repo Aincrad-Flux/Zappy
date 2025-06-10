@@ -247,7 +247,3 @@ void NetworkManager::parseMessage(const std::string& message, std::string& comma
     }
 }
 
-void NetworkManager::registerCallback(const std::string& command, Callback callback)
-{
-    callbacks[command] = callback;
-}
