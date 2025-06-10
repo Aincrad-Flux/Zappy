@@ -13,10 +13,11 @@
 
 void printUsage()
 {
-    std::cout << "USAGE: ./zappy_gui -p port -h machine" << std::endl;
+    std::cout << "USAGE: ./zappy_gui -p port -h machine [-2d]" << std::endl;
     std::cout << "option description" << std::endl;
     std::cout << "-p port        port number" << std::endl;
     std::cout << "-h machine     hostname of the server" << std::endl;
+    std::cout << "-2d            run in 2D mode (default is 3D)" << std::endl;
 }
 
 int main(int argc, char* argv[])
@@ -32,6 +33,7 @@ int main(int argc, char* argv[])
 
     std::string hostname = "";
     int port = 0;
+    bool use2DMode = false;
 
     Logger::getInstance().info("Parsing command line arguments");
 
@@ -52,6 +54,9 @@ int main(int argc, char* argv[])
             hostname = argv[i + 1];
             Logger::getInstance().info("Hostname set to: " + hostname);
             i++; // Skip the next argument as it's the hostname
+        } else if (strcmp(argv[i], "-2d") == 0) {
+            use2DMode = true;
+            Logger::getInstance().info("2D mode enabled");
         } else {
             std::string errorMsg = "Unknown option: " + std::string(argv[i]);
             Logger::getInstance().error(errorMsg);
@@ -72,11 +77,11 @@ int main(int argc, char* argv[])
         if (!hostname.empty() && port != 0) {
             std::string connectMsg = "Connecting to server at " + hostname + ":" + std::to_string(port);
             Logger::getInstance().info(connectMsg);
-            Game game(1600, 900, hostname, port);
+            Game game(1600, 900, hostname, port, use2DMode);
             game.run();
         } else {
             Logger::getInstance().info("Starting in offline mode");
-            Game game(1600, 900);
+            Game game(1600, 900, "", 0, use2DMode);
             game.run();
         }
     } catch (const std::exception& e) {

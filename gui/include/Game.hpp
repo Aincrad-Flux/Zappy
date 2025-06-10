@@ -36,6 +36,7 @@ private:
     Vector3 lastClickPosition;           ///< Position of the last mouse click
     int selectedPlayerId;                ///< ID of the currently selected player
     bool debugMode;                      ///< Flag for showing debug information
+    bool use2DMode;                      ///< Flag for using 2D mode instead of 3D
 
     std::unique_ptr<NetworkManager> networkManager; ///< Network communication manager
     std::string serverHostname;          ///< Server hostname
@@ -72,6 +73,11 @@ private:
      * @brief Renders the 3D elements of the game
      */
     void render3DElements();
+
+    /**
+     * @brief Renders the 2D elements of the game
+     */
+    void render2DElements();
 
     /**
      * @brief Renders the debug information
@@ -121,6 +127,13 @@ private:
      */
     int checkPlayerClick(Ray mouseRay);
 
+    /**
+     * @brief Checks if player is clicked in 2D mode
+     * @param mousePos Mouse position in screen space
+     * @return ID of clicked player, or -1 if none
+     */
+    int checkPlayerClick2D(Vector2 mousePos);
+
 public:
     /**
      * @brief Constructor for Game
@@ -128,8 +141,9 @@ public:
      * @param height Height of the game window
      * @param hostname Server hostname (optional)
      * @param port Server port (optional)
+     * @param use2D Whether to use 2D mode (optional)
      */
-    Game(int width = 1200, int height = 800, const std::string& hostname = "", int port = 0);
+    Game(int width = 1200, int height = 800, const std::string& hostname = "", int port = 0, bool use2D = false);
 
     /**
      * @brief Destructor for Game

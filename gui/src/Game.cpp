@@ -12,14 +12,16 @@
 #include <cmath>
 #include <raymath.h>
 
-Game::Game(int width, int height, const std::string& hostname, int port)
+Game::Game(int width, int height, const std::string& hostname, int port, bool use2D)
     : screenWidth(width), screenHeight(height), running(false), lastClickPosition({0, -1, 0}),
-      selectedPlayerId(-1), debugMode(false), serverHostname(hostname), serverPort(port),
+      selectedPlayerId(-1), debugMode(false), use2DMode(use2D), serverHostname(hostname), serverPort(port),
       serverConnected(false), timeUnit(100)
 {
     Logger::getInstance().init("zappy_gui.log");
-    Logger::getInstance().info("Game initialized with resolution " + std::to_string(width) + "x" + std::to_string(height));
-    InitWindow(1400, 900, "Zappy GUI 3D - Raylib");
+    Logger::getInstance().info("Game initialized with resolution " + std::to_string(width) + "x" + std::to_string(height) +
+                               (use2DMode ? " (2D mode)" : " (3D mode)"));
+
+    InitWindow(1400, 900, use2DMode ? "Zappy GUI 2D - Raylib" : "Zappy GUI 3D - Raylib");
     screenWidth = 1400;
     screenHeight = 900;
     SetTargetFPS(60);
@@ -27,6 +29,7 @@ Game::Game(int width, int height, const std::string& hostname, int port)
 
     networkManager = std::make_unique<NetworkManager>();
     gameUI = std::make_unique<UI>(screenWidth, screenHeight);
+
     camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
     camera.fovy = 45.0f;
     camera.projection = CAMERA_PERSPECTIVE;
@@ -88,7 +91,6 @@ void Game::initializeMockData()
         ResourceType type = (ResourceType)resourceDist(gen);
         int count = countDist(gen);
         for (int j = 0; j < count; j++) {
-            // Petites variations pour le même type de ressource à la même case
             Vector3 pos = {basePos.x + j*0.01f, 0.0f, basePos.z + j*0.01f};
             resources.emplace_back(type, pos);
             gameMap->setTileResource((int)pos.x, (int)pos.z, (int)type);
@@ -102,21 +104,41 @@ void Game::handleInput()
 
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         Vector2 mousePos = GetMousePosition();
-        Ray mouseRay = GetMouseRay(mousePos, camera);
-
-        if (debugMode) {
-            printf("\n--- Mouse Click Debug Info ---\n");
-            printf("Mouse position: (%.2f, %.2f)\n", mousePos.x, mousePos.y);
-            printf("Ray origin: (%.2f, %.2f, %.2f)\n", mouseRay.position.x, mouseRay.position.y, mouseRay.position.z);
-            printf("Ray direction: (%.2f, %.2f, %.2f)\n", mouseRay.direction.x, mouseRay.direction.y, mouseRay.direction.z);
-        }
-
-        // Only handle player selection if we have a valid map
         int previousSelectedId = selectedPlayerId;
         int clickedPlayerId = -1;
 
         if (gameMap) {
-            clickedPlayerId = checkPlayerClick(mouseRay);
+            if (use2DMode) {
+                clickedPlayerId = checkPlayerClick2D(mousePos);
+            } else {
+                Ray mouseRay = GetMouseRay(mousePos, camera);
+
+                if (debugMode) {
+                    printf("\n--- Mouse Click Debug Info ---\n");
+                    printf("Mouse position: (%.2f, %.2f)\n", mousePos.x, mousePos.y);
+                    printf("Ray origin: (%.2f, %.2f, %.2f)\n", mouseRay.position.x, mouseRay.position.y, mouseRay.position.z);
+                    printf("Ray direction: (%.2f, %.2f, %.2f)\n", mouseRay.direction.x, mouseRay.direction.y, mouseRay.direction.z);
+                }
+
+                clickedPlayerId = checkPlayerClick(mouseRay);
+
+                if (clickedPlayerId < 0) {
+                    float t = -mouseRay.position.y / mouseRay.direction.y;
+                    if (t > 0) {
+                        Vector3 hitPoint = {
+                            mouseRay.position.x + mouseRay.direction.x * t,
+                            0,
+                            mouseRay.position.z + mouseRay.direction.z * t
+                        };
+                        lastClickPosition = hitPoint;
+
+                        if (debugMode) {
+                            printf("Click hit ground at: (%.2f, %.2f, %.2f)\n",
+                                hitPoint.x, hitPoint.y, hitPoint.z);
+                        }
+                    }
+                }
+            }
         }
 
         if (clickedPlayerId >= 0) {
@@ -127,238 +149,224 @@ void Game::handleInput()
         } else {
             if (debugMode && previousSelectedId >= 0) {
                 printf("No player hit. Previous selection maintained: %d\n", selectedPlayerId);
+            } else if (debugMode) {
+                printf("No player hit.\n");
+            }
+        }
+    }
+
+    if (!use2DMode) {
+        if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
+            Vector3 dir;
+            dir.x = camera.position.x - camera.target.x;
+            dir.y = camera.position.y - camera.target.y;
+            dir.z = camera.position.z - camera.target.z;
+
+            float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+            float len = distance;
+            if (len > 0) {
+                dir.x /= len;
+                dir.y /= len;
+                dir.z /= len;
+            }
+
+            float cosA = cosf(rotationSpeed);
+            float sinA = sinf(rotationSpeed);
+            float newX = dir.x * cosA - dir.z * sinA;
+            float newZ = dir.x * sinA + dir.z * cosA;
+
+            dir.x = newX;
+            dir.z = newZ;
+
+            camera.position.x = camera.target.x + dir.x * distance;
+            camera.position.y = camera.target.y + dir.y * distance;
+            camera.position.z = camera.target.z + dir.z * distance;
+        }
+
+        if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) {
+            Vector3 dir;
+            dir.x = camera.position.x - camera.target.x;
+            dir.y = camera.position.y - camera.target.y;
+            dir.z = camera.position.z - camera.target.z;
+
+            float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+            float len = distance;
+            if (len > 0) {
+                dir.x /= len;
+                dir.y /= len;
+                dir.z /= len;
+            }
+
+            float cosA = cosf(-rotationSpeed);
+            float sinA = sinf(-rotationSpeed);
+            float newX = dir.x * cosA - dir.z * sinA;
+            float newZ = dir.x * sinA + dir.z * cosA;
+
+            dir.x = newX;
+            dir.z = newZ;
+
+            camera.position.x = camera.target.x + dir.x * distance;
+            camera.position.y = camera.target.y + dir.y * distance;
+            camera.position.z = camera.target.z + dir.z * distance;
+        }
+
+        if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) {
+            Vector3 dir;
+            dir.x = camera.position.x - camera.target.x;
+            dir.y = camera.position.y - camera.target.y;
+            dir.z = camera.position.z - camera.target.z;
+
+            float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+            float azimuth = atan2f(dir.z, dir.x);
+            float elevation = atan2f(dir.y, sqrtf(dir.x*dir.x + dir.z*dir.z));
+            elevation += rotationSpeed;
+
+            if (elevation > 1.5f) elevation = 1.5f;
+
+            camera.position.x = camera.target.x + distance * cosf(elevation) * cosf(azimuth);
+            camera.position.y = camera.target.y + distance * sinf(elevation);
+            camera.position.z = camera.target.z + distance * cosf(elevation) * sinf(azimuth);
+        }
+
+        if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) {
+            Vector3 dir;
+            dir.x = camera.position.x - camera.target.x;
+            dir.y = camera.position.y - camera.target.y;
+            dir.z = camera.position.z - camera.target.z;
+
+            float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+            float azimuth = atan2f(dir.z, dir.x);
+            float elevation = atan2f(dir.y, sqrtf(dir.x*dir.x + dir.z*dir.z));
+            elevation -= rotationSpeed;
+
+            if (elevation < 0.1f) elevation = 0.1f;
+            camera.position.x = camera.target.x + distance * cosf(elevation) * cosf(azimuth);
+            camera.position.y = camera.target.y + distance * sinf(elevation);
+            camera.position.z = camera.target.z + distance * cosf(elevation) * sinf(azimuth);
+        }
+
+        if (IsKeyDown(KEY_Q)) {
+            Vector3 dir;
+            dir.x = camera.position.x - camera.target.x;
+            dir.y = camera.position.y - camera.target.y;
+            dir.z = camera.position.z - camera.target.z;
+
+            float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+            float len = distance;
+            if (len > 0) {
+                dir.x /= len;
+                dir.y /= len;
+                dir.z /= len;
+            }
+
+            float cosA = cosf(-rotationSpeed);
+            float sinA = sinf(-rotationSpeed);
+            float newX = dir.x * cosA - dir.z * sinA;
+            float newZ = dir.x * sinA + dir.z * cosA;
+
+            dir.x = newX;
+            dir.z = newZ;
+
+            camera.position.x = camera.target.x + dir.x * distance;
+            camera.position.y = camera.target.y + dir.y * distance;
+            camera.position.z = camera.target.z + dir.z * distance;
+        }
+
+        if (IsKeyDown(KEY_E)) {
+            Vector3 dir;
+            dir.x = camera.position.x - camera.target.x;
+            dir.y = camera.position.y - camera.target.y;
+            dir.z = camera.position.z - camera.target.z;
+
+            float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+            float len = distance;
+            if (len > 0) {
+                dir.x /= len;
+                dir.y /= len;
+                dir.z /= len;
+            }
+
+            float cosA = cosf(rotationSpeed);
+            float sinA = sinf(rotationSpeed);
+            float newX = dir.x * cosA - dir.z * sinA;
+            float newZ = dir.x * sinA + dir.z * cosA;
+
+            dir.x = newX;
+            dir.z = newZ;
+
+            camera.position.x = camera.target.x + dir.x * distance;
+            camera.position.y = camera.target.y + dir.y * distance;
+            camera.position.z = camera.target.z + dir.z * distance;
+        }
+
+        float wheel = GetMouseWheelMove();
+        if (wheel != 0) {
+            Vector3 dir;
+            dir.x = camera.position.x - camera.target.x;
+            dir.y = camera.position.y - camera.target.y;
+            dir.z = camera.position.z - camera.target.z;
+
+            float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z) - wheel * 2.0f;
+
+            if (distance < 10.0f) distance = 10.0f;
+            if (distance > 100.0f) distance = 100.0f;
+
+            float len = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+            if (len > 0) {
+                dir.x /= len;
+                dir.y /= len;
+                dir.z /= len;
+            }
+
+            camera.position.x = camera.target.x + dir.x * distance;
+            camera.position.y = camera.target.y + dir.y * distance;
+            camera.position.z = camera.target.z + dir.z * distance;
+        }
+
+        static Vector2 prevMousePos = { 0, 0 };
+        const float mouseSensitivity = 0.02f;
+
+        if (IsMouseButtonDown(MOUSE_RIGHT_BUTTON)) {
+            Vector2 mousePos = GetMousePosition();
+
+            if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
+                prevMousePos = mousePos;
             } else {
-                if (debugMode) {
-                    printf("No player hit. Ray missed all cylindrical hitboxes.\n");
-                }
+                float dx = mousePos.x - prevMousePos.x;
+                float dy = mousePos.y - prevMousePos.y;
+
+                Vector3 forward = Vector3Subtract(camera.target, camera.position);
+                forward = Vector3Normalize(forward);
+
+                Vector3 right = Vector3CrossProduct(forward, camera.up);
+                right = Vector3Normalize(right);
+
+                Vector3 moveRight = Vector3Scale(right, -dx * mouseSensitivity);
+                Vector3 moveUp = Vector3Scale(camera.up, dy * mouseSensitivity);
+
+                camera.target = Vector3Add(camera.target, moveRight);
+                camera.target = Vector3Add(camera.target, moveUp);
+                camera.position = Vector3Add(camera.position, moveRight);
+                camera.position = Vector3Add(camera.position, moveUp);
+
+                prevMousePos = mousePos;
             }
-
-            float t = -mouseRay.position.y / mouseRay.direction.y;
-            if (t > 0) {
-                Vector3 hitPoint = {
-                    mouseRay.position.x + mouseRay.direction.x * t,
-                    0,
-                    mouseRay.position.z + mouseRay.direction.z * t
-                };
-                lastClickPosition = hitPoint;
-
-                if (debugMode) {
-                    printf("Click hit ground at: (%.2f, %.2f, %.2f)\n",
-                           hitPoint.x, hitPoint.y, hitPoint.z);
-                }
-            }
-        }
-    }
-
-    if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
-        Vector3 dir;
-        dir.x = camera.position.x - camera.target.x;
-        dir.y = camera.position.y - camera.target.y;
-        dir.z = camera.position.z - camera.target.z;
-
-        float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
-        float len = distance;
-        if (len > 0) {
-            dir.x /= len;
-            dir.y /= len;
-            dir.z /= len;
         }
 
-        float cosA = cosf(rotationSpeed);
-        float sinA = sinf(rotationSpeed);
-        float newX = dir.x * cosA - dir.z * sinA;
-        float newZ = dir.x * sinA + dir.z * cosA;
-
-        dir.x = newX;
-        dir.z = newZ;
-
-        camera.position.x = camera.target.x + dir.x * distance;
-        camera.position.y = camera.target.y + dir.y * distance;
-        camera.position.z = camera.target.z + dir.z * distance;
-    }
-
-    if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) {
-        Vector3 dir;
-        dir.x = camera.position.x - camera.target.x;
-        dir.y = camera.position.y - camera.target.y;
-        dir.z = camera.position.z - camera.target.z;
-
-        float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
-        float len = distance;
-        if (len > 0) {
-            dir.x /= len;
-            dir.y /= len;
-            dir.z /= len;
+        if (IsKeyPressed(KEY_SPACE) && gameMap) {
+            float mapWidth = gameMap->getWidth() * gameMap->getTileSize();
+            float mapHeight = gameMap->getHeight() * gameMap->getTileSize();
+            camera.position = Vector3{ mapWidth / 2.0f, mapHeight * 1.2f, mapHeight * 0.8f };
+            camera.target = Vector3{ mapWidth / 2.0f, 0.0f, mapHeight / 2.0f };
         }
-
-        float cosA = cosf(-rotationSpeed);
-        float sinA = sinf(-rotationSpeed);
-        float newX = dir.x * cosA - dir.z * sinA;
-        float newZ = dir.x * sinA + dir.z * cosA;
-
-        dir.x = newX;
-        dir.z = newZ;
-
-        camera.position.x = camera.target.x + dir.x * distance;
-        camera.position.y = camera.target.y + dir.y * distance;
-        camera.position.z = camera.target.z + dir.z * distance;
-    }
-
-    if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) {
-        Vector3 dir;
-        dir.x = camera.position.x - camera.target.x;
-        dir.y = camera.position.y - camera.target.y;
-        dir.z = camera.position.z - camera.target.z;
-
-        float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
-        float azimuth = atan2f(dir.z, dir.x);
-        float elevation = atan2f(dir.y, sqrtf(dir.x*dir.x + dir.z*dir.z));
-        elevation += rotationSpeed;
-
-        if (elevation > 1.5f) elevation = 1.5f;
-
-        camera.position.x = camera.target.x + distance * cosf(elevation) * cosf(azimuth);
-        camera.position.y = camera.target.y + distance * sinf(elevation);
-        camera.position.z = camera.target.z + distance * cosf(elevation) * sinf(azimuth);
-    }
-
-    if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) {
-        Vector3 dir;
-        dir.x = camera.position.x - camera.target.x;
-        dir.y = camera.position.y - camera.target.y;
-        dir.z = camera.position.z - camera.target.z;
-
-        float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
-        float azimuth = atan2f(dir.z, dir.x);
-        float elevation = atan2f(dir.y, sqrtf(dir.x*dir.x + dir.z*dir.z));
-        elevation -= rotationSpeed;
-
-        if (elevation < 0.1f) elevation = 0.1f;
-        camera.position.x = camera.target.x + distance * cosf(elevation) * cosf(azimuth);
-        camera.position.y = camera.target.y + distance * sinf(elevation);
-        camera.position.z = camera.target.z + distance * cosf(elevation) * sinf(azimuth);
-    }
-
-    if (IsKeyDown(KEY_Q)) {
-        Vector3 dir;
-        dir.x = camera.position.x - camera.target.x;
-        dir.y = camera.position.y - camera.target.y;
-        dir.z = camera.position.z - camera.target.z;
-
-        float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
-        float len = distance;
-        if (len > 0) {
-            dir.x /= len;
-            dir.y /= len;
-            dir.z /= len;
-        }
-
-        float cosA = cosf(-rotationSpeed);
-        float sinA = sinf(-rotationSpeed);
-        float newX = dir.x * cosA - dir.z * sinA;
-        float newZ = dir.x * sinA + dir.z * cosA;
-
-        dir.x = newX;
-        dir.z = newZ;
-
-        camera.position.x = camera.target.x + dir.x * distance;
-        camera.position.y = camera.target.y + dir.y * distance;
-        camera.position.z = camera.target.z + dir.z * distance;
-    }
-
-    if (IsKeyDown(KEY_E)) {
-        Vector3 dir;
-        dir.x = camera.position.x - camera.target.x;
-        dir.y = camera.position.y - camera.target.y;
-        dir.z = camera.position.z - camera.target.z;
-
-        float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
-        float len = distance;
-        if (len > 0) {
-            dir.x /= len;
-            dir.y /= len;
-            dir.z /= len;
-        }
-
-        float cosA = cosf(rotationSpeed);
-        float sinA = sinf(rotationSpeed);
-        float newX = dir.x * cosA - dir.z * sinA;
-        float newZ = dir.x * sinA + dir.z * cosA;
-
-        dir.x = newX;
-        dir.z = newZ;
-
-        camera.position.x = camera.target.x + dir.x * distance;
-        camera.position.y = camera.target.y + dir.y * distance;
-        camera.position.z = camera.target.z + dir.z * distance;
-    }
-
-    float wheel = GetMouseWheelMove();
-    if (wheel != 0) {
-        Vector3 dir;
-        dir.x = camera.position.x - camera.target.x;
-        dir.y = camera.position.y - camera.target.y;
-        dir.z = camera.position.z - camera.target.z;
-
-        float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z) - wheel * 2.0f;
-
-        if (distance < 10.0f) distance = 10.0f;
-        if (distance > 100.0f) distance = 100.0f;
-
-        float len = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
-        if (len > 0) {
-            dir.x /= len;
-            dir.y /= len;
-            dir.z /= len;
-        }
-
-        camera.position.x = camera.target.x + dir.x * distance;
-        camera.position.y = camera.target.y + dir.y * distance;
-        camera.position.z = camera.target.z + dir.z * distance;
     }
 
     if (IsKeyPressed(KEY_I)) gameUI->togglePlayerInfo();
     if (IsKeyPressed(KEY_T)) gameUI->toggleTeamStats();
     if (IsKeyPressed(KEY_M)) gameUI->toggleMenu();
     if (IsKeyPressed(KEY_H)) gameUI->toggleHelp();
-    if (IsKeyPressed(KEY_F1)) debugMode = !debugMode;  // Basculer le mode debug avec F1
-    if (IsKeyPressed(KEY_ESCAPE)) selectedPlayerId = -1;  // Désélectionner le joueur avec Echap
-    if (IsKeyPressed(KEY_SPACE) && gameMap) {
-        float mapWidth = gameMap->getWidth() * gameMap->getTileSize();
-        float mapHeight = gameMap->getHeight() * gameMap->getTileSize();
-        camera.position = Vector3{ mapWidth / 2.0f, mapHeight * 1.2f, mapHeight * 0.8f };
-        camera.target = Vector3{ mapWidth / 2.0f, 0.0f, mapHeight / 2.0f };
-    }
-
-    static Vector2 prevMousePos = { 0, 0 };
-    const float mouseSensitivity = 0.02f;
-
-    if (IsMouseButtonDown(MOUSE_RIGHT_BUTTON)) {
-        Vector2 mousePos = GetMousePosition();
-
-        if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
-            prevMousePos = mousePos;
-        } else {
-            float dx = mousePos.x - prevMousePos.x;
-            float dy = mousePos.y - prevMousePos.y;
-
-            Vector3 forward = Vector3Subtract(camera.target, camera.position);
-            forward = Vector3Normalize(forward);
-
-            Vector3 right = Vector3CrossProduct(forward, camera.up);
-            right = Vector3Normalize(right);
-
-            Vector3 moveRight = Vector3Scale(right, -dx * mouseSensitivity);
-            Vector3 moveUp = Vector3Scale(camera.up, dy * mouseSensitivity);
-
-            camera.target = Vector3Add(camera.target, moveRight);
-            camera.target = Vector3Add(camera.target, moveUp);
-            camera.position = Vector3Add(camera.position, moveRight);
-            camera.position = Vector3Add(camera.position, moveUp);
-
-            prevMousePos = mousePos;
-        }
-    }
+    if (IsKeyPressed(KEY_F1)) debugMode = !debugMode;
+    if (IsKeyPressed(KEY_ESCAPE)) selectedPlayerId = -1;
 }
 
 void Game::update()
@@ -441,6 +449,140 @@ void Game::render3DElements()
         }
     }
     EndMode3D();
+}
+
+void Game::render2DElements()
+{
+    if (!gameMap) return;
+
+    int tileSize = gameMap->getTileSize();
+    int mapWidth = gameMap->getWidth();
+    int mapHeight = gameMap->getHeight();
+
+    float scaleX = (float)(screenWidth * 0.8f) / (mapWidth * tileSize);
+    float scaleY = (float)(screenHeight * 0.8f) / (mapHeight * tileSize);
+    float scale = std::min(scaleX, scaleY);
+    int offsetX = (screenWidth - mapWidth * tileSize * scale) / 2;
+    int offsetY = (screenHeight - mapHeight * tileSize * scale) / 2;
+
+    for (int y = 0; y < mapHeight; y++) {
+        for (int x = 0; x < mapWidth; x++) {
+            int tileX = offsetX + x * tileSize * scale;
+            int tileY = offsetY + y * tileSize * scale;
+            int tileW = tileSize * scale;
+            int tileH = tileSize * scale;
+
+            DrawRectangle(tileX, tileY, tileW, tileH, DARKGREEN);
+            DrawRectangleLines(tileX, tileY, tileW, tileH, LIGHTGRAY);
+
+            if (debugMode) {
+                DrawText(TextFormat("%d,%d", x, y), tileX + 2, tileY + 2, 8, WHITE);
+            }
+        }
+    }
+
+    // Draw resources
+    for (const auto& resource : resources) {
+        int x = (int)resource.getPosition().x;
+        int y = (int)resource.getPosition().z;
+        int tileX = offsetX + x * tileSize * scale;
+        int tileY = offsetY + y * tileSize * scale;
+        int tileW = tileSize * scale;
+        int tileH = tileSize * scale;
+
+        Color resColor = WHITE;
+        switch (resource.getType()) {
+            case ResourceType::FOOD:      resColor = BROWN; break;
+            case ResourceType::LINEMATE:  resColor = LIGHTGRAY; break;
+            case ResourceType::DERAUMERE: resColor = BLUE; break;
+            case ResourceType::SIBUR:     resColor = YELLOW; break;
+            case ResourceType::MENDIANE:  resColor = PURPLE; break;
+            case ResourceType::PHIRAS:    resColor = ORANGE; break;
+            case ResourceType::THYSTAME:  resColor = PINK; break;
+        }
+
+        Vector2 center = {tileX + tileW/2.0f, tileY + tileH/2.0f};
+        float radius = tileW * 0.1f;
+
+        switch (resource.getType()) {
+            case ResourceType::FOOD: // Circle
+                DrawCircleV(center, radius, resColor);
+                break;
+            case ResourceType::LINEMATE: // Triangle
+                DrawTriangle(
+                    {center.x, center.y - radius},
+                    {center.x - radius, center.y + radius},
+                    {center.x + radius, center.y + radius},
+                    resColor
+                );
+                break;
+            case ResourceType::DERAUMERE: // Square
+                DrawRectangle(center.x - radius, center.y - radius, radius*2, radius*2, resColor);
+                break;
+            default:
+                DrawCircleV(center, radius, resColor);
+                break;
+        }
+    }
+
+    // Draw players
+    for (const auto& player : players) {
+        if (!player.getIsAlive()) continue;
+
+        int x = (int)player.getPosition().x;
+        int y = (int)player.getPosition().z;
+        int tileX = offsetX + x * tileSize * scale;
+        int tileY = offsetY + y * tileSize * scale;
+        int tileW = tileSize * scale;
+        int tileH = tileSize * scale;
+
+        // Draw player as a colored circle
+        Color playerColor = player.getTeamColor();
+        Vector2 center = {tileX + tileW/2.0f, tileY + tileH/2.0f};
+        float radius = tileW * 0.35f;
+
+        if (player.getIsIncanting()) {
+            float pulse = sinf(GetTime() * 5.0f) * 0.3f + 0.7f;
+            playerColor = ColorAlpha(playerColor, pulse);
+            DrawCircleV(center, radius * 1.2f, ColorAlpha(WHITE, 0.3f));
+        }
+
+        DrawCircleV(center, radius, playerColor);
+
+        Vector2 dirOffset = {0, 0};
+        switch (player.getDirection()) {
+            case PlayerDirection::NORTH: dirOffset = {0, -radius * 0.8f}; break;
+            case PlayerDirection::EAST:  dirOffset = {radius * 0.8f, 0}; break;
+            case PlayerDirection::SOUTH: dirOffset = {0, radius * 0.8f}; break;
+            case PlayerDirection::WEST:  dirOffset = {-radius * 0.8f, 0}; break;
+        }
+
+        Vector2 frontPos = {center.x + dirOffset.x, center.y + dirOffset.y};
+        DrawCircleV(frontPos, radius * 0.3f, WHITE);
+
+        DrawText(TextFormat("L%d", player.getLevel()), tileX + tileW/2 - 10, tileY - 15, 14, WHITE);
+
+        if (selectedPlayerId == player.getId()) {
+            float pulseSize = 1.0f + sinf(GetTime() * 3.0f) * 0.1f;
+            DrawCircleLines(center.x, center.y, radius * pulseSize, YELLOW);
+            DrawCircleLines(center.x, center.y, radius * pulseSize * 1.1f, YELLOW);
+        }
+        float lifePercent = player.getLifeTime() / 1260.0f;
+        Color lifeColor = (lifePercent > 0.5f) ? GREEN : (lifePercent > 0.25f) ? YELLOW : RED;
+        DrawRectangle(tileX, tileY + tileH + 2, tileW * lifePercent, 4, lifeColor);
+    }
+
+    // Draw click indicator
+    if (lastClickPosition.y >= -0.5f) {
+        int clickX = offsetX + (int)lastClickPosition.x * tileSize * scale;
+        int clickY = offsetY + (int)lastClickPosition.z * tileSize * scale;
+        int tileW = tileSize * scale;
+        int tileH = tileSize * scale;
+        float pulseSize = 0.5f + sinf(GetTime() * 5.0f) * 0.15f;
+
+        DrawCircleLinesV({(float)clickX + tileW/2, (float)clickY + tileH/2},
+                        tileW * pulseSize, RED);
+    }
 }
 
 void Game::renderDebugInfo()
@@ -539,7 +681,11 @@ void Game::render()
 
     BeginDrawing();
     ClearBackground(DARKGRAY);
-    render3DElements();
+    if (use2DMode) {
+        render2DElements();
+    } else {
+        render3DElements();
+    }
     renderDebugInfo();
     renderUIElements();
     EndDrawing();
@@ -687,6 +833,62 @@ int Game::checkPlayerClick(Ray mouseRay)
     }
 
     return hitPlayerId;
+}
+
+int Game::checkPlayerClick2D(Vector2 mousePos)
+{
+    if (!gameMap) return -1;
+
+    int tileSize = gameMap->getTileSize();
+    int mapWidth = gameMap->getWidth();
+    int mapHeight = gameMap->getHeight();
+
+    float scaleX = (float)(screenWidth * 0.8f) / (mapWidth * tileSize);
+    float scaleY = (float)(screenHeight * 0.8f) / (mapHeight * tileSize);
+    float scale = std::min(scaleX, scaleY);
+    int offsetX = (screenWidth - mapWidth * tileSize * scale) / 2;
+    int offsetY = (screenHeight - mapHeight * tileSize * scale) / 2;
+
+    for (const auto& player : players) {
+        if (!player.getIsAlive()) continue;
+
+        int x = (int)player.getPosition().x;
+        int y = (int)player.getPosition().z;
+        int tileX = offsetX + x * tileSize * scale;
+        int tileY = offsetY + y * tileSize * scale;
+        int tileW = tileSize * scale;
+        int tileH = tileSize * scale;
+
+        Vector2 center = {tileX + tileW/2.0f, tileY + tileH/2.0f};
+        float radius = tileW * 0.35f;
+
+        float dx = mousePos.x - center.x;
+        float dy = mousePos.y - center.y;
+        float distSq = dx*dx + dy*dy;
+
+        if (distSq <= radius*radius) {
+            lastClickPosition = {(float)x, 0.0f, (float)y};
+
+            if (debugMode) {
+                printf("Hit player %d at tile position (%d, %d)\n", player.getId(), x, y);
+            }
+
+            return player.getId();
+        }
+    }
+
+    int mapX = (mousePos.x - offsetX) / (tileSize * scale);
+    int mapY = (mousePos.y - offsetY) / (tileSize * scale);
+
+    if (mapX >= 0 && mapX < mapWidth && mapY >= 0 && mapY < mapHeight) {
+        lastClickPosition = {(float)mapX, 0.0f, (float)mapY};
+
+        if (debugMode) {
+            printf("Click on map at tile position (%d, %d)\n", mapX, mapY);
+        }
+    }
+
+    return -1;
 }
 
 bool Game::initializeNetworkConnection(const std::string& hostname, int port)
