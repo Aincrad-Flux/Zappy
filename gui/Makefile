@@ -29,7 +29,7 @@ OBJ_DIR = obj
 CONSOLE_OBJ_DIR = obj/console
 
 # GUI Sources
-SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
+SOURCES = $(filter-out $(SRC_DIR)/zappy_console.cpp, $(wildcard $(SRC_DIR)/*.cpp))
 OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SOURCES))
 
 # Console Sources
