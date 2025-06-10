@@ -741,7 +741,6 @@ void Game::setupNetworkCallbacks()
 
             std::string logMsg = "Received tile content at (" + std::to_string(x) + "," + std::to_string(y) + ")";
             Logger::getInstance().debug(logMsg);
-            std::cout << logMsg << std::endl;
 
             if (food > 0) gameMap->setTileResource(x, y, 0, food);
             if (linemate > 0) gameMap->setTileResource(x, y, 1, linemate);
