@@ -11,7 +11,10 @@
 #include <cmath>
 #include <raymath.h>
 
-Game::Game(int width, int height) : screenWidth(width), screenHeight(height), running(false), lastClickPosition({0, -1, 0}), selectedPlayerId(-1), debugMode(false)
+Game::Game(int width, int height, const std::string& hostname, int port)
+    : screenWidth(width), screenHeight(height), running(false), lastClickPosition({0, -1, 0}),
+      selectedPlayerId(-1), debugMode(false), serverHostname(hostname), serverPort(port),
+      serverConnected(false), timeUnit(100)
 {
     InitWindow(1400, 900, "Zappy GUI 3D - Raylib");
     screenWidth = 1400;
@@ -20,6 +23,10 @@ Game::Game(int width, int height) : screenWidth(width), screenHeight(height), ru
 
     SetWindowState(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_MAXIMIZED);
 
+    // Initialize network manager
+    networkManager = std::make_unique<NetworkManager>();
+
+    // Default map size, will be updated from server if connected
     gameMap = std::make_unique<Map>(20, 15, 32);
     gameUI = std::make_unique<UI>(screenWidth, screenHeight);
 
@@ -32,10 +39,26 @@ Game::Game(int width, int height) : screenWidth(width), screenHeight(height), ru
     camera.fovy = 45.0f;
     camera.projection = CAMERA_PERSPECTIVE;
 
-    // Initialiser les données de test
-    initializeMockData();
+    // Connect to server if hostname and port are provided
+    if (!hostname.empty() && port > 0) {
+        serverConnected = initializeNetworkConnection(hostname, port);
+        if (serverConnected) {
+            // Setup callbacks for network messages
+            setupNetworkCallbacks();
 
-    // Centrer correctement la caméra pour voir toute la carte
+            // Request initial data from server
+            networkManager->getMapSize(width, height);
+            networkManager->requestTeamNames();
+            networkManager->requestTimeUnit();
+        }
+    }
+
+    if (!serverConnected) {
+        // Use mock data if not connected to server
+        initializeMockData();
+    }
+
+    // Center camera to see the entire map
     centerCamera();
 }
 
@@ -338,6 +361,11 @@ void Game::update()
 {
     float deltaTime = GetFrameTime();
 
+    // Update network state and process messages if connected
+    if (serverConnected) {
+        updateNetwork();
+    }
+
     for (auto& player : players) {
         player.update(deltaTime);
     }
@@ -619,4 +647,332 @@ int Game::checkPlayerClick(Ray mouseRay)
     }
 
     return hitPlayerId;
+}
+
+bool Game::initializeNetworkConnection(const std::string& hostname, int port)
+{
+    if (!networkManager) {
+        networkManager = std::make_unique<NetworkManager>();
+    }
+
+    bool result = networkManager->connect(hostname, port);
+    if (!result) {
+        std::cerr << "Failed to connect to server at " << hostname << ":" << port << std::endl;
+    } else {
+        std::cout << "Successfully connected to server at " << hostname << ":" << port << std::endl;
+    }
+
+    return result;
+}
+
+void Game::setupNetworkCallbacks()
+{
+    if (!networkManager) {
+        return;
+    }
+
+    // Map size message (msz X Y\n)
+    networkManager->registerCallback("msz", [this](const std::vector<std::string>& args) {
+        if (args.size() >= 2) {
+            int width = std::stoi(args[0]);
+            int height = std::stoi(args[1]);
+
+            std::cout << "Received map size: " << width << "x" << height << std::endl;
+
+            // Create new map with server-provided dimensions
+            gameMap = std::make_unique<Map>(width, height, 32);
+            centerCamera();
+
+            // Request content for all tiles
+            networkManager->requestMapContent();
+        }
+    });
+
+    // Tile content message (bct X Y q0 q1 q2 q3 q4 q5 q6\n)
+    networkManager->registerCallback("bct", [this](const std::vector<std::string>& args) {
+        if (args.size() >= 9) {
+            int x = std::stoi(args[0]);
+            int y = std::stoi(args[1]);
+            int food = std::stoi(args[2]);      // q0
+            int linemate = std::stoi(args[3]);  // q1
+            int deraumere = std::stoi(args[4]); // q2
+            int sibur = std::stoi(args[5]);     // q3
+            int mendiane = std::stoi(args[6]);  // q4
+            int phiras = std::stoi(args[7]);    // q5
+            int thystame = std::stoi(args[8]);  // q6
+
+            std::cout << "Received tile content at (" << x << "," << y << ")" << std::endl;
+
+            // Update tile content in the map
+            gameMap->setTileResource(x, y, 0, food);
+            gameMap->setTileResource(x, y, 1, linemate);
+            gameMap->setTileResource(x, y, 2, deraumere);
+            gameMap->setTileResource(x, y, 3, sibur);
+            gameMap->setTileResource(x, y, 4, mendiane);
+            gameMap->setTileResource(x, y, 5, phiras);
+            gameMap->setTileResource(x, y, 6, thystame);
+
+            // Add resource objects for each resource type on the tile
+            for (int i = 0; i < 7; ++i) {
+                int count = 0;
+                switch (i) {
+                    case 0: count = food; break;
+                    case 1: count = linemate; break;
+                    case 2: count = deraumere; break;
+                    case 3: count = sibur; break;
+                    case 4: count = mendiane; break;
+                    case 5: count = phiras; break;
+                    case 6: count = thystame; break;
+                }
+
+                for (int j = 0; j < count; ++j) {
+                    resources.emplace_back(static_cast<ResourceType>(i), Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)});
+                }
+            }
+        }
+    });
+
+    // Team names (tna N\n)
+    networkManager->registerCallback("tna", [this](const std::vector<std::string>& args) {
+        if (!args.empty()) {
+            std::string teamName = args[0];
+            std::cout << "Received team name: " << teamName << std::endl;
+            gameUI->addTeam(teamName);
+        }
+    });
+
+    // Player position (ppo #n X Y O\n)
+    networkManager->registerCallback("ppo", [this](const std::vector<std::string>& args) {
+        if (args.size() >= 4) {
+            int playerId = std::stoi(args[0]);
+            int x = std::stoi(args[1]);
+            int y = std::stoi(args[2]);
+            int orientation = std::stoi(args[3]); // 1(N), 2(E), 3(S), 4(W)
+
+            std::cout << "Received player position: #" << playerId << " at (" << x << "," << y << ") facing " << orientation << std::endl;
+
+            // Find player or create if not exists
+            bool found = false;
+            for (auto& player : players) {
+                if (player.getId() == playerId) {
+                    found = true;
+                    player.setPosition(Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)});
+
+                    // Convert from server orientation (1-4) to our direction enum (0-3)
+                    PlayerDirection dir;
+                    switch(orientation) {
+                        case 1: dir = PlayerDirection::NORTH; break;
+                        case 2: dir = PlayerDirection::EAST; break;
+                        case 3: dir = PlayerDirection::SOUTH; break;
+                        case 4: dir = PlayerDirection::WEST; break;
+                        default: dir = PlayerDirection::NORTH; break;
+                    }
+                    player.setDirection(dir);
+                    break;
+                }
+            }
+
+            if (!found) {
+                // For new players, we don't know the team yet
+                // We'll update this with the "pnw" message
+                Color defaultColor = BLUE; // Temporary color until team is known
+                players.emplace_back(playerId, "Unknown", Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)}, defaultColor);
+                gameMap->setTilePlayer(x, y, 1);
+            }
+        }
+    });
+
+    // Player level (plv #n L\n)
+    networkManager->registerCallback("plv", [this](const std::vector<std::string>& args) {
+        if (args.size() >= 2) {
+            int playerId = std::stoi(args[0]);
+            int level = std::stoi(args[1]);
+
+            std::cout << "Received player level: #" << playerId << " level " << level << std::endl;
+
+            // Find player and update level
+            for (auto& player : players) {
+                if (player.getId() == playerId) {
+                    player.setLevel(level);
+                    break;
+                }
+            }
+        }
+    });
+
+    // Player inventory (pin #n X Y q0 q1 q2 q3 q4 q5 q6\n)
+    networkManager->registerCallback("pin", [this](const std::vector<std::string>& args) {
+        if (args.size() >= 10) {
+            int playerId = std::stoi(args[0]);
+            int x = std::stoi(args[1]);
+            int y = std::stoi(args[2]);
+            int food = std::stoi(args[3]);
+            int linemate = std::stoi(args[4]);
+            int deraumere = std::stoi(args[5]);
+            int sibur = std::stoi(args[6]);
+            int mendiane = std::stoi(args[7]);
+            int phiras = std::stoi(args[8]);
+            int thystame = std::stoi(args[9]);
+
+            std::cout << "Received player #" << playerId << " inventory" << std::endl;
+
+            // Find player and update inventory
+            for (auto& player : players) {
+                if (player.getId() == playerId) {
+                    Inventory& inv = player.getInventory();
+                    inv.setResource(ResourceType::FOOD, food);
+                    inv.setResource(ResourceType::LINEMATE, linemate);
+                    inv.setResource(ResourceType::DERAUMERE, deraumere);
+                    inv.setResource(ResourceType::SIBUR, sibur);
+                    inv.setResource(ResourceType::MENDIANE, mendiane);
+                    inv.setResource(ResourceType::PHIRAS, phiras);
+                    inv.setResource(ResourceType::THYSTAME, thystame);
+                    break;
+                }
+            }
+        }
+    });
+
+    // New player connection (pnw #n X Y O L N\n)
+    networkManager->registerCallback("pnw", [this](const std::vector<std::string>& args) {
+        if (args.size() >= 6) {
+            int playerId = std::stoi(args[0]);
+            int x = std::stoi(args[1]);
+            int y = std::stoi(args[2]);
+            int orientation = std::stoi(args[3]);
+            int level = std::stoi(args[4]);
+            std::string teamName = args[5];
+
+            std::cout << "New player #" << playerId << " from team " << teamName << " at level " << level << std::endl;
+
+            // Check if player already exists
+            bool found = false;
+            for (auto& player : players) {
+                if (player.getId() == playerId) {
+                    found = true;
+                    player.setTeam(teamName);
+                    player.setLevel(level);
+
+                    // Set the player's color based on team
+                    // This is a simple hash-based color assignment
+                    int colorHash = 0;
+                    for (char c : teamName) {
+                        colorHash += static_cast<int>(c);
+                    }
+                    Color teamColor = {
+                        static_cast<unsigned char>((colorHash * 124) % 200 + 55),
+                        static_cast<unsigned char>((colorHash * 91) % 200 + 55),
+                        static_cast<unsigned char>((colorHash * 137) % 200 + 55),
+                        255
+                    };
+                    player.setColor(teamColor);
+                    break;
+                }
+            }
+
+            if (!found) {
+                // Create new player
+                // Generate a color based on team name for consistency
+                int colorHash = 0;
+                for (char c : teamName) {
+                    colorHash += static_cast<int>(c);
+                }
+                Color teamColor = {
+                    static_cast<unsigned char>((colorHash * 124) % 200 + 55),
+                    static_cast<unsigned char>((colorHash * 91) % 200 + 55),
+                    static_cast<unsigned char>((colorHash * 137) % 200 + 55),
+                    255
+                };
+
+                players.emplace_back(playerId, teamName, Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)}, teamColor);
+                players.back().setLevel(level);
+                gameMap->setTilePlayer(x, y, 1);
+            }
+        }
+    });
+
+    // Player death (pdi #n\n)
+    networkManager->registerCallback("pdi", [this](const std::vector<std::string>& args) {
+        if (!args.empty()) {
+            int playerId = std::stoi(args[0]);
+            std::cout << "Player #" << playerId << " died" << std::endl;
+
+            // Find player and mark as dead
+            for (auto& player : players) {
+                if (player.getId() == playerId) {
+                    player.setIsAlive(false);
+                    Vector3 pos = player.getPosition();
+                    gameMap->setTilePlayer(static_cast<int>(pos.x), static_cast<int>(pos.z), 0);
+                    break;
+                }
+            }
+        }
+    });
+
+    // End of game (seg N\n)
+    networkManager->registerCallback("seg", [this](const std::vector<std::string>& args) {
+        if (!args.empty()) {
+            std::string winningTeam = args[0];
+            std::cout << "Game over! Team " << winningTeam << " wins!" << std::endl;
+            gameUI->showGameOverMessage("Team " + winningTeam + " wins!");
+        } else {
+            std::cout << "Game over! No winner declared." << std::endl;
+            gameUI->showGameOverMessage("Game Over!");
+        }
+    });
+
+    // Time unit request (sgt T\n)
+    networkManager->registerCallback("sgt", [this](const std::vector<std::string>& args) {
+        if (!args.empty()) {
+            timeUnit = std::stoi(args[0]);
+            std::cout << "Server time unit: " << timeUnit << std::endl;
+        }
+    });
+
+    // Message from server (smg M\n)
+    networkManager->registerCallback("smg", [this](const std::vector<std::string>& args) {
+        if (!args.empty()) {
+            std::string message = args[0];
+            for (size_t i = 1; i < args.size(); ++i) {
+                message += " " + args[i];
+            }
+            std::cout << "Server message: " << message << std::endl;
+            gameUI->showServerMessage(message);
+        }
+    });
+
+    // Egg laying (pfk #n\n)
+    networkManager->registerCallback("pfk", [this](const std::vector<std::string>& args) {
+        if (!args.empty()) {
+            int playerId = std::stoi(args[0]);
+            std::cout << "Player #" << playerId << " is laying an egg" << std::endl;
+
+            // Optionally show an animation or visual indicator
+        }
+    });
+
+    // Egg laid (enw #e #n X Y\n)
+    networkManager->registerCallback("enw", [this](const std::vector<std::string>& args) {
+        if (args.size() >= 4) {
+            int eggId = std::stoi(args[0]);
+            int playerId = std::stoi(args[1]);
+            int x = std::stoi(args[2]);
+            int y = std::stoi(args[3]);
+
+            std::cout << "Egg #" << eggId << " laid by player #" << playerId << " at (" << x << "," << y << ")" << std::endl;
+
+            // Could add an egg object to the game if desired
+        }
+    });
+}
+
+void Game::updateNetwork()
+{
+    if (!networkManager || !networkManager->isConnected()) {
+        serverConnected = false;
+        return;
+    }
+
+    // Process received messages from the server
+    networkManager->update();
 }
