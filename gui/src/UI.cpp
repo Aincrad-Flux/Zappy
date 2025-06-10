@@ -12,7 +12,7 @@
 
 UI::UI(int width, int height) : screenWidth(width), screenHeight(height),
                                 selectedPlayer(nullptr), showPlayerInfo(true), showTeamStats(false),
-                                showMenu(true), showHelp(false)
+                                showMenu(true), showHelp(false), messageDisplayTime(0)
 {
     font = GetFontDefault();
 }
@@ -39,6 +39,26 @@ void UI::draw(const std::vector<Player>& players)
         }
         if (showTeamStats) {
             drawTeamStats();
+        }
+        
+        if (!gameOverMessage.empty()) {
+            int msgWidth = MeasureText(gameOverMessage.c_str(), 40);
+            DrawRectangle((screenWidth - msgWidth) / 2 - 20, screenHeight / 2 - 30, msgWidth + 40, 60, ColorAlpha(BLACK, 0.8f));
+            DrawRectangleLines((screenWidth - msgWidth) / 2 - 20, screenHeight / 2 - 30, msgWidth + 40, 60, WHITE);
+            DrawText(gameOverMessage.c_str(), (screenWidth - msgWidth) / 2, screenHeight / 2 - 20, 40, RED);
+        }
+        
+        if (!serverMessage.empty()) {
+            messageDisplayTime += GetFrameTime();
+            if (messageDisplayTime < 5.0f) { // Display for 5 seconds
+                int msgWidth = MeasureText(serverMessage.c_str(), 20);
+                DrawRectangle((screenWidth - msgWidth) / 2 - 10, 70, msgWidth + 20, 30, ColorAlpha(BLACK, 0.8f));
+                DrawRectangleLines((screenWidth - msgWidth) / 2 - 10, 70, msgWidth + 20, 30, WHITE);
+                DrawText(serverMessage.c_str(), (screenWidth - msgWidth) / 2, 75, 20, YELLOW);
+            } else {
+                serverMessage = "";
+                messageDisplayTime = 0;
+            }
         }
     } else {
         drawHelp();
@@ -246,6 +266,17 @@ void UI::toggleMenu()
 void UI::toggleHelp()
 {
     showHelp = !showHelp;
+}
+
+void UI::showGameOverMessage(const std::string& message)
+{
+    gameOverMessage = message;
+}
+
+void UI::showServerMessage(const std::string& message)
+{
+    serverMessage = message;
+    messageDisplayTime = 0;
 }
 
 void UI::drawMenu()

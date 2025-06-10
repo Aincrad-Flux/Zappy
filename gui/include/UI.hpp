@@ -116,4 +116,21 @@ public:
      * @brief Toggles the help screen visibility
      */
     void toggleHelp();
+
+    /**
+     * @brief Shows a game over message
+     * @param message The game over message to display
+     */
+    void showGameOverMessage(const std::string& message);
+
+    /**
+     * @brief Shows a message from the server
+     * @param message The server message to display
+     */
+    void showServerMessage(const std::string& message);
+
+private:
+    std::string gameOverMessage;
+    std::string serverMessage;
+    float messageDisplayTime;
 };
