@@ -25,3 +25,4 @@ obj/
 zappy_gui
 .vscode/
 .idea
+/zappy_ref-*
