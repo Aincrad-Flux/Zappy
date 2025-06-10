@@ -23,14 +23,10 @@ Game::Game(int width, int height, const std::string& hostname, int port)
     screenWidth = 1400;
     screenHeight = 900;
     SetTargetFPS(60);
-
     SetWindowState(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_MAXIMIZED);
 
     networkManager = std::make_unique<NetworkManager>();
-    // Create the UI first - the map will be created once we receive size from server
     gameUI = std::make_unique<UI>(screenWidth, screenHeight);
-
-    // Initialize camera with default position
     camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
     camera.fovy = 45.0f;
     camera.projection = CAMERA_PERSPECTIVE;
@@ -38,14 +34,10 @@ Game::Game(int width, int height, const std::string& hostname, int port)
     if (!hostname.empty() && port > 0) {
         serverConnected = initializeNetworkConnection(hostname, port);
         if (serverConnected) {
-            // Setup callbacks for network messages
             setupNetworkCallbacks();
 
             Logger::getInstance().info("Connected to server, waiting for map information");
             std::cout << "Connected to server, waiting for map information..." << std::endl;
-
-            // Note: The server will automatically send map info after we identify as GRAPHIC
-            // The msz callback will create the map once we receive the dimensions
         }
     }
 
@@ -89,11 +81,18 @@ void Game::initializeMockData()
     }
 
     std::uniform_int_distribution<> resourceDist(0, 6);
-    for (int i = 0; i < 30; i++) {
-        Vector3 pos = {(float)posDist(gen), 0.0f, (float)posDist(gen)};
+    std::uniform_int_distribution<> countDist(1, 6);
+
+    for (int i = 0; i < 15; i++) {
+        Vector3 basePos = {(float)posDist(gen), 0.0f, (float)posDist(gen)};
         ResourceType type = (ResourceType)resourceDist(gen);
-        resources.emplace_back(type, pos);
-        gameMap->setTileResource((int)pos.x, (int)pos.z, (int)type);
+        int count = countDist(gen);
+        for (int j = 0; j < count; j++) {
+            // Petites variations pour le même type de ressource à la même case
+            Vector3 pos = {basePos.x + j*0.01f, 0.0f, basePos.z + j*0.01f};
+            resources.emplace_back(type, pos);
+            gameMap->setTileResource((int)pos.x, (int)pos.z, (int)type);
+        }
     }
 }
 
@@ -366,12 +365,9 @@ void Game::update()
 {
     float deltaTime = GetFrameTime();
 
-    // Update network state and process messages if connected
     if (serverConnected) {
         updateNetwork();
     }
-
-    // Only update players if any exist (requires map to be set up)
     if (gameMap) {
         for (auto& player : players) {
             player.update(deltaTime);
@@ -383,7 +379,6 @@ void Game::render3DElements()
 {
     BeginMode3D(camera);
 
-    // Only render map and other 3D elements if map exists
     if (gameMap) {
         gameMap->draw();
 
@@ -400,7 +395,6 @@ void Game::render3DElements()
     DrawLine3D({0, 0, 0}, {0, 10, 0}, GREEN); // Axe Y
     DrawLine3D({0, 0, 0}, {0, 0, 10}, BLUE);  // Axe Z
 
-    // Only render resources if map exists
     if (gameMap) {
         for (const auto& resource : resources) {
             Vector3 worldPos = gameMap->getWorldPosition((int)resource.getPosition().x, (int)resource.getPosition().z);
@@ -505,9 +499,7 @@ void Game::renderUIElements()
     gameUI->draw(players);
     DrawText(TextFormat("FPS: %i", GetFPS()), 10, 10, 20, LIME);
 
-    // Show appropriate message based on connection and map status
     if (!gameMap && serverConnected) {
-        // When connected to server but waiting for map info
         DrawText("Connected to server... Waiting for map data",
                 screenWidth/2 - 220, screenHeight/2 - 20, 20, YELLOW);
     } else if (selectedPlayerId < 0 && !debugMode && gameMap) {
@@ -626,7 +618,6 @@ int Game::checkPlayerClick(Ray mouseRay)
     float closestHit = 1000.0f;
     int hitPlayerId = -1;
 
-    // Only check player clicks if the map exists
     if (!gameMap) {
         return -1;
     }
@@ -719,15 +710,12 @@ void Game::setupNetworkCallbacks()
             Logger::getInstance().info(logMsg);
             std::cout << logMsg << std::endl;
 
-            // Clear existing resources and players before creating a new map
             resources.clear();
             players.clear();
             selectedPlayerId = -1;
 
-            // Create new map with server-provided dimensions
             gameMap = std::make_unique<Map>(width, height, 32);
 
-            // Set up camera based on new map dimensions
             float mapWidth = gameMap->getWidth() * gameMap->getTileSize();
             float mapHeight = gameMap->getHeight() * gameMap->getTileSize();
 
@@ -735,9 +723,6 @@ void Game::setupNetworkCallbacks()
             camera.target = Vector3{ mapWidth / 2.0f, 0.0f, mapHeight / 2.0f };
 
             centerCamera();
-
-            // No need to explicitly request map content as the server will send it
-            // after the GRAPHIC identification - it's in the protocol
         }
     });
 
@@ -766,7 +751,6 @@ void Game::setupNetworkCallbacks()
             if (phiras > 0) gameMap->setTileResource(x, y, 5, phiras);
             if (thystame > 0) gameMap->setTileResource(x, y, 6, thystame);
 
-            // Add resource objects for each resource type on the tile
             for (int i = 0; i < 7; ++i) {
                 int count = 0;
                 switch (i) {
@@ -780,7 +764,8 @@ void Game::setupNetworkCallbacks()
                 }
 
                 for (int j = 0; j < count; ++j) {
-                    resources.emplace_back(static_cast<ResourceType>(i), Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)});
+                    resources.emplace_back(static_cast<ResourceType>(i),
+                                           Vector3{static_cast<float>(x) + j*0.01f, 0.0f, static_cast<float>(y) + j*0.01f});
                 }
             }
         }
@@ -810,14 +795,11 @@ void Game::setupNetworkCallbacks()
             Logger::getInstance().debug(logMsg);
             std::cout << logMsg << std::endl;
 
-            // Find player or create if not exists
             bool found = false;
             for (auto& player : players) {
                 if (player.getId() == playerId) {
                     found = true;
                     player.setPosition(Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)});
-
-                    // Convert from server orientation (1-4) to our direction enum (0-3)
                     PlayerDirection dir;
                     switch(orientation) {
                         case 1: dir = PlayerDirection::NORTH; break;
@@ -832,9 +814,7 @@ void Game::setupNetworkCallbacks()
             }
 
             if (!found) {
-                // For new players, we don't know the team yet
-                // We'll update this with the "pnw" message
-                Color defaultColor = BLUE; // Temporary color until team is known
+                Color defaultColor = BLUE;
                 players.emplace_back(playerId, "Unknown", Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)}, defaultColor);
                 gameMap->setTilePlayer(x, y, 1);
             }
@@ -851,7 +831,6 @@ void Game::setupNetworkCallbacks()
             Logger::getInstance().debug(logMsg);
             std::cout << logMsg << std::endl;
 
-            // Find player and update level
             for (auto& player : players) {
                 if (player.getId() == playerId) {
                     player.setLevel(level);
@@ -877,10 +856,8 @@ void Game::setupNetworkCallbacks()
             Logger::getInstance().debug(logMsg);
             std::cout << logMsg << std::endl;
 
-            // Find player and update inventory
             for (auto& player : players) {
                 if (player.getId() == playerId) {
-                    // Update player's inventory with resources
                     player.getInventory().setResource(ResourceType::FOOD, food);
                     player.getInventory().setResource(ResourceType::LINEMATE, linemate);
                     player.getInventory().setResource(ResourceType::DERAUMERE, deraumere);
@@ -900,7 +877,6 @@ void Game::setupNetworkCallbacks()
             int playerId = std::stoi(args[0]);
             int x = std::stoi(args[1]);
             int y = std::stoi(args[2]);
-            // orientation only used for debug output, can be kept
             int level = std::stoi(args[4]);
             std::string teamName = args[5];
 
@@ -957,7 +933,6 @@ void Game::setupNetworkCallbacks()
             Logger::getInstance().info(logMsg);
             std::cout << logMsg << std::endl;
 
-            // Find player and mark as dead
             for (auto& player : players) {
                 if (player.getId() == playerId) {
                     player.setIsAlive(false);
@@ -1024,7 +999,6 @@ void Game::setupNetworkCallbacks()
         if (args.size() >= 4) {
             try {
                 int eggId = std::stoi(args[0]);
-                // Handle special case where playerId might be "-1" for server-spawned eggs
                 std::string playerIdStr = args[1];
                 int playerId = 0;
                 if (playerIdStr.length() > 0) {
