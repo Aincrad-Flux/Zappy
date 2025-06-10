@@ -8,6 +8,7 @@
 #include "UI.hpp"
 #include "Resource.hpp"
 #include "ResourceInfo.hpp"
+#include "Logger.hpp"
 #include <algorithm>
 
 UI::UI(int width, int height) : screenWidth(width), screenHeight(height),
@@ -15,11 +16,14 @@ UI::UI(int width, int height) : screenWidth(width), screenHeight(height),
                                 showMenu(true), showHelp(false), messageDisplayTime(0)
 {
     font = GetFontDefault();
+    Logger::getInstance().info("UI initialized with resolution " + std::to_string(width) + "x" + std::to_string(height));
 }
 
 
 
-UI::~UI() {}
+UI::~UI() {
+    Logger::getInstance().info("UI destroyed");
+}
 
 void UI::draw(const std::vector<Player>& players)
 {
@@ -238,45 +242,60 @@ void UI::handleInput()
 
 void UI::setSelectedPlayer(Player* player)
 {
-    selectedPlayer = player;
+    if (selectedPlayer != player) {
+        selectedPlayer = player;
+        if (player) {
+            Logger::getInstance().debug("Player selected: ID " + std::to_string(player->getId()) + 
+                                       " from team " + player->getTeamName());
+        } else {
+            Logger::getInstance().debug("Player deselected");
+        }
+    }
 }
 
 void UI::addTeam(const std::string& teamName)
 {
     if (std::find(teams.begin(), teams.end(), teamName) == teams.end()) {
         teams.push_back(teamName);
+        Logger::getInstance().info("Team added: " + teamName);
     }
 }
 
 void UI::togglePlayerInfo()
 {
     showPlayerInfo = !showPlayerInfo;
+    Logger::getInstance().debug("Player info panel " + std::string(showPlayerInfo ? "shown" : "hidden"));
 }
 
 void UI::toggleTeamStats()
 {
     showTeamStats = !showTeamStats;
+    Logger::getInstance().debug("Team stats panel " + std::string(showTeamStats ? "shown" : "hidden"));
 }
 
 void UI::toggleMenu()
 {
     showMenu = !showMenu;
+    Logger::getInstance().debug("Menu " + std::string(showMenu ? "shown" : "hidden"));
 }
 
 void UI::toggleHelp()
 {
     showHelp = !showHelp;
+    Logger::getInstance().debug("Help screen " + std::string(showHelp ? "shown" : "hidden"));
 }
 
 void UI::showGameOverMessage(const std::string& message)
 {
     gameOverMessage = message;
+    Logger::getInstance().info("Game over message displayed: " + message);
 }
 
 void UI::showServerMessage(const std::string& message)
 {
     serverMessage = message;
     messageDisplayTime = 0;
+    Logger::getInstance().info("Server message displayed: " + message);
 }
 
 void UI::drawMenu()

@@ -6,6 +6,7 @@
 */
 
 #include "Game.hpp"
+#include "Logger.hpp"
 #include <iostream>
 #include <random>
 #include <cmath>
@@ -16,6 +17,8 @@ Game::Game(int width, int height, const std::string& hostname, int port)
       selectedPlayerId(-1), debugMode(false), serverHostname(hostname), serverPort(port),
       serverConnected(false), timeUnit(100) // serverPort is used in initializeNetworkConnection
 {
+    Logger::getInstance().init("zappy_gui.log");
+    Logger::getInstance().info("Game initialized with resolution " + std::to_string(width) + "x" + std::to_string(height));
     InitWindow(1400, 900, "Zappy GUI 3D - Raylib");
     screenWidth = 1400;
     screenHeight = 900;
@@ -54,10 +57,13 @@ Game::Game(int width, int height, const std::string& hostname, int port)
     centerCamera();
 }
 
-Game::~Game() {}
+Game::~Game() {
+    Logger::getInstance().info("Game shutting down");
+}
 
 void Game::initializeMockData()
 {
+    Logger::getInstance().info("Initializing mock game data");
     gameUI->addTeam("Team Alpha");
     gameUI->addTeam("Team Beta");
     gameUI->addTeam("Team Gamma");
@@ -501,6 +507,7 @@ void Game::render()
 
 void Game::run()
 {
+    Logger::getInstance().info("Game starting main loop");
     running = true;
 
     while (!WindowShouldClose() && running) {
@@ -509,11 +516,13 @@ void Game::run()
         render();
     }
 
+    Logger::getInstance().info("Game exiting main loop");
     shutdown();
 }
 
 void Game::shutdown()
 {
+    Logger::getInstance().info("Game shutting down properly");
     running = false;
     CloseWindow();
 }
@@ -639,10 +648,13 @@ bool Game::initializeNetworkConnection(const std::string& hostname, int port)
         networkManager = std::make_unique<NetworkManager>();
     }
 
+    Logger::getInstance().info("Attempting to connect to server at " + hostname + ":" + std::to_string(port));
     bool result = networkManager->connect(hostname, port);
     if (!result) {
+        Logger::getInstance().error("Failed to connect to server at " + hostname + ":" + std::to_string(port));
         std::cerr << "Failed to connect to server at " << hostname << ":" << port << std::endl;
     } else {
+        Logger::getInstance().info("Successfully connected to server at " + hostname + ":" + std::to_string(port));
         std::cout << "Successfully connected to server at " << hostname << ":" << port << std::endl;
     }
 
@@ -652,8 +664,11 @@ bool Game::initializeNetworkConnection(const std::string& hostname, int port)
 void Game::setupNetworkCallbacks()
 {
     if (!networkManager) {
+        Logger::getInstance().warning("Cannot setup network callbacks: NetworkManager is null");
         return;
     }
+    
+    Logger::getInstance().info("Setting up network callbacks");
 
     // Map size message (msz X Y\n)
     networkManager->registerCallback("msz", [this](const std::vector<std::string>& args) {
@@ -661,7 +676,9 @@ void Game::setupNetworkCallbacks()
             int width = std::stoi(args[0]);
             int height = std::stoi(args[1]);
 
-            std::cout << "Received map size: " << width << "x" << height << std::endl;
+            std::string logMsg = "Received map size: " + std::to_string(width) + "x" + std::to_string(height);
+            Logger::getInstance().info(logMsg);
+            std::cout << logMsg << std::endl;
 
             // Create new map with server-provided dimensions
             gameMap = std::make_unique<Map>(width, height, 32);
@@ -685,7 +702,9 @@ void Game::setupNetworkCallbacks()
             int phiras = std::stoi(args[7]);    // q5
             int thystame = std::stoi(args[8]);  // q6
 
-            std::cout << "Received tile content at (" << x << "," << y << ")" << std::endl;
+            std::string logMsg = "Received tile content at (" + std::to_string(x) + "," + std::to_string(y) + ")";
+            Logger::getInstance().debug(logMsg);
+            std::cout << logMsg << std::endl;
 
             if (food > 0) gameMap->setTileResource(x, y, 0, food);
             if (linemate > 0) gameMap->setTileResource(x, y, 1, linemate);
@@ -719,7 +738,9 @@ void Game::setupNetworkCallbacks()
     networkManager->registerCallback("tna", [this](const std::vector<std::string>& args) {
         if (!args.empty()) {
             std::string teamName = args[0];
-            std::cout << "Received team name: " << teamName << std::endl;
+            std::string logMsg = "Received team name: " + teamName;
+            Logger::getInstance().info(logMsg);
+            std::cout << logMsg << std::endl;
             gameUI->addTeam(teamName);
         }
     });
@@ -732,7 +753,10 @@ void Game::setupNetworkCallbacks()
             int y = std::stoi(args[2]);
             int orientation = std::stoi(args[3]); // 1(N), 2(E), 3(S), 4(W)
 
-            std::cout << "Received player position: #" << playerId << " at (" << x << "," << y << ") facing " << orientation << std::endl;
+            std::string logMsg = "Received player position: #" + std::to_string(playerId) + " at (" + 
+                std::to_string(x) + "," + std::to_string(y) + ") facing " + std::to_string(orientation);
+            Logger::getInstance().debug(logMsg);
+            std::cout << logMsg << std::endl;
 
             // Find player or create if not exists
             bool found = false;
@@ -771,7 +795,9 @@ void Game::setupNetworkCallbacks()
             int playerId = std::stoi(args[0]);
             int level = std::stoi(args[1]);
 
-            std::cout << "Received player level: #" << playerId << " level " << level << std::endl;
+            std::string logMsg = "Received player level: #" + std::to_string(playerId) + " level " + std::to_string(level);
+            Logger::getInstance().debug(logMsg);
+            std::cout << logMsg << std::endl;
 
             // Find player and update level
             for (auto& player : players) {
@@ -795,7 +821,9 @@ void Game::setupNetworkCallbacks()
             int phiras = std::stoi(args[8]);
             int thystame = std::stoi(args[9]);
 
-            std::cout << "Received player #" << playerId << " inventory" << std::endl;
+            std::string logMsg = "Received player #" + std::to_string(playerId) + " inventory";
+            Logger::getInstance().debug(logMsg);
+            std::cout << logMsg << std::endl;
 
             // Find player and update inventory
             for (auto& player : players) {
@@ -824,7 +852,9 @@ void Game::setupNetworkCallbacks()
             int level = std::stoi(args[4]);
             std::string teamName = args[5];
 
-            std::cout << "New player #" << playerId << " from team " << teamName << " at level " << level << std::endl;
+            std::string logMsg = "New player #" + std::to_string(playerId) + " from team " + teamName + " at level " + std::to_string(level);
+            Logger::getInstance().info(logMsg);
+            std::cout << logMsg << std::endl;
 
             bool found = false;
             for (auto& player : players) {
@@ -871,7 +901,9 @@ void Game::setupNetworkCallbacks()
     networkManager->registerCallback("pdi", [this](const std::vector<std::string>& args) {
         if (!args.empty()) {
             int playerId = std::stoi(args[0]);
-            std::cout << "Player #" << playerId << " died" << std::endl;
+            std::string logMsg = "Player #" + std::to_string(playerId) + " died";
+            Logger::getInstance().info(logMsg);
+            std::cout << logMsg << std::endl;
 
             // Find player and mark as dead
             for (auto& player : players) {
@@ -889,10 +921,14 @@ void Game::setupNetworkCallbacks()
     networkManager->registerCallback("seg", [this](const std::vector<std::string>& args) {
         if (!args.empty()) {
             std::string winningTeam = args[0];
-            std::cout << "Game over! Team " << winningTeam << " wins!" << std::endl;
+            std::string logMsg = "Game over! Team " + winningTeam + " wins!";
+            Logger::getInstance().info(logMsg);
+            std::cout << logMsg << std::endl;
             gameUI->showGameOverMessage("Team " + winningTeam + " wins!");
         } else {
-            std::cout << "Game over! No winner declared." << std::endl;
+            std::string logMsg = "Game over! No winner declared.";
+            Logger::getInstance().info(logMsg);
+            std::cout << logMsg << std::endl;
             gameUI->showGameOverMessage("Game Over!");
         }
     });
@@ -901,7 +937,9 @@ void Game::setupNetworkCallbacks()
     networkManager->registerCallback("sgt", [this](const std::vector<std::string>& args) {
         if (!args.empty()) {
             timeUnit = std::stoi(args[0]);
-            std::cout << "Server time unit: " << timeUnit << std::endl;
+            std::string logMsg = "Server time unit: " + std::to_string(timeUnit);
+            Logger::getInstance().info(logMsg);
+            std::cout << logMsg << std::endl;
         }
     });
 
@@ -912,7 +950,9 @@ void Game::setupNetworkCallbacks()
             for (size_t i = 1; i < args.size(); ++i) {
                 message += " " + args[i];
             }
-            std::cout << "Server message: " << message << std::endl;
+            std::string logMsg = "Server message: " + message;
+            Logger::getInstance().info(logMsg);
+            std::cout << logMsg << std::endl;
             gameUI->showServerMessage(message);
         }
     });
@@ -921,7 +961,9 @@ void Game::setupNetworkCallbacks()
     networkManager->registerCallback("pfk", [](const std::vector<std::string>& args) {
         if (!args.empty()) {
             int playerId = std::stoi(args[0]);
-            std::cout << "Player #" << playerId << " is laying an egg" << std::endl;
+            std::string logMsg = "Player #" + std::to_string(playerId) + " is laying an egg";
+            Logger::getInstance().info(logMsg);
+            std::cout << logMsg << std::endl;
         }
     });
 
@@ -933,7 +975,10 @@ void Game::setupNetworkCallbacks()
             int x = std::stoi(args[2]);
             int y = std::stoi(args[3]);
 
-            std::cout << "Egg #" << eggId << " laid by player #" << playerId << " at (" << x << "," << y << ")" << std::endl;
+            std::string logMsg = "Egg #" + std::to_string(eggId) + " laid by player #" + 
+                std::to_string(playerId) + " at (" + std::to_string(x) + "," + std::to_string(y) + ")";
+            Logger::getInstance().info(logMsg);
+            std::cout << logMsg << std::endl;
         }
     });
 }

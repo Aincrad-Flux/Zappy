@@ -7,15 +7,20 @@
 
 #include "Player.hpp"
 #include <cmath>
+#include "Logger.hpp"
 
 Player::Player(int playerId, const std::string& team, Vector3 pos, Color color)
     : id(playerId), teamName(team), position(pos), team(team), direction(PlayerDirection::NORTH),
       level(1), inventory(10, 0, 0, 0, 0, 0, 0), teamColor(color), isAlive(true),
       lifeTime(1260.0f), isIncanting(false)
 {
+    Logger::getInstance().info("Player created: ID " + std::to_string(id) + " from team " + team + 
+        " at position (" + std::to_string(pos.x) + "," + std::to_string(pos.y) + "," + std::to_string(pos.z) + ")");
 }
 
-Player::~Player() {}
+Player::~Player() {
+    Logger::getInstance().debug("Player destroyed: ID " + std::to_string(id) + " from team " + team);
+}
 
 void Player::draw(Vector3 worldPos, int tileSize) const
 {
@@ -74,6 +79,7 @@ void Player::update(float deltaTime)
 
     lifeTime -= deltaTime;
     if (lifeTime <= 0) {
+        Logger::getInstance().info("Player " + std::to_string(id) + " from team " + team + " died of starvation");
         isAlive = false;
     }
 
@@ -82,7 +88,12 @@ void Player::update(float deltaTime)
     if (foodTimer >= 126.0f) {
         if (inventory.getFood() > 0) {
             inventory.removeFood(1);
+            float oldLifeTime = lifeTime;
             lifeTime = std::min(lifeTime + 126.0f, 1260.0f);
+            Logger::getInstance().debug("Player " + std::to_string(id) + " consumed food, life increased from " + 
+                std::to_string(oldLifeTime) + " to " + std::to_string(lifeTime));
+        } else {
+            Logger::getInstance().debug("Player " + std::to_string(id) + " has no food to consume");
         }
         foodTimer = 0;
     }
@@ -90,11 +101,19 @@ void Player::update(float deltaTime)
 
 void Player::move(Vector3 newPos)
 {
+    Logger::getInstance().debug("Player " + std::to_string(id) + " moved from (" + 
+        std::to_string(position.x) + "," + std::to_string(position.y) + "," + std::to_string(position.z) + ") to (" + 
+        std::to_string(newPos.x) + "," + std::to_string(newPos.y) + "," + std::to_string(newPos.z) + ")");
     position = newPos;
 }
 
 void Player::setPosition(Vector3 newPos)
 {
+    if (position.x != newPos.x || position.y != newPos.y || position.z != newPos.z) {
+        Logger::getInstance().debug("Player " + std::to_string(id) + " position set from (" + 
+            std::to_string(position.x) + "," + std::to_string(position.y) + "," + std::to_string(position.z) + ") to (" + 
+            std::to_string(newPos.x) + "," + std::to_string(newPos.y) + "," + std::to_string(newPos.z) + ")");
+    }
     position = newPos;
 }
 
@@ -110,17 +129,28 @@ void Player::setDirection(PlayerDirection newDir)
 
 void Player::setLevel(int newLevel)
 {
+    if (level != newLevel) {
+        Logger::getInstance().info("Player " + std::to_string(id) + " level changed from " + 
+            std::to_string(level) + " to " + std::to_string(newLevel));
+    }
     level = newLevel;
 }
 
 void Player::setTeam(const std::string& newTeam)
 {
+    if (team != newTeam) {
+        Logger::getInstance().info("Player " + std::to_string(id) + " team changed from '" + 
+            team + "' to '" + newTeam + "'");
+    }
     teamName = newTeam;
     team = newTeam;
 }
 
 void Player::setIncanting(bool incanting)
 {
+    if (isIncanting != incanting) {
+        Logger::getInstance().info("Player " + std::to_string(id) + (incanting ? " started" : " stopped") + " incantation");
+    }
     isIncanting = incanting;
 }
 
@@ -187,6 +217,13 @@ void Player::setColor(Color color)
 
 void Player::setIsAlive(bool alive)
 {
+    if (isAlive != alive) {
+        if (!alive) {
+            Logger::getInstance().info("Player " + std::to_string(id) + " from team " + team + " died");
+        } else {
+            Logger::getInstance().info("Player " + std::to_string(id) + " from team " + team + " resurrected");
+        }
+    }
     isAlive = alive;
 }
 

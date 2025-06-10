@@ -6,6 +6,7 @@
 */
 
 #include "Logger.hpp"
+#include <sstream>
 
 Logger& Logger::getInstance()
 {

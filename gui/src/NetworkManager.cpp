@@ -6,6 +6,7 @@
 */
 
 #include "NetworkManager.hpp"
+#include "Logger.hpp"
 #include <iostream>
 #include <sstream>
 #include <sys/socket.h>
@@ -19,20 +20,26 @@
 NetworkManager::NetworkManager()
     : socketFd(-1), connected(false), running(false)
 {
+    Logger::getInstance().init("zappy_gui_network.log");
+    Logger::getInstance().info("NetworkManager initialized");
 }
 
 NetworkManager::~NetworkManager()
 {
+    Logger::getInstance().info("NetworkManager shutting down");
     disconnect();
 }
 
 bool NetworkManager::connect(const std::string& hostname, int port)
 {
     if (connected) {
+        Logger::getInstance().warning("Connect attempt failed: Already connected to server");
         std::cerr << "Already connected to server" << std::endl;
         return false;
     }
 
+    Logger::getInstance().info("Attempting to connect to " + hostname + ":" + std::to_string(port));
+    
     struct addrinfo hints, *serverInfo, *p;
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -41,19 +48,25 @@ bool NetworkManager::connect(const std::string& hostname, int port)
     std::string portStr = std::to_string(port);
     int rv;
     if ((rv = getaddrinfo(hostname.c_str(), portStr.c_str(), &hints, &serverInfo)) != 0) {
-        std::cerr << "getaddrinfo: " << gai_strerror(rv) << std::endl;
+        std::string errorMsg = "getaddrinfo: " + std::string(gai_strerror(rv));
+        Logger::getInstance().error(errorMsg);
+        std::cerr << errorMsg << std::endl;
         return false;
     }
 
     for(p = serverInfo; p != NULL; p = p->ai_next) {
         if ((socketFd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
-            std::cerr << "socket: " << strerror(errno) << std::endl;
+            std::string errorMsg = "socket: " + std::string(strerror(errno));
+            Logger::getInstance().error(errorMsg);
+            std::cerr << errorMsg << std::endl;
             continue;
         }
 
         if (::connect(socketFd, p->ai_addr, p->ai_addrlen) == -1) {
             close(socketFd);
-            std::cerr << "connect: " << strerror(errno) << std::endl;
+            std::string errorMsg = "connect: " + std::string(strerror(errno));
+            Logger::getInstance().error(errorMsg);
+            std::cerr << errorMsg << std::endl;
             continue;
         }
 
@@ -61,6 +74,7 @@ bool NetworkManager::connect(const std::string& hostname, int port)
     }
 
     if (p == NULL) {
+        Logger::getInstance().error("Failed to connect to server");
         std::cerr << "Failed to connect to server" << std::endl;
         return false;
     }
@@ -75,7 +89,9 @@ bool NetworkManager::connect(const std::string& hostname, int port)
 
     networkThread = std::thread(&NetworkManager::networkLoop, this);
 
-    std::cout << "Connected to server at " << hostname << ":" << port << std::endl;
+    std::string successMsg = "Connected to server at " + hostname + ":" + std::to_string(port);
+    Logger::getInstance().info(successMsg);
+    std::cout << successMsg << std::endl;
     return true;
 }
 
@@ -84,6 +100,7 @@ void NetworkManager::disconnect()
     if (!connected)
         return;
 
+    Logger::getInstance().info("Disconnecting from server");
     running = false;
 
     if (networkThread.joinable()) {
@@ -97,6 +114,7 @@ void NetworkManager::disconnect()
     }
 
     connected = false;
+    Logger::getInstance().info("Disconnected from server");
     std::cout << "Disconnected from server" << std::endl;
 }
 
@@ -166,16 +184,21 @@ void NetworkManager::setTimeUnit(int timeUnit)
 bool NetworkManager::sendCommand(const std::string& command)
 {
     if (!connected || socketFd == -1) {
+        Logger::getInstance().error("Send command failed: Not connected to server");
         std::cerr << "Not connected to server" << std::endl;
         return false;
     }
 
+    Logger::getInstance().network("Sending command: " + command.substr(0, command.length() - 1)); // Remove trailing newline for log
+
     int bytesSent = send(socketFd, command.c_str(), command.length(), 0);
     if (bytesSent <= 0) {
-        std::cerr << "Failed to send command: " << command;
+        std::string errorMsg = "Failed to send command: " + command.substr(0, command.length() - 1);
         if (bytesSent < 0)
-            std::cerr << " (Error: " << strerror(errno) << ")";
-        std::cerr << std::endl;
+            errorMsg += " (Error: " + std::string(strerror(errno)) + ")";
+        
+        Logger::getInstance().error(errorMsg);
+        std::cerr << errorMsg << std::endl;
         return false;
     }
 
@@ -186,6 +209,8 @@ void NetworkManager::networkLoop()
 {
     const int bufferSize = 4096;
     char tempBuffer[bufferSize];
+
+    Logger::getInstance().info("Network receive thread started");
 
     while (running) {
         if (!connected) {
@@ -204,22 +229,28 @@ void NetworkManager::networkLoop()
                 {
                     std::lock_guard<std::mutex> lock(mutex);
                     messageQueue.push(message);
+                    Logger::getInstance().network("Received: " + message);
                 }
                 pos = buffer.find('\n');
             }
         } else if (bytesReceived == 0) {
+            Logger::getInstance().error("Connection closed by server");
             std::cerr << "Connection closed by server" << std::endl;
             connected = false;
             break;
         } else {
             if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                std::cerr << "recv error: " << strerror(errno) << std::endl;
+                std::string errorMsg = "recv error: " + std::string(strerror(errno));
+                Logger::getInstance().error(errorMsg);
+                std::cerr << errorMsg << std::endl;
                 connected = false;
                 break;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     }
+    
+    Logger::getInstance().info("Network receive thread terminated");
 }
 
 void NetworkManager::processMessage(const std::string& message)
@@ -230,9 +261,12 @@ void NetworkManager::processMessage(const std::string& message)
     auto it = callbacks.find(command);
 
     if (it != callbacks.end()) {
+        Logger::getInstance().debug("Processing command: " + command);
         it->second(args);
     } else {
-        std::cout << "Unhandled server message: " << message << std::endl;
+        std::string unhandledMsg = "Unhandled server message: " + message;
+        Logger::getInstance().warning(unhandledMsg);
+        std::cout << unhandledMsg << std::endl;
     }
 }
 
