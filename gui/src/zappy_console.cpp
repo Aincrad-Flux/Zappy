@@ -30,6 +30,57 @@ void printHelp()
     std::cout << "================================\n" << std::endl;
 }
 
+// Fonction pour effacer la console
+void clearConsole()
+{
+#ifdef _WIN32
+    // Windows
+    system("cls");
+#else
+    // Unix/Linux/MacOS
+    system("clear");
+#endif
+}
+
+// Fonction pour afficher l'heure actuelle
+void showCurrentTime()
+{
+    auto now = std::chrono::system_clock::now();
+    auto now_time = std::chrono::system_clock::to_time_t(now);
+    std::cout << "Current time: " << std::ctime(&now_time);
+}
+
+// Fonction pour afficher les informations système
+void showSystemInfo()
+{
+    std::cout << "=== System Information ===" << std::endl;
+#ifdef _WIN32
+    std::cout << "Operating System: Windows" << std::endl;
+#elif __APPLE__
+    std::cout << "Operating System: macOS" << std::endl;
+#elif __linux__
+    std::cout << "Operating System: Linux" << std::endl;
+#else
+    std::cout << "Operating System: Unknown" << std::endl;
+#endif
+    std::cout << "C++ Standard: " << __cplusplus << std::endl;
+    showCurrentTime();
+    std::cout << "=========================" << std::endl;
+}
+
+// Fonction pour afficher les commandes console disponibles
+void printConsoleCommands()
+{
+    std::cout << "\n=== Console Commands ===" << std::endl;
+    std::cout << "  /help             - Show this help message" << std::endl;
+    std::cout << "  /clear            - Clear the console screen" << std::endl;
+    std::cout << "  /time             - Show current time" << std::endl;
+    std::cout << "  /info             - Show system information" << std::endl;
+    std::cout << "  /server           - Show server commands help" << std::endl;
+    std::cout << "  /quit, /exit      - Exit the program" << std::endl;
+    std::cout << "======================" << std::endl;
+}
+
 int main(int argc, char* argv[])
 {
     // Parse command line arguments
@@ -199,12 +250,59 @@ int main(int argc, char* argv[])
         std::cout << "> ";
         std::getline(std::cin, input);
 
-        if (input == "quit" || input == "exit") {
+        if (input == "quit" || input == "exit" || input == "/quit" || input == "/exit") {
             running = false;
             continue;
         }
 
         if (input == "help") {
+            printHelp();
+            continue;
+        }
+
+        if (input == "/clear") {
+            clearConsole();
+            printHelp();
+            printConsoleCommands();
+            continue;
+        }
+
+        if (input == "/time") {
+            showCurrentTime();
+            continue;
+        }
+
+        if (input == "/info") {
+            showSystemInfo();
+            continue;
+        }
+
+        if (input == "/server") {
+            printHelp();
+            continue;
+        }
+
+        if (input == "/help") {
+            printConsoleCommands();
+            continue;
+        }
+
+        if (input == "/clear") {
+            clearConsole();
+            continue;
+        }
+
+        if (input == "/time") {
+            showCurrentTime();
+            continue;
+        }
+
+        if (input == "/info") {
+            showSystemInfo();
+            continue;
+        }
+
+        if (input == "/server") {
             printHelp();
             continue;
         }
