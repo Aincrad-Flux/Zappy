@@ -1,12 +1,23 @@
-# Makefile pour Zappy GUI avec Raylib
+##
+## EPITECH PROJECT, 2024
+## zappy
+## File description:
+## Makefile pour Zappy GUI avec Raylib
+##
 
 CXX = g++
 CXXFLAGS = -Wall -Wextra -std=c++17 -O2 -I./include
 # Detect OS
 UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
 
 ifeq ($(UNAME_S),Linux)
-    LDFLAGS = -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+    ifeq ($(UNAME_M),x86_64)
+        LDFLAGS = -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+    else
+        CXX = x86_64-linux-gnu-g++
+        LDFLAGS = -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+    endif
 endif
 ifeq ($(UNAME_S),Darwin)
     LDFLAGS = -lraylib -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
