@@ -14,7 +14,7 @@ Logger& Logger::getInstance()
     return instance;
 }
 
-Logger::Logger() : initialized(false) {}
+Logger::Logger() : initialized(false), enableConsole(true) {}
 
 Logger::~Logger()
 {
@@ -23,45 +23,57 @@ Logger::~Logger()
     }
 }
 
-void Logger::init(const std::string& logFilePath)
+void Logger::init(const std::string& logFilePath, bool consoleOutput)
 {
     std::lock_guard<std::mutex> lock(logMutex);
-    
+
     if (initialized) {
         return;
     }
-    
+
+    enableConsole = consoleOutput;
+
     if (!logFilePath.empty()) {
         logFile.open(logFilePath, std::ios::app);
         if (!logFile.is_open()) {
-            std::cerr << "Warning: Could not open log file: " << logFilePath << std::endl;
+            if (enableConsole) {
+                std::cerr << "Warning: Could not open log file: " << logFilePath << std::endl;
+            }
         }
     }
-    
+
     initialized = true;
+}
+
+void Logger::setConsoleOutput(bool enable)
+{
+    std::lock_guard<std::mutex> lock(logMutex);
+    enableConsole = enable;
 }
 
 void Logger::log(Level level, const std::string& message)
 {
     std::lock_guard<std::mutex> lock(logMutex);
-    
+
     // Get current timestamp
     auto now = std::chrono::system_clock::now();
     auto time_t = std::chrono::system_clock::to_time_t(now);
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         now.time_since_epoch()) % 1000;
-    
+
     // Format timestamp
     std::stringstream timestamp;
     timestamp << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S");
     timestamp << "." << std::setfill('0') << std::setw(3) << ms.count();
-    
+
     // Format log entry
     std::string logEntry = "[" + timestamp.str() + "] [" + levelToString(level) + "] " + message;
-    
-    // Output to console
-    std::cout << logEntry << std::endl;
-    
+
+    // Output to console if enabled
+    if (enableConsole) {
+        std::cout << logEntry << std::endl;
+    }
+
     // Output to file if available
     if (logFile.is_open()) {
         logFile << logEntry << std::endl;

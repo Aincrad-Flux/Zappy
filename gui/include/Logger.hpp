@@ -43,8 +43,15 @@ public:
     /**
      * @brief Initialize the logger with a file path
      * @param logFilePath Path to the log file (empty for console-only logging)
+     * @param consoleOutput Whether to output logs to console (default: true)
      */
-    void init(const std::string& logFilePath = "");
+    void init(const std::string& logFilePath = "", bool consoleOutput = true);
+
+    /**
+     * @brief Enable or disable console output
+     * @param enable True to enable console output, false to disable
+     */
+    void setConsoleOutput(bool enable);
 
     /**
      * @brief Log a message with specified level
@@ -104,4 +111,5 @@ private:
     std::mutex logMutex;
     std::ofstream logFile;
     bool initialized;
+    bool enableConsole;
 };

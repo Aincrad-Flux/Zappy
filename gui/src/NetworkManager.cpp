@@ -20,7 +20,7 @@
 NetworkManager::NetworkManager()
     : socketFd(-1), connected(false), running(false)
 {
-    Logger::getInstance().init("zappy_gui_network.log");
+    Logger::getInstance().init("zappy_gui_network.log", false);
     Logger::getInstance().info("NetworkManager initialized");
 }
 
@@ -39,7 +39,7 @@ bool NetworkManager::connect(const std::string& hostname, int port)
     }
 
     Logger::getInstance().info("Attempting to connect to " + hostname + ":" + std::to_string(port));
-    
+
     struct addrinfo hints, *serverInfo, *p;
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -196,7 +196,7 @@ bool NetworkManager::sendCommand(const std::string& command)
         std::string errorMsg = "Failed to send command: " + command.substr(0, command.length() - 1);
         if (bytesSent < 0)
             errorMsg += " (Error: " + std::string(strerror(errno)) + ")";
-        
+
         Logger::getInstance().error(errorMsg);
         std::cerr << errorMsg << std::endl;
         return false;
@@ -249,7 +249,7 @@ void NetworkManager::networkLoop()
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     }
-    
+
     Logger::getInstance().info("Network receive thread terminated");
 }
 
@@ -268,6 +268,22 @@ void NetworkManager::processMessage(const std::string& message)
         Logger::getInstance().warning(unhandledMsg);
         std::cout << unhandledMsg << std::endl;
     }
+
+    // Store the message in the response history
+    {
+        std::lock_guard<std::mutex> lock(responseMutex);
+        lastResponses.push_back(message);
+        // Keep only the last 20 responses
+        if (lastResponses.size() > 20) {
+            lastResponses.erase(lastResponses.begin());
+        }
+    }
+}
+
+std::vector<std::string> NetworkManager::getLastResponses()
+{
+    std::lock_guard<std::mutex> lock(responseMutex);
+    return lastResponses;
 }
 
 void NetworkManager::parseMessage(const std::string& message, std::string& command, std::vector<std::string>& args)

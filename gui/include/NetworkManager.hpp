@@ -96,6 +96,13 @@ public:
     void setTimeUnit(int timeUnit);
 
     /**
+     * @brief Sends a command to the server
+     * @param command Command to send
+     * @return True if send successful
+     */
+    bool sendCommand(const std::string& command);
+
+    /**
      * @brief Registers callback functions for different server messages
      * @param type Message type
      * @param callback Function to call when message is received
@@ -104,6 +111,12 @@ public:
     void registerCallback(const std::string& type, Func callback) {
         callbacks[type] = callback;
     }
+
+    /**
+     * @brief Get the last responses received from the server
+     * @return Vector of recent response messages
+     */
+    std::vector<std::string> getLastResponses();
 
 private:
     int socketFd;                              ///< Socket file descriptor
@@ -116,15 +129,8 @@ private:
     std::queue<std::string> messageQueue;      ///< Queue for received messages
 
     std::unordered_map<std::string, std::function<void(const std::vector<std::string>&)>> callbacks;
-    
-    typedef std::function<void(const std::vector<std::string>&)> Callback;
 
-    /**
-     * @brief Sends a command to the server
-     * @param command Command to send
-     * @return True if send successful
-     */
-    bool sendCommand(const std::string& command);
+    typedef std::function<void(const std::vector<std::string>&)> Callback;
 
     /**
      * @brief Network thread function
@@ -144,4 +150,7 @@ private:
      * @param args Output for the arguments
      */
     void parseMessage(const std::string& message, std::string& command, std::vector<std::string>& args);
+
+    std::vector<std::string> lastResponses;  // Store recent responses for retrieval
+    std::mutex responseMutex;                // Mutex for thread-safe access to responses
 };
