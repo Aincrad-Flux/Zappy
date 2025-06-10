@@ -21,8 +21,7 @@ void printUsage()
 
 int main(int argc, char* argv[])
 {
-    // Initialize logger at program start
-    Logger::getInstance().init("zappy_gui.log");
+    Logger::getInstance().init("zappy_gui.log", false);
     Logger::getInstance().info("Zappy GUI starting up");
 
     if (argc > 1 && (strcmp(argv[1], "help") == 0 || strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-help") == 0)) {
@@ -33,7 +32,7 @@ int main(int argc, char* argv[])
 
     std::string hostname = "";
     int port = 0;
-    
+
     Logger::getInstance().info("Parsing command line arguments");
 
     for (int i = 1; i < argc; i++) {
@@ -73,22 +72,19 @@ int main(int argc, char* argv[])
         if (!hostname.empty() && port != 0) {
             std::string connectMsg = "Connecting to server at " + hostname + ":" + std::to_string(port);
             Logger::getInstance().info(connectMsg);
-            std::cout << connectMsg << std::endl;
             Game game(1600, 900, hostname, port);
             game.run();
         } else {
             Logger::getInstance().info("Starting in offline mode");
-            std::cout << "Starting in offline mode" << std::endl;
             Game game(1600, 900);
             game.run();
         }
     } catch (const std::exception& e) {
         std::string errorMsg = "Error: " + std::string(e.what());
         Logger::getInstance().error(errorMsg);
-        std::cerr << errorMsg << std::endl;
         return 1;
     }
-    
+
     Logger::getInstance().info("Zappy GUI shutting down normally");
 
     return 0;
