@@ -9,7 +9,7 @@
 #include <cmath>
 
 Player::Player(int playerId, const std::string& team, Vector3 pos, Color color)
-    : id(playerId), teamName(team), position(pos), direction(PlayerDirection::NORTH),
+    : id(playerId), teamName(team), position(pos), team(team), direction(PlayerDirection::NORTH),
       level(1), inventory(10, 0, 0, 0, 0, 0, 0), teamColor(color), isAlive(true),
       lifeTime(1260.0f), isIncanting(false)
 {
@@ -93,7 +93,17 @@ void Player::move(Vector3 newPos)
     position = newPos;
 }
 
+void Player::setPosition(Vector3 newPos)
+{
+    position = newPos;
+}
+
 void Player::rotate(PlayerDirection newDir)
+{
+    direction = newDir;
+}
+
+void Player::setDirection(PlayerDirection newDir)
 {
     direction = newDir;
 }
@@ -101,6 +111,12 @@ void Player::rotate(PlayerDirection newDir)
 void Player::setLevel(int newLevel)
 {
     level = newLevel;
+}
+
+void Player::setTeam(const std::string& newTeam)
+{
+    teamName = newTeam;
+    team = newTeam;
 }
 
 void Player::setIncanting(bool incanting)
@@ -134,6 +150,11 @@ int Player::getLevel() const
     return level;
 }
 
+Inventory& Player::getInventory()
+{
+    return inventory;
+}
+
 Inventory Player::getInventory() const
 {
     return inventory;
@@ -157,6 +178,16 @@ Color Player::getTeamColor() const
 bool Player::getIsIncanting() const
 {
     return isIncanting;
+}
+
+void Player::setColor(Color color)
+{
+    teamColor = color;
+}
+
+void Player::setIsAlive(bool alive)
+{
+    isAlive = alive;
 }
 
 void Player::setInventory(const Inventory& inv)
