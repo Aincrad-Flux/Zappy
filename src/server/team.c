@@ -49,7 +49,6 @@ void handle_team_join_success(Server *server, int client_socket, int team_id, co
         send(client_socket, "ko\n", 3, 0);
         return;
     }
-
     init_player(&server->players[server->num_players], client_socket, team_id, team_name, server);
     server->teams[team_id].current_clients++;
     send_connection_info(server, client_socket, team_id);

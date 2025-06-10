@@ -8,6 +8,7 @@
 #include "../../../include/server/utils/action.h"
 #include "../../../include/server/player.h"
 #include "../../../include/server/server.h"
+#include "../../../include/server/command/command.h"
 #define BUFFER_SIZE 1024
 
 void add_action_to_queue(Player *player, const char *command, int freq)
@@ -37,65 +38,6 @@ void add_action_to_queue(Player *player, const char *command, int freq)
         curr->next = new_action;
     }
     new_action->duration = duration_ticks;
-}
-
-static void handle_action_command(const char *command, char *response)
-{
-    if (strcmp(command, "Broadcast") == 0 || strcmp(command, "Fork") == 0 ||
-        strcmp(command, "Eject") == 0 || strncmp(command, "Take ", 5) == 0 ||
-        strncmp(command, "Set ", 4) == 0) {
-        strcpy(response, "ok\n");
-    } else if (strcmp(command, "Incantation") == 0) {
-        strcpy(response, "ko\n");
-    } else {
-        strcpy(response, "ko\n");
-    }
-}
-
-static void handle_info_command(Player *player, Server *server, const char
-    *command, char *response)
-{
-    if (strcmp(command, "Look") == 0) {
-        strcpy(response, "[ player ]\n");
-    } else if (strcmp(command, "Inventory") == 0) {
-        snprintf(response, BUFFER_SIZE, "[ food %d, linemate %d, deraumere %d, sibur %d, mendiane %d, phiras %d, thystame %d ]\n",
-                 player->food, player->linemate, player->deraumere, player->sibur,
-                 player->mendiane, player->phiras, player->thystame);
-    } else if (strcmp(command, "Connect_nbr") == 0) {
-        snprintf(response, BUFFER_SIZE, "%d\n",
-         server->teams[player->team_id].max_clients -
-         server->teams[player->team_id].current_clients);
-    }
-}
-
-void handle_movement_command(Player *player, Server *server,
-    const char *command, char *response)
-{
-    if (strcmp(command, "Forward") == 0) {
-        move_player_forward(player, server);
-        strcpy(response, "ok\n");
-    }
-    if (strcmp(command, "Right") == 0) {
-        player->orientation = (player->orientation + 1) % 4;
-        strcpy(response, "ok\n");
-    }
-    if (strcmp(command, "Left") == 0) {
-        player->orientation = (player->orientation + 3) % 4;
-        strcpy(response, "ok\n");
-    }
-}
-
-void process_player_command(Player *player, Server *server,
-    const char *command)
-{
-    char response[BUFFER_SIZE] = "";
-
-    handle_movement_command(player, server, command, response);
-    if (response[0] == '\0')
-        handle_info_command(player, server, command, response);
-    if (response[0] == '\0')
-        handle_action_command(command, response);
-    send(player->socket, response, strlen(response), 0);
 }
 
 void next_action(Action **action_queue)

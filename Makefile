@@ -11,8 +11,20 @@ CFLAGS = -W -Wall -Wpedantic -Werror -lm
 SRC = 	src/server/server.c	\
 	src/server/player.c \
 	src/server/team.c \
-	src/server/utils/command.c	\
-	src/server/utils/action.c
+	src/server/command/command.c	\
+	src/server/command/command_server/take.c	\
+	src/server/command/command_server/forward.c	\
+	src/server/command/command_server/inventory.c	\
+	src/server/command/command_server/set.c	\
+	src/server/command/command_server/incantation.c	\
+	src/server/command/command_server/eject.c	\
+	src/server/command/command_server/broadcast.c	\
+	src/server/command/command_server/fork.c	\
+	src/server/utils/action.c \
+	src/server/map/map.c \
+	src/server/map/resource.c \
+	src/server/time/tick.c
+
 OBJ = $(SRC:src/%.c=obj/%.o)
 OBJDIR = obj
 

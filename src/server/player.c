@@ -54,12 +54,3 @@ void remove_player(Server *server, int player_index) {
     }
     server->num_players--;
 }
-
-void move_player_forward(Player *player, Server *server) {
-    switch (player->orientation) {
-        case 0: player->y = (player->y - 1 + server->height) % server->height; break;
-        case 1: player->x = (player->x + 1) % server->width; break;
-        case 2: player->y = (player->y + 1) % server->height; break;
-        case 3: player->x = (player->x - 1 + server->width) % server->width; break;
-    }
-}

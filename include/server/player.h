@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
-#include "utils/command.h"
+#include "command/command.h"
 #include "utils/action.h"
 
 #define MAX_TEAM_NAME 50
