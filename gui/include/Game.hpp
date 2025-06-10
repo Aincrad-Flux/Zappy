@@ -15,6 +15,7 @@
 #include "Player.hpp"
 #include "Resource.hpp"
 #include "UI.hpp"
+#include "NetworkManager.hpp"
 
 /**
  * @class Game
@@ -35,6 +36,12 @@ private:
     Vector3 lastClickPosition;           ///< Position of the last mouse click
     int selectedPlayerId;                ///< ID of the currently selected player
     bool debugMode;                      ///< Flag for showing debug information
+
+    std::unique_ptr<NetworkManager> networkManager; ///< Network communication manager
+    std::string serverHostname;          ///< Server hostname
+    int serverPort;                      ///< Server port
+    bool serverConnected;                ///< Flag indicating if connected to server
+    int timeUnit;                        ///< Server time unit
 
     /**
      * @brief Processes user input
@@ -77,6 +84,24 @@ private:
     void renderUIElements();
 
     /**
+     * @brief Initializes the network connection to the server
+     * @param hostname Server hostname
+     * @param port Server port
+     * @return True if connection was successful
+     */
+    bool initializeNetworkConnection(const std::string& hostname, int port);
+
+    /**
+     * @brief Sets up callbacks for network messages
+     */
+    void setupNetworkCallbacks();
+
+    /**
+     * @brief Updates network state and processes messages
+     */
+    void updateNetwork();
+
+    /**
      * @brief Checks for intersection between a ray and a cylinder
      * @param ray The ray to test
      * @param center Center point of the cylinder
@@ -101,8 +126,10 @@ public:
      * @brief Constructor for Game
      * @param width Width of the game window
      * @param height Height of the game window
+     * @param hostname Server hostname (optional)
+     * @param port Server port (optional)
      */
-    Game(int width = 1200, int height = 800);
+    Game(int width = 1200, int height = 800, const std::string& hostname = "", int port = 0);
 
     /**
      * @brief Destructor for Game
