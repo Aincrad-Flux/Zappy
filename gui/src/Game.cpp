@@ -15,7 +15,7 @@
 Game::Game(int width, int height, const std::string& hostname, int port)
     : screenWidth(width), screenHeight(height), running(false), lastClickPosition({0, -1, 0}),
       selectedPlayerId(-1), debugMode(false), serverHostname(hostname), serverPort(port),
-      serverConnected(false), timeUnit(100) // serverPort is used in initializeNetworkConnection
+      serverConnected(false), timeUnit(100)
 {
     Logger::getInstance().init("zappy_gui.log");
     Logger::getInstance().info("Game initialized with resolution " + std::to_string(width) + "x" + std::to_string(height));
@@ -27,14 +27,10 @@ Game::Game(int width, int height, const std::string& hostname, int port)
     SetWindowState(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_MAXIMIZED);
 
     networkManager = std::make_unique<NetworkManager>();
-    gameMap = std::make_unique<Map>(20, 15, 32);
+    // Create the UI first - the map will be created once we receive size from server
     gameUI = std::make_unique<UI>(screenWidth, screenHeight);
 
-    float mapWidth = gameMap->getWidth() * gameMap->getTileSize();
-    float mapHeight = gameMap->getHeight() * gameMap->getTileSize();
-
-    camera.position = Vector3{ mapWidth / 2.0f, mapHeight * 1.2f, mapHeight * 0.8f };
-    camera.target = Vector3{ mapWidth / 2.0f, 0.0f, mapHeight / 2.0f };
+    // Initialize camera with default position
     camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
     camera.fovy = 45.0f;
     camera.projection = CAMERA_PERSPECTIVE;
@@ -45,16 +41,27 @@ Game::Game(int width, int height, const std::string& hostname, int port)
             // Setup callbacks for network messages
             setupNetworkCallbacks();
 
-            // Request initial data from server
-            networkManager->getMapSize(width, height);
-            networkManager->requestTeamNames();
-            networkManager->requestTimeUnit();
+            Logger::getInstance().info("Connected to server, waiting for map information");
+            std::cout << "Connected to server, waiting for map information..." << std::endl;
+
+            // Note: The server will automatically send map info after we identify as GRAPHIC
+            // The msz callback will create the map once we receive the dimensions
         }
     }
+
     if (!serverConnected) {
+        // Create a default map for offline mode
+        gameMap = std::make_unique<Map>(20, 15, 32);
+
+        float mapWidth = gameMap->getWidth() * gameMap->getTileSize();
+        float mapHeight = gameMap->getHeight() * gameMap->getTileSize();
+
+        camera.position = Vector3{ mapWidth / 2.0f, mapHeight * 1.2f, mapHeight * 0.8f };
+        camera.target = Vector3{ mapWidth / 2.0f, 0.0f, mapHeight / 2.0f };
+
         initializeMockData();
+        centerCamera();
     }
-    centerCamera();
 }
 
 Game::~Game() {
@@ -105,8 +112,13 @@ void Game::handleInput()
             printf("Ray direction: (%.2f, %.2f, %.2f)\n", mouseRay.direction.x, mouseRay.direction.y, mouseRay.direction.z);
         }
 
+        // Only handle player selection if we have a valid map
         int previousSelectedId = selectedPlayerId;
-        int clickedPlayerId = checkPlayerClick(mouseRay);
+        int clickedPlayerId = -1;
+
+        if (gameMap) {
+            clickedPlayerId = checkPlayerClick(mouseRay);
+        }
 
         if (clickedPlayerId >= 0) {
             selectedPlayerId = clickedPlayerId;
@@ -121,7 +133,7 @@ void Game::handleInput()
                     printf("No player hit. Ray missed all cylindrical hitboxes.\n");
                 }
             }
-            
+
             float t = -mouseRay.position.y / mouseRay.direction.y;
             if (t > 0) {
                 Vector3 hitPoint = {
@@ -312,7 +324,7 @@ void Game::handleInput()
     if (IsKeyPressed(KEY_H)) gameUI->toggleHelp();
     if (IsKeyPressed(KEY_F1)) debugMode = !debugMode;  // Basculer le mode debug avec F1
     if (IsKeyPressed(KEY_ESCAPE)) selectedPlayerId = -1;  // Désélectionner le joueur avec Echap
-    if (IsKeyPressed(KEY_SPACE)) {
+    if (IsKeyPressed(KEY_SPACE) && gameMap) {
         float mapWidth = gameMap->getWidth() * gameMap->getTileSize();
         float mapHeight = gameMap->getHeight() * gameMap->getTileSize();
         camera.position = Vector3{ mapWidth / 2.0f, mapHeight * 1.2f, mapHeight * 0.8f };
@@ -359,31 +371,41 @@ void Game::update()
         updateNetwork();
     }
 
-    for (auto& player : players) {
-        player.update(deltaTime);
+    // Only update players if any exist (requires map to be set up)
+    if (gameMap) {
+        for (auto& player : players) {
+            player.update(deltaTime);
+        }
     }
 }
 
 void Game::render3DElements()
 {
     BeginMode3D(camera);
-    gameMap->draw();
 
-    int slices = 20;
-    float spacing = 1.0f;
+    // Only render map and other 3D elements if map exists
+    if (gameMap) {
+        gameMap->draw();
 
-    for (int i = 0; i <= slices; i++) {
-        DrawLine3D({i * spacing, 0, 0}, {i * spacing, 0, slices * spacing}, LIGHTGRAY);
-        DrawLine3D({0, 0, i * spacing}, {slices * spacing, 0, i * spacing}, LIGHTGRAY);
+        int slices = 20;
+        float spacing = 1.0f;
+
+        for (int i = 0; i <= slices; i++) {
+            DrawLine3D({i * spacing, 0, 0}, {i * spacing, 0, slices * spacing}, LIGHTGRAY);
+            DrawLine3D({0, 0, i * spacing}, {slices * spacing, 0, i * spacing}, LIGHTGRAY);
+        }
     }
 
     DrawLine3D({0, 0, 0}, {10, 0, 0}, RED);   // Axe X
     DrawLine3D({0, 0, 0}, {0, 10, 0}, GREEN); // Axe Y
     DrawLine3D({0, 0, 0}, {0, 0, 10}, BLUE);  // Axe Z
 
-    for (const auto& resource : resources) {
-        Vector3 worldPos = gameMap->getWorldPosition((int)resource.getPosition().x, (int)resource.getPosition().z);
-        resource.draw(worldPos, gameMap->getTileSize());
+    // Only render resources if map exists
+    if (gameMap) {
+        for (const auto& resource : resources) {
+            Vector3 worldPos = gameMap->getWorldPosition((int)resource.getPosition().x, (int)resource.getPosition().z);
+            resource.draw(worldPos, gameMap->getTileSize());
+        }
     }
 
     // Indicateur de clic
@@ -395,31 +417,33 @@ void Game::render3DElements()
                   RED);
     }
 
-    // Players and their hitboxes
-    for (const auto& player : players) {
-        Vector3 worldPos = gameMap->getWorldPosition((int)player.getPosition().x, (int)player.getPosition().z);
-        player.draw(worldPos, gameMap->getTileSize());
+    // Players and their hitboxes - only render if map exists
+    if (gameMap) {
+        for (const auto& player : players) {
+            Vector3 worldPos = gameMap->getWorldPosition((int)player.getPosition().x, (int)player.getPosition().z);
+            player.draw(worldPos, gameMap->getTileSize());
 
-        Vector3 center = {
-            worldPos.x + gameMap->getTileSize()/2.0f,
-            0.5f,
-            worldPos.z + gameMap->getTileSize()/2.0f
-        };
-
-        if (debugMode) {
-            float height = gameMap->getTileSize() * 0.6f;
-            float hitboxRadius = gameMap->getTileSize() * 0.5f;
-            DrawCylinderWires(center, hitboxRadius, hitboxRadius, height, 16, RED);
-            DrawCircle3D({center.x, center.y - height/2.0f, center.z}, hitboxRadius, {1, 0, 0}, 90.0f, RED);
-            DrawCircle3D({center.x, center.y + height/2.0f, center.z}, hitboxRadius, {1, 0, 0}, 90.0f, RED);
-        }
-        if (selectedPlayerId == player.getId()) {
-            Vector3 markerPos = {
+            Vector3 center = {
                 worldPos.x + gameMap->getTileSize()/2.0f,
-                1.5f + sinf(GetTime() * 3.0f) * 0.2f,
+                0.5f,
                 worldPos.z + gameMap->getTileSize()/2.0f
             };
-            DrawSphere(markerPos, 0.4f, YELLOW);
+
+            if (debugMode) {
+                float height = gameMap->getTileSize() * 0.6f;
+                float hitboxRadius = gameMap->getTileSize() * 0.5f;
+                DrawCylinderWires(center, hitboxRadius, hitboxRadius, height, 16, RED);
+                DrawCircle3D({center.x, center.y - height/2.0f, center.z}, hitboxRadius, {1, 0, 0}, 90.0f, RED);
+                DrawCircle3D({center.x, center.y + height/2.0f, center.z}, hitboxRadius, {1, 0, 0}, 90.0f, RED);
+            }
+            if (selectedPlayerId == player.getId()) {
+                Vector3 markerPos = {
+                    worldPos.x + gameMap->getTileSize()/2.0f,
+                    1.5f + sinf(GetTime() * 3.0f) * 0.2f,
+                    worldPos.z + gameMap->getTileSize()/2.0f
+                };
+                DrawSphere(markerPos, 0.4f, YELLOW);
+            }
         }
     }
     EndMode3D();
@@ -480,9 +504,16 @@ void Game::renderUIElements()
 
     gameUI->draw(players);
     DrawText(TextFormat("FPS: %i", GetFPS()), 10, 10, 20, LIME);
-    if (selectedPlayerId < 0 && !debugMode) {
+
+    // Show appropriate message based on connection and map status
+    if (!gameMap && serverConnected) {
+        // When connected to server but waiting for map info
+        DrawText("Connected to server... Waiting for map data",
+                screenWidth/2 - 220, screenHeight/2 - 20, 20, YELLOW);
+    } else if (selectedPlayerId < 0 && !debugMode && gameMap) {
         DrawText("Click on a player to see their information", screenWidth/2 - 180, 30, 20, ColorAlpha(YELLOW, 0.7f));
     }
+
     DrawText("Press H for help.", 10, screenHeight - 30, 16, WHITE);
 }
 
@@ -532,14 +563,17 @@ void Game::centerCamera()
     screenWidth = GetScreenWidth();
     screenHeight = GetScreenHeight();
 
-    float mapWidth = (float)gameMap->getWidth() * gameMap->getTileSize();
-    float mapHeight = (float)gameMap->getHeight() * gameMap->getTileSize();
+    // Only update camera if gameMap exists
+    if (gameMap) {
+        float mapWidth = (float)gameMap->getWidth() * gameMap->getTileSize();
+        float mapHeight = (float)gameMap->getHeight() * gameMap->getTileSize();
 
-    camera.position = Vector3{ mapWidth / 2.0f, mapHeight * 1.2f, mapHeight * 0.8f };
-    camera.target = Vector3{ mapWidth / 2.0f, 0.0f, mapHeight / 2.0f };
-    camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
-    camera.fovy = 45.0f;
-    camera.projection = CAMERA_PERSPECTIVE;
+        camera.position = Vector3{ mapWidth / 2.0f, mapHeight * 1.2f, mapHeight * 0.8f };
+        camera.target = Vector3{ mapWidth / 2.0f, 0.0f, mapHeight / 2.0f };
+        camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
+        camera.fovy = 45.0f;
+        camera.projection = CAMERA_PERSPECTIVE;
+    }
 }
 
 bool Game::checkRayCylinderIntersection(const Ray& ray, const Vector3& center, float radius, float height, float& t, Vector3& hitPoint)
@@ -591,6 +625,11 @@ int Game::checkPlayerClick(Ray mouseRay)
 {
     float closestHit = 1000.0f;
     int hitPlayerId = -1;
+
+    // Only check player clicks if the map exists
+    if (!gameMap) {
+        return -1;
+    }
 
     for (const auto& player : players) {
         if (!player.getIsAlive()) {
@@ -667,7 +706,7 @@ void Game::setupNetworkCallbacks()
         Logger::getInstance().warning("Cannot setup network callbacks: NetworkManager is null");
         return;
     }
-    
+
     Logger::getInstance().info("Setting up network callbacks");
 
     // Map size message (msz X Y\n)
@@ -680,12 +719,25 @@ void Game::setupNetworkCallbacks()
             Logger::getInstance().info(logMsg);
             std::cout << logMsg << std::endl;
 
+            // Clear existing resources and players before creating a new map
+            resources.clear();
+            players.clear();
+            selectedPlayerId = -1;
+
             // Create new map with server-provided dimensions
             gameMap = std::make_unique<Map>(width, height, 32);
+
+            // Set up camera based on new map dimensions
+            float mapWidth = gameMap->getWidth() * gameMap->getTileSize();
+            float mapHeight = gameMap->getHeight() * gameMap->getTileSize();
+
+            camera.position = Vector3{ mapWidth / 2.0f, mapHeight * 1.2f, mapHeight * 0.8f };
+            camera.target = Vector3{ mapWidth / 2.0f, 0.0f, mapHeight / 2.0f };
+
             centerCamera();
 
-            // Request content for all tiles
-            networkManager->requestMapContent();
+            // No need to explicitly request map content as the server will send it
+            // after the GRAPHIC identification - it's in the protocol
         }
     });
 
@@ -753,7 +805,7 @@ void Game::setupNetworkCallbacks()
             int y = std::stoi(args[2]);
             int orientation = std::stoi(args[3]); // 1(N), 2(E), 3(S), 4(W)
 
-            std::string logMsg = "Received player position: #" + std::to_string(playerId) + " at (" + 
+            std::string logMsg = "Received player position: #" + std::to_string(playerId) + " at (" +
                 std::to_string(x) + "," + std::to_string(y) + ") facing " + std::to_string(orientation);
             Logger::getInstance().debug(logMsg);
             std::cout << logMsg << std::endl;
@@ -970,15 +1022,34 @@ void Game::setupNetworkCallbacks()
     // Egg laid (enw #e #n X Y\n)
     networkManager->registerCallback("enw", [](const std::vector<std::string>& args) {
         if (args.size() >= 4) {
-            int eggId = std::stoi(args[0]);
-            int playerId = std::stoi(args[1]);
-            int x = std::stoi(args[2]);
-            int y = std::stoi(args[3]);
+            try {
+                int eggId = std::stoi(args[0]);
+                // Handle special case where playerId might be "-1" for server-spawned eggs
+                std::string playerIdStr = args[1];
+                int playerId = 0;
+                if (playerIdStr.length() > 0) {
+                    if (playerIdStr[0] == '#') {
+                        playerIdStr = playerIdStr.substr(1); // Remove '#' if present
+                    }
+                    playerId = std::stoi(playerIdStr);
+                }
+                int x = std::stoi(args[2]);
+                int y = std::stoi(args[3]);
 
-            std::string logMsg = "Egg #" + std::to_string(eggId) + " laid by player #" + 
-                std::to_string(playerId) + " at (" + std::to_string(x) + "," + std::to_string(y) + ")";
-            Logger::getInstance().info(logMsg);
-            std::cout << logMsg << std::endl;
+                std::string logMsg = "Egg #" + std::to_string(eggId);
+                if (playerId == -1) {
+                    logMsg += " spawned by server";
+                } else {
+                    logMsg += " laid by player #" + std::to_string(playerId);
+                }
+                logMsg += " at (" + std::to_string(x) + "," + std::to_string(y) + ")";
+                Logger::getInstance().info(logMsg);
+                std::cout << logMsg << std::endl;
+            } catch (const std::exception& e) {
+                std::string errorMsg = "Error processing egg data: " + std::string(e.what());
+                Logger::getInstance().error(errorMsg);
+                std::cerr << errorMsg << std::endl;
+            }
         }
     });
 }

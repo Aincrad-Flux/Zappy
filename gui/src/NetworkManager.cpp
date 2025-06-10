@@ -255,6 +255,19 @@ void NetworkManager::networkLoop()
 
 void NetworkManager::processMessage(const std::string& message)
 {
+    // Handle special welcome message
+    if (message == "WELCOME") {
+        Logger::getInstance().info("Received welcome message from server");
+        std::cout << "Received initial welcome from server!" << std::endl;
+
+        // Send GRAPHIC identification
+        Logger::getInstance().info("Identifying as graphical client");
+        std::cout << "Identifying as graphical client..." << std::endl;
+        sendCommand("GRAPHIC\n");
+
+        return;
+    }
+
     std::string command;
     std::vector<std::string> args;
     parseMessage(message, command, args);
