@@ -98,7 +98,7 @@ Tile& Map::getTile(int x, int y)
     return tiles[y][x];
 }
 
-void Map::setTileResource(int x, int y, int resourceType)
+void Map::setTileResource(int x, int y, int resourceType, int count)
 {
     if (x >= 0 && x < width && y >= 0 && y < height) {
         tiles[y][x].setHasResource(resourceType >= 0);
