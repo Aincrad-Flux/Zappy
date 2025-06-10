@@ -14,7 +14,7 @@
 Game::Game(int width, int height, const std::string& hostname, int port)
     : screenWidth(width), screenHeight(height), running(false), lastClickPosition({0, -1, 0}),
       selectedPlayerId(-1), debugMode(false), serverHostname(hostname), serverPort(port),
-      serverConnected(false), timeUnit(100)
+      serverConnected(false), timeUnit(100) // serverPort is used in initializeNetworkConnection
 {
     InitWindow(1400, 900, "Zappy GUI 3D - Raylib");
     screenWidth = 1400;
@@ -23,10 +23,7 @@ Game::Game(int width, int height, const std::string& hostname, int port)
 
     SetWindowState(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_MAXIMIZED);
 
-    // Initialize network manager
     networkManager = std::make_unique<NetworkManager>();
-
-    // Default map size, will be updated from server if connected
     gameMap = std::make_unique<Map>(20, 15, 32);
     gameUI = std::make_unique<UI>(screenWidth, screenHeight);
 
@@ -39,7 +36,6 @@ Game::Game(int width, int height, const std::string& hostname, int port)
     camera.fovy = 45.0f;
     camera.projection = CAMERA_PERSPECTIVE;
 
-    // Connect to server if hostname and port are provided
     if (!hostname.empty() && port > 0) {
         serverConnected = initializeNetworkConnection(hostname, port);
         if (serverConnected) {
@@ -52,13 +48,9 @@ Game::Game(int width, int height, const std::string& hostname, int port)
             networkManager->requestTimeUnit();
         }
     }
-
     if (!serverConnected) {
-        // Use mock data if not connected to server
         initializeMockData();
     }
-
-    // Center camera to see the entire map
     centerCamera();
 }
 
@@ -94,11 +86,8 @@ void Game::initializeMockData()
 
 void Game::handleInput()
 {
-    const float cameraSpeed = 0.5f;
     const float rotationSpeed = 0.03f;
-    const float verticalSpeed = 0.5f;
 
-    // Gestion des clics de souris pour la sélection des joueurs
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         Vector2 mousePos = GetMousePosition();
         Ray mouseRay = GetMouseRay(mousePos, camera);
@@ -110,7 +99,6 @@ void Game::handleInput()
             printf("Ray direction: (%.2f, %.2f, %.2f)\n", mouseRay.direction.x, mouseRay.direction.y, mouseRay.direction.z);
         }
 
-        // Vérifier si un joueur a été cliqué
         int previousSelectedId = selectedPlayerId;
         int clickedPlayerId = checkPlayerClick(mouseRay);
 
@@ -127,8 +115,7 @@ void Game::handleInput()
                     printf("No player hit. Ray missed all cylindrical hitboxes.\n");
                 }
             }
-
-            // Si aucun joueur n'a été touché, calculer l'intersection avec le sol
+            
             float t = -mouseRay.position.y / mouseRay.direction.y;
             if (t > 0) {
                 Vector3 hitPoint = {
@@ -376,8 +363,6 @@ void Game::render3DElements()
     BeginMode3D(camera);
     gameMap->draw();
 
-    float mapWidth = gameMap->getWidth() * gameMap->getTileSize();
-    float mapHeight = gameMap->getHeight() * gameMap->getTileSize();
     int slices = 20;
     float spacing = 1.0f;
 
@@ -386,7 +371,6 @@ void Game::render3DElements()
         DrawLine3D({0, 0, i * spacing}, {slices * spacing, 0, i * spacing}, LIGHTGRAY);
     }
 
-    // Dessiner les axes
     DrawLine3D({0, 0, 0}, {10, 0, 0}, RED);   // Axe X
     DrawLine3D({0, 0, 0}, {0, 10, 0}, GREEN); // Axe Y
     DrawLine3D({0, 0, 0}, {0, 0, 10}, BLUE);  // Axe Z
@@ -703,14 +687,13 @@ void Game::setupNetworkCallbacks()
 
             std::cout << "Received tile content at (" << x << "," << y << ")" << std::endl;
 
-            // Update tile content in the map
-            gameMap->setTileResource(x, y, 0, food);
-            gameMap->setTileResource(x, y, 1, linemate);
-            gameMap->setTileResource(x, y, 2, deraumere);
-            gameMap->setTileResource(x, y, 3, sibur);
-            gameMap->setTileResource(x, y, 4, mendiane);
-            gameMap->setTileResource(x, y, 5, phiras);
-            gameMap->setTileResource(x, y, 6, thystame);
+            if (food > 0) gameMap->setTileResource(x, y, 0, food);
+            if (linemate > 0) gameMap->setTileResource(x, y, 1, linemate);
+            if (deraumere > 0) gameMap->setTileResource(x, y, 2, deraumere);
+            if (sibur > 0) gameMap->setTileResource(x, y, 3, sibur);
+            if (mendiane > 0) gameMap->setTileResource(x, y, 4, mendiane);
+            if (phiras > 0) gameMap->setTileResource(x, y, 5, phiras);
+            if (thystame > 0) gameMap->setTileResource(x, y, 6, thystame);
 
             // Add resource objects for each resource type on the tile
             for (int i = 0; i < 7; ++i) {
@@ -804,8 +787,6 @@ void Game::setupNetworkCallbacks()
     networkManager->registerCallback("pin", [this](const std::vector<std::string>& args) {
         if (args.size() >= 10) {
             int playerId = std::stoi(args[0]);
-            int x = std::stoi(args[1]);
-            int y = std::stoi(args[2]);
             int food = std::stoi(args[3]);
             int linemate = std::stoi(args[4]);
             int deraumere = std::stoi(args[5]);
@@ -819,14 +800,14 @@ void Game::setupNetworkCallbacks()
             // Find player and update inventory
             for (auto& player : players) {
                 if (player.getId() == playerId) {
-                    Inventory& inv = player.getInventory();
-                    inv.setResource(ResourceType::FOOD, food);
-                    inv.setResource(ResourceType::LINEMATE, linemate);
-                    inv.setResource(ResourceType::DERAUMERE, deraumere);
-                    inv.setResource(ResourceType::SIBUR, sibur);
-                    inv.setResource(ResourceType::MENDIANE, mendiane);
-                    inv.setResource(ResourceType::PHIRAS, phiras);
-                    inv.setResource(ResourceType::THYSTAME, thystame);
+                    // Update player's inventory with resources
+                    player.getInventory().setResource(ResourceType::FOOD, food);
+                    player.getInventory().setResource(ResourceType::LINEMATE, linemate);
+                    player.getInventory().setResource(ResourceType::DERAUMERE, deraumere);
+                    player.getInventory().setResource(ResourceType::SIBUR, sibur);
+                    player.getInventory().setResource(ResourceType::MENDIANE, mendiane);
+                    player.getInventory().setResource(ResourceType::PHIRAS, phiras);
+                    player.getInventory().setResource(ResourceType::THYSTAME, thystame);
                     break;
                 }
             }
@@ -839,13 +820,12 @@ void Game::setupNetworkCallbacks()
             int playerId = std::stoi(args[0]);
             int x = std::stoi(args[1]);
             int y = std::stoi(args[2]);
-            int orientation = std::stoi(args[3]);
+            // orientation only used for debug output, can be kept
             int level = std::stoi(args[4]);
             std::string teamName = args[5];
 
             std::cout << "New player #" << playerId << " from team " << teamName << " at level " << level << std::endl;
 
-            // Check if player already exists
             bool found = false;
             for (auto& player : players) {
                 if (player.getId() == playerId) {
@@ -853,8 +833,6 @@ void Game::setupNetworkCallbacks()
                     player.setTeam(teamName);
                     player.setLevel(level);
 
-                    // Set the player's color based on team
-                    // This is a simple hash-based color assignment
                     int colorHash = 0;
                     for (char c : teamName) {
                         colorHash += static_cast<int>(c);
@@ -871,8 +849,6 @@ void Game::setupNetworkCallbacks()
             }
 
             if (!found) {
-                // Create new player
-                // Generate a color based on team name for consistency
                 int colorHash = 0;
                 for (char c : teamName) {
                     colorHash += static_cast<int>(c);
@@ -942,17 +918,15 @@ void Game::setupNetworkCallbacks()
     });
 
     // Egg laying (pfk #n\n)
-    networkManager->registerCallback("pfk", [this](const std::vector<std::string>& args) {
+    networkManager->registerCallback("pfk", [](const std::vector<std::string>& args) {
         if (!args.empty()) {
             int playerId = std::stoi(args[0]);
             std::cout << "Player #" << playerId << " is laying an egg" << std::endl;
-
-            // Optionally show an animation or visual indicator
         }
     });
 
     // Egg laid (enw #e #n X Y\n)
-    networkManager->registerCallback("enw", [this](const std::vector<std::string>& args) {
+    networkManager->registerCallback("enw", [](const std::vector<std::string>& args) {
         if (args.size() >= 4) {
             int eggId = std::stoi(args[0]);
             int playerId = std::stoi(args[1]);
@@ -960,8 +934,6 @@ void Game::setupNetworkCallbacks()
             int y = std::stoi(args[3]);
 
             std::cout << "Egg #" << eggId << " laid by player #" << playerId << " at (" << x << "," << y << ")" << std::endl;
-
-            // Could add an egg object to the game if desired
         }
     });
 }
@@ -972,7 +944,5 @@ void Game::updateNetwork()
         serverConnected = false;
         return;
     }
-
-    // Process received messages from the server
     networkManager->update();
 }
