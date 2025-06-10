@@ -506,6 +506,23 @@ void Game::renderUIElements()
         DrawText("Click on a player to see their information", screenWidth/2 - 180, 30, 20, ColorAlpha(YELLOW, 0.7f));
     }
 
+    if (!serverConnected) {
+        const char* warningMsg = "NON CONNECTÉ AU SERVEUR";
+        int fontSize = 40;
+        int textWidth = MeasureText(warningMsg, fontSize);
+        DrawRectangle(screenWidth/2 - textWidth/2 - 20,
+                      screenHeight/2 - fontSize/2 - 20,
+                      textWidth + 40,
+                      fontSize + 40,
+                      ColorAlpha(BLACK, 0.7f));
+        DrawRectangleLines(screenWidth/2 - textWidth/2 - 20,
+                          screenHeight/2 - fontSize/2 - 20,
+                          textWidth + 40,
+                          fontSize + 40,
+                          RED);
+        DrawText(warningMsg, screenWidth/2 - textWidth/2, screenHeight/2 - fontSize/2, fontSize, RED);
+    }
+
     DrawText("Press H for help.", 10, screenHeight - 30, 16, WHITE);
 }
 
