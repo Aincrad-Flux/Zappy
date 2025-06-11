@@ -301,12 +301,27 @@ std::vector<std::string> NetworkManager::getLastResponses()
 
 void NetworkManager::parseMessage(const std::string& message, std::string& command, std::vector<std::string>& args)
 {
+    command.clear();
+    args.clear();
+
+    if (message.empty()) {
+        return;
+    }
+
     std::istringstream iss(message);
     iss >> command;
     std::string arg;
 
     while (iss >> arg) {
-        args.push_back(arg);
+        arg.erase(0, arg.find_first_not_of(" \t\n\r\f\v"));
+        arg.erase(arg.find_last_not_of(" \t\n\r\f\v") + 1);
+
+        if (!arg.empty()) {
+            args.push_back(arg);
+        }
     }
+
+    Logger::getInstance().debug("Parsed command: '" + command + "' with " +
+                              std::to_string(args.size()) + " arguments");
 }
 

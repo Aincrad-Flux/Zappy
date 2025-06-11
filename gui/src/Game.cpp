@@ -1216,17 +1216,27 @@ void Game::setupNetworkCallbacks()
     networkManager->registerCallback("enw", [](const std::vector<std::string>& args) {
         if (args.size() >= 4) {
             try {
-                int eggId = std::stoi(args[0]);
+                // Pre-process the arguments to clean them
+                std::string eggIdStr = args[0];
                 std::string playerIdStr = args[1];
-                int playerId = 0;
-                if (playerIdStr.length() > 0) {
-                    if (playerIdStr[0] == '#') {
-                        playerIdStr = playerIdStr.substr(1); // Remove '#' if present
-                    }
-                    playerId = std::stoi(playerIdStr);
+                std::string xStr = args[2];
+                std::string yStr = args[3];
+
+                if (eggIdStr.length() > 0 && eggIdStr[0] == '#') {
+                    eggIdStr = eggIdStr.substr(1);
                 }
-                int x = std::stoi(args[2]);
-                int y = std::stoi(args[3]);
+                if (playerIdStr.length() > 0 && playerIdStr[0] == '#') {
+                    playerIdStr = playerIdStr.substr(1);
+                }
+
+                if (eggIdStr.empty() || playerIdStr.empty() || xStr.empty() || yStr.empty()) {
+                    throw std::invalid_argument("Empty parameter");
+                }
+
+                int eggId = std::stoi(eggIdStr);
+                int playerId = (playerIdStr == "-1") ? -1 : std::stoi(playerIdStr);
+                int x = std::stoi(xStr);
+                int y = std::stoi(yStr);
 
                 std::string logMsg = "Egg #" + std::to_string(eggId);
                 if (playerId == -1) {
