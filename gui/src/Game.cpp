@@ -1003,7 +1003,13 @@ void Game::setupNetworkCallbacks()
     // Player position (ppo #n X Y O\n)
     networkManager->registerCallback("ppo", [this](const std::vector<std::string>& args) {
         if (args.size() >= 4) {
-            int playerId = std::stoi(args[0]);
+            // Remove '#' character if present in player ID
+            std::string playerIdStr = args[0];
+            if (!playerIdStr.empty() && playerIdStr[0] == '#') {
+                playerIdStr = playerIdStr.substr(1);
+            }
+
+            int playerId = std::stoi(playerIdStr);
             int x = std::stoi(args[1]);
             int y = std::stoi(args[2]);
             int orientation = std::stoi(args[3]); // 1(N), 2(E), 3(S), 4(W)
@@ -1042,7 +1048,13 @@ void Game::setupNetworkCallbacks()
     // Player level (plv #n L\n)
     networkManager->registerCallback("plv", [this](const std::vector<std::string>& args) {
         if (args.size() >= 2) {
-            int playerId = std::stoi(args[0]);
+            // Remove '#' character if present in player ID
+            std::string playerIdStr = args[0];
+            if (!playerIdStr.empty() && playerIdStr[0] == '#') {
+                playerIdStr = playerIdStr.substr(1);
+            }
+
+            int playerId = std::stoi(playerIdStr);
             int level = std::stoi(args[1]);
 
             std::string logMsg = "Received player level: #" + std::to_string(playerId) + " level " + std::to_string(level);
@@ -1061,7 +1073,13 @@ void Game::setupNetworkCallbacks()
     // Player inventory (pin #n X Y q0 q1 q2 q3 q4 q5 q6\n)
     networkManager->registerCallback("pin", [this](const std::vector<std::string>& args) {
         if (args.size() >= 10) {
-            int playerId = std::stoi(args[0]);
+            // Remove '#' character if present in player ID
+            std::string playerIdStr = args[0];
+            if (!playerIdStr.empty() && playerIdStr[0] == '#') {
+                playerIdStr = playerIdStr.substr(1);
+            }
+
+            int playerId = std::stoi(playerIdStr);
             int food = std::stoi(args[3]);
             int linemate = std::stoi(args[4]);
             int deraumere = std::stoi(args[5]);
@@ -1092,7 +1110,12 @@ void Game::setupNetworkCallbacks()
     // New player connection (pnw #n X Y O L N\n)
     networkManager->registerCallback("pnw", [this](const std::vector<std::string>& args) {
         if (args.size() >= 6) {
-            int playerId = std::stoi(args[0]);
+            std::string playerIdStr = args[0];
+            if (playerIdStr[0] == '#') {
+                playerIdStr = playerIdStr.substr(1);
+            }
+
+            int playerId = std::stoi(playerIdStr);
             int x = std::stoi(args[1]);
             int y = std::stoi(args[2]);
             int level = std::stoi(args[4]);
@@ -1146,7 +1169,13 @@ void Game::setupNetworkCallbacks()
     // Player death (pdi #n\n)
     networkManager->registerCallback("pdi", [this](const std::vector<std::string>& args) {
         if (!args.empty()) {
-            int playerId = std::stoi(args[0]);
+            // Remove '#' character if present in player ID
+            std::string playerIdStr = args[0];
+            if (!playerIdStr.empty() && playerIdStr[0] == '#') {
+                playerIdStr = playerIdStr.substr(1);
+            }
+
+            int playerId = std::stoi(playerIdStr);
             std::string logMsg = "Player #" + std::to_string(playerId) + " died";
             Logger::getInstance().info(logMsg);
             std::cout << logMsg << std::endl;
@@ -1205,7 +1234,13 @@ void Game::setupNetworkCallbacks()
     // Egg laying (pfk #n\n)
     networkManager->registerCallback("pfk", [](const std::vector<std::string>& args) {
         if (!args.empty()) {
-            int playerId = std::stoi(args[0]);
+            // Remove '#' character if present in player ID
+            std::string playerIdStr = args[0];
+            if (!playerIdStr.empty() && playerIdStr[0] == '#') {
+                playerIdStr = playerIdStr.substr(1);
+            }
+
+            int playerId = std::stoi(playerIdStr);
             std::string logMsg = "Player #" + std::to_string(playerId) + " is laying an egg";
             Logger::getInstance().info(logMsg);
             std::cout << logMsg << std::endl;
@@ -1249,6 +1284,50 @@ void Game::setupNetworkCallbacks()
                 std::cout << logMsg << std::endl;
             } catch (const std::exception& e) {
                 std::string errorMsg = "Error processing egg data: " + std::string(e.what());
+                Logger::getInstance().error(errorMsg);
+                std::cerr << errorMsg << std::endl;
+            }
+        }
+    });
+
+    // Egg hatching (ebo #e\n)
+    networkManager->registerCallback("ebo", [](const std::vector<std::string>& args) {
+        if (!args.empty()) {
+            try {
+                // Pre-process the argument to clean it
+                std::string eggIdStr = args[0];
+                if (!eggIdStr.empty() && eggIdStr[0] == '#') {
+                    eggIdStr = eggIdStr.substr(1);
+                }
+
+                int eggId = std::stoi(eggIdStr);
+                std::string logMsg = "Egg #" + std::to_string(eggId) + " has hatched";
+                Logger::getInstance().info(logMsg);
+                std::cout << logMsg << std::endl;
+            } catch (const std::exception& e) {
+                std::string errorMsg = "Error processing egg hatching data: " + std::string(e.what());
+                Logger::getInstance().error(errorMsg);
+                std::cerr << errorMsg << std::endl;
+            }
+        }
+    });
+
+    // Egg death (edi #e\n)
+    networkManager->registerCallback("edi", [](const std::vector<std::string>& args) {
+        if (!args.empty()) {
+            try {
+                // Pre-process the argument to clean it
+                std::string eggIdStr = args[0];
+                if (!eggIdStr.empty() && eggIdStr[0] == '#') {
+                    eggIdStr = eggIdStr.substr(1);
+                }
+
+                int eggId = std::stoi(eggIdStr);
+                std::string logMsg = "Egg #" + std::to_string(eggId) + " has died";
+                Logger::getInstance().info(logMsg);
+                std::cout << logMsg << std::endl;
+            } catch (const std::exception& e) {
+                std::string errorMsg = "Error processing egg death data: " + std::string(e.what());
                 Logger::getInstance().error(errorMsg);
                 std::cerr << errorMsg << std::endl;
             }
