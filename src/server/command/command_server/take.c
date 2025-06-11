@@ -7,13 +7,16 @@
 
 #include "../../../../include/server/server.h"
 #include "../../../../include/server/player.h"
+#include "../../../../include/server/command/gui_commands.h"
 
 void handle_take_command(Player *player, Server *server, const char* item,
-    char *reponse)
+    char *response)
 {
-    Tile *tile = &server->map->tiles[player->x][player->y];
+    Tile *tile = &server->map->tiles[player->y][player->x];
+    int resource_id = get_resource_id(item);
+    int player_id = player - server->players;
 
-    strcpy(reponse, "ok\n");
+    strcpy(response, "ok\n");
     if (strcmp(item, "food") == 0 && tile->food > 0) {
         tile->food--;
         player->food++;
@@ -35,6 +38,11 @@ void handle_take_command(Player *player, Server *server, const char* item,
     } else if (strcmp(item, "thystame") == 0 && tile->thystame > 0) {
         tile->thystame--;
         player->thystame++;
-    } else
-        strcpy(reponse, "ko\n");
+    } else {
+        strcpy(response, "ko\n");
+        return;
+    }
+    if (resource_id != -1) {
+        send_gui_pgt(server, player_id, resource_id);
+    }
 }

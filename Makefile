@@ -6,7 +6,7 @@
 ##
 
 NAME = zappy_server
-CFLAGS = -W -Wall -Wpedantic -Werror -lm
+CFLAGS = -W -Wall -Wpedantic -lm
 
 SRC = 	src/server/server.c	\
 	src/server/player.c \
@@ -20,6 +20,7 @@ SRC = 	src/server/server.c	\
 	src/server/command/command_server/eject.c	\
 	src/server/command/command_server/broadcast.c	\
 	src/server/command/command_server/fork.c	\
+	src/server/command/command_gui/gui_commands.c	\
 	src/server/utils/action.c \
 	src/server/map/map.c \
 	src/server/map/resource.c \

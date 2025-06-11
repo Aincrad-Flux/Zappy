@@ -42,6 +42,7 @@ typedef struct Server {
     time_t last_tick;
     int tick_count;
     Map *map;
+    int next_egg_id;
 } Server;
 
 void send_connection_info(Server *server, int client_socket, int team_id);
