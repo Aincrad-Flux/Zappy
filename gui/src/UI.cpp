@@ -1,4 +1,3 @@
-// filepath: /Users/pandorian/Delivery/B-YEP-400-LIL-4-1-zappy-thibault.pouch/gui/src/UI.cpp
 /*
 ** EPITECH PROJECT, 2024
 ** zappy
@@ -53,7 +52,7 @@ void UI::draw(const std::vector<Player>& players)
 
         if (!serverMessage.empty()) {
             messageDisplayTime += GetFrameTime();
-            if (messageDisplayTime < 5.0f) { // Display for 5 seconds
+            if (messageDisplayTime < 5.0f) {
                 int msgWidth = MeasureText(serverMessage.c_str(), 20);
                 DrawRectangle((screenWidth - msgWidth) / 2 - 10, 70, msgWidth + 20, 30, ColorAlpha(BLACK, 0.8f));
                 DrawRectangleLines((screenWidth - msgWidth) / 2 - 10, 70, msgWidth + 20, 30, WHITE);
@@ -104,53 +103,45 @@ void UI::drawPlayerInfo()
         DrawText("Inventory:", panelX + 10, yOffset, 16, WHITE);
         yOffset += lineHeight;
 
-        // Get inventory and display each resource
         const Inventory& inventory = selectedPlayer->getInventory();
         int xOffset = 0;
         int itemsPerRow = 2;
         int itemCount = 0;
         int itemSpacing = 120;
 
-        // Food
         DrawText(TextFormat("Food: %d", inventory.getFood()),
                 panelX + 20 + xOffset, yOffset, 14, WHITE);
 
         xOffset += itemSpacing;
 
-        // Linemate
         DrawText(TextFormat("Linemate: %d", inventory.getLinemate()),
                 panelX + 20 + xOffset, yOffset, 14, WHITE);
 
         xOffset = 0;
         yOffset += lineHeight;
 
-        // Deraumere
         DrawText(TextFormat("Deraumere: %d", inventory.getDeraumere()),
                 panelX + 20 + xOffset, yOffset, 14, WHITE);
 
         xOffset += itemSpacing;
 
-        // Sibur
         DrawText(TextFormat("Sibur: %d", inventory.getSibur()),
                 panelX + 20 + xOffset, yOffset, 14, WHITE);
 
         xOffset = 0;
         yOffset += lineHeight;
 
-        // Mendiane
         DrawText(TextFormat("Mendiane: %d", inventory.getMendiane()),
                 panelX + 20 + xOffset, yOffset, 14, WHITE);
 
         xOffset += itemSpacing;
 
-        // Phiras
         DrawText(TextFormat("Phiras: %d", inventory.getPhiras()),
                 panelX + 20 + xOffset, yOffset, 14, WHITE);
 
         xOffset = 0;
         yOffset += lineHeight;
 
-        // Thystame
         DrawText(TextFormat("Thystame: %d", inventory.getThystame()),
                 panelX + 20 + xOffset, yOffset, 14, WHITE);
     } else {
@@ -176,7 +167,6 @@ void UI::drawTeamStats()
     int yOffset = panelY + 40;
     int lineHeight = 25;
 
-    // Display team names with their associated colors
     for (size_t i = 0; i < teams.size(); i++) {
         const std::string& teamName = teams[i];
         Color teamColor = WHITE;
@@ -207,38 +197,31 @@ void UI::drawResourceLegend()
     DrawText("Resource Legend", panelX + 10, panelY + 10, 20, WHITE);
 
     int yOffset = panelY + 40;
-    int lineHeight = 25;    // Display each resource type with its color
-    // Food (Red)
+    int lineHeight = 25;
     DrawRectangle(panelX + 10, yOffset, 10, 10, RED);
     DrawText("Food", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Linemate (Blue)
     DrawRectangle(panelX + 10, yOffset, 10, 10, BLUE);
     DrawText("Linemate", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Deraumere (Green)
     DrawRectangle(panelX + 10, yOffset, 10, 10, GREEN);
     DrawText("Deraumere", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Sibur (Yellow)
     DrawRectangle(panelX + 10, yOffset, 10, 10, YELLOW);
     DrawText("Sibur", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Mendiane (Purple)
     DrawRectangle(panelX + 10, yOffset, 10, 10, PURPLE);
     DrawText("Mendiane", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Phiras (Orange)
     DrawRectangle(panelX + 10, yOffset, 10, 10, ORANGE);
     DrawText("Phiras", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Thystame (Pink)
     DrawRectangle(panelX + 10, yOffset, 10, 10, PINK);
     DrawText("Thystame", panelX + 30, yOffset - 2, 16, WHITE);
 }
@@ -252,14 +235,12 @@ void UI::drawGameStats()
     int panelX = actualScreenWidth / 2 - 50;
     int panelY = 10;
 
-    // Stats panel for time frequency
     DrawRectangle(panelX - 10, panelY, 140, timeHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(panelX - 10, panelY, 140, timeHeight, WHITE);
 
     DrawText("Time Frequency:", panelX - 5, panelY + 7, 14, WHITE);
     DrawText("F1-F5", panelX + 95, panelY + 7, 14, YELLOW);
 
-    // View mode panel (3D/2D)
     int viewModeWidth = 80;
     int viewModePanelX = actualScreenWidth / 2 - viewModeWidth / 2;
     int viewModePanelY = 50;
@@ -283,8 +264,8 @@ void UI::drawMenu()
     int actualScreenWidth = GetScreenWidth();
     int actualScreenHeight = GetScreenHeight();
 
-    int menuWidth = 240;
-    int menuHeight = 210;
+    int menuWidth = 250;
+    int menuHeight = 240;
     int menuX = actualScreenWidth - menuWidth - 10;
     int menuY = actualScreenHeight - menuHeight - 10;
 
@@ -296,31 +277,29 @@ void UI::drawMenu()
     int yOffset = menuY + 40;
     int lineHeight = 25;
 
-    DrawText("M - Toggle Menu & Legend", menuX + 20, yOffset, 16, WHITE);
+    DrawText("F2 - Switch 2D/3D Mode", menuX + 10, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    DrawText("I - Toggle Player Info Panel", menuX + 20, yOffset, 16, WHITE);
+    DrawText("ZQSD/Arrows - Move Camera", menuX + 10, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    DrawText("T - Toggle Team Statistics", menuX + 20, yOffset, 16, WHITE);
+    DrawText("M - Toggle Menu & Legend", menuX + 10, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    DrawText("H - Show Help Screen", menuX + 20, yOffset, 16, WHITE);
+    DrawText("I - Toggle Player Info Panel", menuX + 10, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    DrawText("F2 - Switch 2D/3D Mode", menuX + 20, yOffset, 16, YELLOW);
+    DrawText("T - Toggle Team Statistics", menuX + 10, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    DrawText("WASD/Arrows - Move Camera", menuX + 20, yOffset, 16, WHITE);
+    DrawText("H - Show Help Screen", menuX + 10, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    DrawText("Mouse Wheel - Zoom In/Out", menuX + 20, yOffset, 16, WHITE);
+    DrawText("Mouse Wheel/Pad - Zoom +/-", menuX + 10, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    DrawText("SPACE - Center Camera View", menuX + 20, yOffset, 16, WHITE);
+    DrawText("SPACE - Center Camera View", menuX + 10, yOffset, 16, WHITE);
     yOffset += lineHeight;
-
-    DrawText("Press M to hide this menu", menuX + menuWidth - 150, menuY + menuHeight - 20, 14, YELLOW);
 }
 
 void UI::showGameOverMessage(const std::string& message)
@@ -355,7 +334,6 @@ void UI::setSelectedPlayer(Player* player)
 
 void UI::addTeam(const std::string& teamName)
 {
-    // Check if team already exists
     if (std::find(teams.begin(), teams.end(), teamName) == teams.end()) {
         teams.push_back(teamName);
         Logger::getInstance().info("Added team: " + teamName);
@@ -412,7 +390,7 @@ void UI::drawHelp()
     DrawText("Camera Controls:", helpX + 20, yOffset, 18, YELLOW);
     yOffset += 30;
 
-    DrawText("WASD", helpX + 40, yOffset, 16, WHITE);
+    DrawText("ZQSD", helpX + 40, yOffset, 16, WHITE);
     DrawText("Move Camera", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight;
 
@@ -431,9 +409,9 @@ void UI::drawHelp()
     DrawText("Time Controls:", helpX + 20, yOffset, 18, YELLOW);
     yOffset += 30;
 
-    DrawText("F1-F5", helpX + 40, yOffset, 16, WHITE);
-    DrawText("Change Time Frequency", helpX + 40 + colWidth, yOffset, 16, GRAY);
-    yOffset += lineHeight;
+    DrawText("F1", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Toggle Debug Menu", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    yOffset += lineHeight * 1.5f;
 
     DrawText("F2", helpX + 40, yOffset, 16, WHITE);
     DrawText("Switch between 2D and 3D modes", helpX + 40 + colWidth, yOffset, 16, GRAY);
@@ -443,7 +421,7 @@ void UI::drawHelp()
     yOffset += 30;
 
     DrawText("M", helpX + 40, yOffset, 16, WHITE);
-    DrawText("Toggle Menu", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    DrawText("Open/close Menu", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight;
 
     DrawText("I", helpX + 40, yOffset, 16, WHITE);
@@ -455,11 +433,11 @@ void UI::drawHelp()
     yOffset += lineHeight;
 
     DrawText("H", helpX + 40, yOffset, 16, WHITE);
-    DrawText("Toggle This Help Screen", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    DrawText("Open/Close This Help Window", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight;
 
     DrawText("ESC", helpX + 40, yOffset, 16, WHITE);
-    DrawText("Close Help Screen", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    DrawText("Close Program Window", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight;
 
     DrawText("Left Click", helpX + 40, yOffset, 16, WHITE);
@@ -471,8 +449,6 @@ void UI::drawHelp()
 
     DrawText("Zappy GUI - A graphical visualization tool", helpX + 40, yOffset, 16, WHITE);
     yOffset += lineHeight;
-
-    DrawText("Press H or ESC to close this window", helpX + helpWidth/2 - 140, helpY + helpHeight - 30, 16, WHITE);
 }
 
 std::string UI::getDirectionString(PlayerDirection direction) {
