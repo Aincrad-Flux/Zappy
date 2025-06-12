@@ -312,21 +312,28 @@ void Game::handleInput()
             dir.y = camera.position.y - camera.target.y;
             dir.z = camera.position.z - camera.target.z;
 
-            float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z) - wheel * 2.0f;
+            // Calculate current distance
+            float currentDistance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+            
+            // Apply zoom as a percentage of current distance for smoother feel
+            // Use a larger factor for zooming out to allow even faster dezoom
+            float zoomFactor = wheel > 0 ? 0.85f : 1.3f;
+            float newDistance = currentDistance * zoomFactor;
+            
+            // Apply limits - significantly increased maximum distance to allow extreme dezoom
+            if (newDistance < 5.0f) newDistance = 5.0f;
+            if (newDistance > 1500.0f) newDistance = 1500.0f;
 
-            if (distance < 10.0f) distance = 10.0f;
-            if (distance > 100.0f) distance = 100.0f;
-
-            float len = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+            // Normalize direction vector
+            float len = currentDistance;
             if (len > 0) {
                 dir.x /= len;
                 dir.y /= len;
                 dir.z /= len;
             }
-
-            camera.position.x = camera.target.x + dir.x * distance;
-            camera.position.y = camera.target.y + dir.y * distance;
-            camera.position.z = camera.target.z + dir.z * distance;
+            camera.position.x = camera.target.x + dir.x * newDistance;
+            camera.position.y = camera.target.y + dir.y * newDistance;
+            camera.position.z = camera.target.z + dir.z * newDistance;
         }
 
         static Vector2 prevMousePos = { 0, 0 };
