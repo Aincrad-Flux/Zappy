@@ -66,20 +66,26 @@ Game::~Game() {
 void Game::initializeMockData()
 {
     Logger::getInstance().info("Initializing mock game data");
-    gameUI->addTeam("Team Alpha");
-    gameUI->addTeam("Team Beta");
-    gameUI->addTeam("Team Gamma");
+
+    // Définir les noms d'équipe
+    std::string teamNames[] = {"Team Alpha", "Team Beta", "Team Gamma"};
+
+    // Ajouter les équipes et définir leurs couleurs
+    for (const auto& teamName : teamNames) {
+        Color teamColor = getTeamColor(teamName);
+        gameUI->addTeam(teamName);
+        gameUI->setTeamColor(teamName, teamColor);
+    }
 
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> posDist(0, std::min(gameMap->getWidth(), gameMap->getHeight()) - 1);
 
-    Color teamColors[] = {RED, BLUE, GREEN, YELLOW, PURPLE, ORANGE};
-    std::string teamNames[] = {"Alpha", "Beta", "Gamma"};
-
     for (int i = 0; i < 6; i++) {
         Vector3 pos = {(float)posDist(gen), 0.0f, (float)posDist(gen)};
-        players.emplace_back(i, teamNames[i % 3], pos, teamColors[i % 6]);
+        std::string teamName = teamNames[i % 3];
+        Color teamColor = getTeamColor(teamName);
+        players.emplace_back(i, teamName, pos, teamColor);
         gameMap->setTilePlayer((int)pos.x, (int)pos.z, 1);
     }
 
@@ -996,7 +1002,10 @@ void Game::setupNetworkCallbacks()
             std::string logMsg = "Received team name: " + teamName;
             Logger::getInstance().info(logMsg);
             std::cout << logMsg << std::endl;
+
+            Color teamColor = getTeamColor(teamName);
             gameUI->addTeam(teamName);
+            gameUI->setTeamColor(teamName, teamColor);
         }
     });
 
@@ -1047,7 +1056,7 @@ void Game::setupNetworkCallbacks()
             }
 
             if (!found) {
-                Color defaultColor = BLUE;
+                Color defaultColor = getTeamColor("Unknown");
                 players.emplace_back(playerId, "Unknown", Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)}, defaultColor);
                 gameMap->setTilePlayer(x, y, 1);
             }
@@ -1140,34 +1149,13 @@ void Game::setupNetworkCallbacks()
                     found = true;
                     player.setTeam(teamName);
                     player.setLevel(level);
-
-                    int colorHash = 0;
-                    for (char c : teamName) {
-                        colorHash += static_cast<int>(c);
-                    }
-                    Color teamColor = {
-                        static_cast<unsigned char>((colorHash * 124) % 200 + 55),
-                        static_cast<unsigned char>((colorHash * 91) % 200 + 55),
-                        static_cast<unsigned char>((colorHash * 137) % 200 + 55),
-                        255
-                    };
-                    player.setColor(teamColor);
+                    player.setColor(getTeamColor(teamName));
                     break;
                 }
             }
 
             if (!found) {
-                int colorHash = 0;
-                for (char c : teamName) {
-                    colorHash += static_cast<int>(c);
-                }
-                Color teamColor = {
-                    static_cast<unsigned char>((colorHash * 124) % 200 + 55),
-                    static_cast<unsigned char>((colorHash * 91) % 200 + 55),
-                    static_cast<unsigned char>((colorHash * 137) % 200 + 55),
-                    255
-                };
-
+                Color teamColor = getTeamColor(teamName);
                 players.emplace_back(playerId, teamName, Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)}, teamColor);
                 players.back().setLevel(level);
                 gameMap->setTilePlayer(x, y, 1);
@@ -1351,4 +1339,28 @@ void Game::updateNetwork()
         return;
     }
     networkManager->update();
+}
+
+Color Game::getTeamColor(const std::string& teamName)
+{
+    auto it = teamColors.find(teamName);
+    if (it != teamColors.end()) {
+        return it->second;
+    }
+
+    // Génération d'une nouvelle couleur à partir du nom de l'équipe
+    int colorHash = 0;
+    for (char c : teamName) {
+        colorHash += static_cast<int>(c);
+    }
+
+    Color teamColor = {
+        static_cast<unsigned char>((colorHash * 124) % 200 + 55),
+        static_cast<unsigned char>((colorHash * 91) % 200 + 55),
+        static_cast<unsigned char>((colorHash * 137) % 200 + 55),
+        255
+    };
+
+    teamColors[teamName] = teamColor;
+    return teamColor;
 }

@@ -10,6 +10,7 @@
 #include <raylib.h>
 #include <vector>
 #include <string>
+#include <unordered_map>
 #include "Player.hpp"
 
 /**
@@ -30,6 +31,7 @@ private:
     bool showMenu;                    ///< Flag to toggle menu visibility
     bool showHelp;                    ///< Flag to toggle help screen visibility
     std::vector<std::string> teams;   ///< List of team names
+    std::unordered_map<std::string, Color> teamColors; ///< Map of team names to colors
 
     /**
      * @brief Draws the player information panel
@@ -129,7 +131,15 @@ public:
      */
     void showServerMessage(const std::string& message);
 
+    /**
+     * @brief Sets the color for a team
+     * @param teamName Name of the team
+     * @param color Color to associate with the team
+     */
+    void setTeamColor(const std::string& teamName, Color color);
+
 private:
+    std::string getDirectionString(PlayerDirection direction);
     std::string gameOverMessage;
     std::string serverMessage;
     float messageDisplayTime;

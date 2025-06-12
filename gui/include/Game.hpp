@@ -11,6 +11,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <unordered_map>
 #include "Map.hpp"
 #include "Player.hpp"
 #include "Resource.hpp"
@@ -43,6 +44,7 @@ private:
     int serverPort;                      ///< Server port
     bool serverConnected;                ///< Flag indicating if connected to server
     int timeUnit;                        ///< Server time unit
+    std::unordered_map<std::string, Color> teamColors; ///< Map of team names to their colors
 
     /**
      * @brief Processes user input
@@ -159,4 +161,11 @@ public:
      * @brief Safely shuts down the game
      */
     void shutdown();
+
+    /**
+     * @brief Gets the color for a team, generating a new one if needed
+     * @param teamName Name of the team
+     * @return Color for the team
+     */
+    Color getTeamColor(const std::string& teamName);
 };
