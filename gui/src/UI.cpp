@@ -265,7 +265,7 @@ void UI::drawMenu()
     int actualScreenHeight = GetScreenHeight();
 
     int menuWidth = 250;
-    int menuHeight = 240;
+    int menuHeight = 220;
     int menuX = actualScreenWidth - menuWidth - 10;
     int menuY = actualScreenHeight - menuHeight - 10;
 
@@ -281,9 +281,6 @@ void UI::drawMenu()
     yOffset += lineHeight;
 
     DrawText("ZQSD/Arrows - Move Camera", menuX + 10, yOffset, 16, WHITE);
-    yOffset += lineHeight;
-
-    DrawText("M - Toggle Menu & Legend", menuX + 10, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
     DrawText("I - Toggle Player Info Panel", menuX + 10, yOffset, 16, WHITE);
@@ -374,7 +371,7 @@ bool UI::getIs3DMode() const
 void UI::drawHelp()
 {
     int helpWidth = 600;
-    int helpHeight = 500;
+    int helpHeight = 550;
     int helpX = (screenWidth - helpWidth) / 2;
     int helpY = (screenHeight - helpHeight) / 2;
 
@@ -406,7 +403,7 @@ void UI::drawHelp()
     DrawText("Reset Camera View", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight * 1.5f;
 
-    DrawText("Time Controls:", helpX + 20, yOffset, 18, YELLOW);
+    DrawText("Mode Controls:", helpX + 20, yOffset, 18, YELLOW);
     yOffset += 30;
 
     DrawText("F1", helpX + 40, yOffset, 16, WHITE);
@@ -419,10 +416,6 @@ void UI::drawHelp()
 
     DrawText("Interface Controls:", helpX + 20, yOffset, 18, YELLOW);
     yOffset += 30;
-
-    DrawText("M", helpX + 40, yOffset, 16, WHITE);
-    DrawText("Open/close Menu", helpX + 40 + colWidth, yOffset, 16, GRAY);
-    yOffset += lineHeight;
 
     DrawText("I", helpX + 40, yOffset, 16, WHITE);
     DrawText("Toggle Player Information", helpX + 40 + colWidth, yOffset, 16, GRAY);
@@ -438,6 +431,10 @@ void UI::drawHelp()
 
     DrawText("ESC", helpX + 40, yOffset, 16, WHITE);
     DrawText("Close Program Window", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    yOffset += lineHeight;
+
+    DrawText("Right Click", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Move Camera Focus Point", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight;
 
     DrawText("Left Click", helpX + 40, yOffset, 16, WHITE);
