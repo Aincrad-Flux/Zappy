@@ -35,6 +35,7 @@ private:
     int id;                     ///< Unique player identifier
     std::string teamName;       ///< Name of the player's team
     Vector3 position;           ///< Position in 3D space
+    std::string team;           ///< Team name
     PlayerDirection direction;  ///< Direction the player is facing
     int level;                  ///< Current level of the player
     Inventory inventory;        ///< Player's inventory of resources
@@ -78,16 +79,34 @@ public:
     void move(Vector3 newPos);
 
     /**
+     * @brief Sets the player's position
+     * @param newPos The new position
+     */
+    void setPosition(Vector3 newPos);
+
+    /**
      * @brief Changes the player's direction
      * @param newDir The new direction
      */
     void rotate(PlayerDirection newDir);
 
     /**
+     * @brief Sets the player's direction
+     * @param newDir The new direction
+     */
+    void setDirection(PlayerDirection newDir);
+
+    /**
      * @brief Sets the player's level
      * @param newLevel The new level
      */
     void setLevel(int newLevel);
+
+    /**
+     * @brief Sets the player's team name
+     * @param newTeam The new team name
+     */
+    void setTeam(const std::string& newTeam);
 
     /**
      * @brief Sets whether the player is incanting
@@ -127,6 +146,12 @@ public:
 
     /**
      * @brief Gets the player's inventory
+     * @return Reference to the player's inventory
+     */
+    Inventory& getInventory();
+    
+    /**
+     * @brief Gets the player's inventory (const version)
      * @return The player's inventory
      */
     Inventory getInventory() const;
@@ -150,10 +175,22 @@ public:
     Color getTeamColor() const;
 
     /**
+     * @brief Sets the player's team color
+     * @param color The new team color
+     */
+    void setColor(Color color);
+
+    /**
      * @brief Checks if the player is currently incanting
      * @return True if incanting, false otherwise
      */
     bool getIsIncanting() const;
+
+    /**
+     * @brief Sets if the player is alive
+     * @param alive True if alive, false otherwise
+     */
+    void setIsAlive(bool alive);
 
     /**
      * @brief Sets the player's inventory

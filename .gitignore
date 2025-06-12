@@ -23,4 +23,7 @@ obj/
 *.cache
 *.DS_Store
 zappy_gui
+zappy_console
 .vscode/
+.idea
+/zappy_ref-*

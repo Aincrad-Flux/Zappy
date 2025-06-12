@@ -8,18 +8,22 @@
 #include "UI.hpp"
 #include "Resource.hpp"
 #include "ResourceInfo.hpp"
+#include "Logger.hpp"
 #include <algorithm>
 
 UI::UI(int width, int height) : screenWidth(width), screenHeight(height),
                                 selectedPlayer(nullptr), showPlayerInfo(true), showTeamStats(false),
-                                showMenu(true), showHelp(false)
+                                showMenu(true), showHelp(false), messageDisplayTime(0)
 {
     font = GetFontDefault();
+    Logger::getInstance().info("UI initialized with resolution " + std::to_string(width) + "x" + std::to_string(height));
 }
 
 
 
-UI::~UI() {}
+UI::~UI() {
+    Logger::getInstance().info("UI destroyed");
+}
 
 void UI::draw(const std::vector<Player>& players)
 {
@@ -39,6 +43,26 @@ void UI::draw(const std::vector<Player>& players)
         }
         if (showTeamStats) {
             drawTeamStats();
+        }
+        
+        if (!gameOverMessage.empty()) {
+            int msgWidth = MeasureText(gameOverMessage.c_str(), 40);
+            DrawRectangle((screenWidth - msgWidth) / 2 - 20, screenHeight / 2 - 30, msgWidth + 40, 60, ColorAlpha(BLACK, 0.8f));
+            DrawRectangleLines((screenWidth - msgWidth) / 2 - 20, screenHeight / 2 - 30, msgWidth + 40, 60, WHITE);
+            DrawText(gameOverMessage.c_str(), (screenWidth - msgWidth) / 2, screenHeight / 2 - 20, 40, RED);
+        }
+        
+        if (!serverMessage.empty()) {
+            messageDisplayTime += GetFrameTime();
+            if (messageDisplayTime < 5.0f) { // Display for 5 seconds
+                int msgWidth = MeasureText(serverMessage.c_str(), 20);
+                DrawRectangle((screenWidth - msgWidth) / 2 - 10, 70, msgWidth + 20, 30, ColorAlpha(BLACK, 0.8f));
+                DrawRectangleLines((screenWidth - msgWidth) / 2 - 10, 70, msgWidth + 20, 30, WHITE);
+                DrawText(serverMessage.c_str(), (screenWidth - msgWidth) / 2, 75, 20, YELLOW);
+            } else {
+                serverMessage = "";
+                messageDisplayTime = 0;
+            }
         }
     } else {
         drawHelp();
@@ -218,34 +242,60 @@ void UI::handleInput()
 
 void UI::setSelectedPlayer(Player* player)
 {
-    selectedPlayer = player;
+    if (selectedPlayer != player) {
+        selectedPlayer = player;
+        if (player) {
+            Logger::getInstance().debug("Player selected: ID " + std::to_string(player->getId()) + 
+                                       " from team " + player->getTeamName());
+        } else {
+            Logger::getInstance().debug("Player deselected");
+        }
+    }
 }
 
 void UI::addTeam(const std::string& teamName)
 {
     if (std::find(teams.begin(), teams.end(), teamName) == teams.end()) {
         teams.push_back(teamName);
+        Logger::getInstance().info("Team added: " + teamName);
     }
 }
 
 void UI::togglePlayerInfo()
 {
     showPlayerInfo = !showPlayerInfo;
+    Logger::getInstance().debug("Player info panel " + std::string(showPlayerInfo ? "shown" : "hidden"));
 }
 
 void UI::toggleTeamStats()
 {
     showTeamStats = !showTeamStats;
+    Logger::getInstance().debug("Team stats panel " + std::string(showTeamStats ? "shown" : "hidden"));
 }
 
 void UI::toggleMenu()
 {
     showMenu = !showMenu;
+    Logger::getInstance().debug("Menu " + std::string(showMenu ? "shown" : "hidden"));
 }
 
 void UI::toggleHelp()
 {
     showHelp = !showHelp;
+    Logger::getInstance().debug("Help screen " + std::string(showHelp ? "shown" : "hidden"));
+}
+
+void UI::showGameOverMessage(const std::string& message)
+{
+    gameOverMessage = message;
+    Logger::getInstance().info("Game over message displayed: " + message);
+}
+
+void UI::showServerMessage(const std::string& message)
+{
+    serverMessage = message;
+    messageDisplayTime = 0;
+    Logger::getInstance().info("Server message displayed: " + message);
 }
 
 void UI::drawMenu()

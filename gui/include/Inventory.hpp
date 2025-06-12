@@ -6,6 +6,7 @@
 */
 
 #pragma once
+#include "Resource.hpp"
 
 /**
  * @class Inventory
@@ -57,6 +58,7 @@ public:
     void setMendiane(int value) { m_mendiane = value; }
     void setPhiras(int value) { m_phiras = value; }
     void setThystame(int value) { m_thystame = value; }
+    void setResource(ResourceType type, int value);
 
     // Add resource methods
     void addFood(int amount) { m_food += amount; }
