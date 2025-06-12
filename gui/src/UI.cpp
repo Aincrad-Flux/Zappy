@@ -14,7 +14,7 @@
 
 UI::UI(int width, int height) : screenWidth(width), screenHeight(height),
                                 selectedPlayer(nullptr), showPlayerInfo(true), showTeamStats(false),
-                                showMenu(true), showHelp(false), messageDisplayTime(0)
+                                showMenu(true), showHelp(false), messageDisplayTime(0), is3DMode(true)
 {
     font = GetFontDefault();
     Logger::getInstance().info("UI initialized with resolution " + std::to_string(width) + "x" + std::to_string(height));
@@ -252,11 +252,23 @@ void UI::drawGameStats()
     int panelX = actualScreenWidth / 2 - 50;
     int panelY = 10;
 
+    // Stats panel for time frequency
     DrawRectangle(panelX - 10, panelY, 140, timeHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(panelX - 10, panelY, 140, timeHeight, WHITE);
 
     DrawText("Time Frequency:", panelX - 5, panelY + 7, 14, WHITE);
     DrawText("F1-F5", panelX + 95, panelY + 7, 14, YELLOW);
+
+    // View mode panel (3D/2D)
+    int viewModeWidth = 80;
+    int viewModePanelX = actualScreenWidth / 2 - viewModeWidth / 2;
+    int viewModePanelY = 50;
+
+    DrawRectangle(viewModePanelX, viewModePanelY, viewModeWidth, timeHeight, ColorAlpha(BLACK, 0.8f));
+    DrawRectangleLines(viewModePanelX, viewModePanelY, viewModeWidth, timeHeight, WHITE);
+
+    const char* modeText = is3DMode ? "Mode: 3D" : "Mode: 2D";
+    DrawText(modeText, viewModePanelX + 10, viewModePanelY + 7, 14, GREEN);
 }
 
 void UI::showServerMessage(const std::string& message)
@@ -294,6 +306,9 @@ void UI::drawMenu()
     yOffset += lineHeight;
 
     DrawText("H - Show Help Screen", menuX + 20, yOffset, 16, WHITE);
+    yOffset += lineHeight;
+
+    DrawText("F2 - Switch 2D/3D Mode", menuX + 20, yOffset, 16, YELLOW);
     yOffset += lineHeight;
 
     DrawText("WASD/Arrows - Move Camera", menuX + 20, yOffset, 16, WHITE);
@@ -367,6 +382,17 @@ void UI::toggleHelp()
     showHelp = !showHelp;
 }
 
+void UI::set3DMode(bool mode)
+{
+    is3DMode = mode;
+    Logger::getInstance().info(is3DMode ? "Switched to 3D mode" : "Switched to 2D mode");
+}
+
+bool UI::getIs3DMode() const
+{
+    return is3DMode;
+}
+
 void UI::drawHelp()
 {
     int helpWidth = 600;
@@ -407,6 +433,10 @@ void UI::drawHelp()
 
     DrawText("F1-F5", helpX + 40, yOffset, 16, WHITE);
     DrawText("Change Time Frequency", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    yOffset += lineHeight;
+
+    DrawText("F2", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Switch between 2D and 3D modes", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight * 1.5f;
 
     DrawText("Interface Controls:", helpX + 20, yOffset, 18, YELLOW);

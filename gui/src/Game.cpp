@@ -372,6 +372,17 @@ void Game::handleInput()
     if (IsKeyPressed(KEY_M)) gameUI->toggleMenu();
     if (IsKeyPressed(KEY_H)) gameUI->toggleHelp();
     if (IsKeyPressed(KEY_F1)) debugMode = !debugMode;
+    if (IsKeyPressed(KEY_F2)) {
+        // Toggle between 2D and 3D modes
+        use2DMode = !use2DMode;
+        gameUI->set3DMode(!use2DMode);
+
+        // Update window title based on mode
+        SetWindowTitle(use2DMode ? "Zappy GUI 2D - Raylib" : "Zappy GUI 3D - Raylib");
+
+        // Center the camera as the view will change
+        centerCamera();
+    }
     if (IsKeyPressed(KEY_ESCAPE)) selectedPlayerId = -1;
 }
 
@@ -702,6 +713,9 @@ void Game::run()
     Logger::getInstance().info("Game starting main loop");
     running = true;
 
+    // Synchronize UI's 3D mode with the Game's use2DMode
+    gameUI->set3DMode(!use2DMode);
+
     while (!WindowShouldClose() && running) {
         handleInput();
         update();
@@ -729,11 +743,21 @@ void Game::centerCamera()
         float mapWidth = (float)gameMap->getWidth() * gameMap->getTileSize();
         float mapHeight = (float)gameMap->getHeight() * gameMap->getTileSize();
 
+    if (use2DMode) {
+        // In 2D mode, use a top-down orthographic view
+        camera.position = Vector3{ mapWidth / 2.0f, mapHeight * 3.0f, mapHeight / 2.0f };
+        camera.target = Vector3{ mapWidth / 2.0f, 0.0f, mapHeight / 2.0f };
+        camera.up = Vector3{ 0.0f, 0.0f, -1.0f };
+        camera.fovy = 45.0f;
+        camera.projection = CAMERA_ORTHOGRAPHIC;
+    } else {
+        // In 3D mode, use a perspective camera with an angled view
         camera.position = Vector3{ mapWidth / 2.0f, mapHeight * 1.2f, mapHeight * 0.8f };
         camera.target = Vector3{ mapWidth / 2.0f, 0.0f, mapHeight / 2.0f };
         camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
         camera.fovy = 45.0f;
         camera.projection = CAMERA_PERSPECTIVE;
+    }
     }
 }
 

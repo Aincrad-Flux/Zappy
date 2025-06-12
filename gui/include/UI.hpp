@@ -32,6 +32,7 @@ private:
     bool showHelp;                    ///< Flag to toggle help screen visibility
     std::vector<std::string> teams;   ///< List of team names
     std::unordered_map<std::string, Color> teamColors; ///< Map of team names to colors
+    bool is3DMode;                    ///< Flag indicating if we're in 3D mode
 
     /**
      * @brief Draws the player information panel
@@ -118,6 +119,18 @@ public:
      * @brief Toggles the help screen visibility
      */
     void toggleHelp();
+
+    /**
+     * @brief Sets the view mode (2D or 3D)
+     * @param mode True for 3D mode, false for 2D mode
+     */
+    void set3DMode(bool mode);
+
+    /**
+     * @brief Gets the current view mode
+     * @return True if 3D mode, false if 2D mode
+     */
+    bool getIs3DMode() const;
 
     /**
      * @brief Shows a game over message
