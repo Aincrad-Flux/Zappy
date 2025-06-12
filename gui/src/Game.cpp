@@ -1003,7 +1003,6 @@ void Game::setupNetworkCallbacks()
     // Player position (ppo #n X Y O\n)
     networkManager->registerCallback("ppo", [this](const std::vector<std::string>& args) {
         if (args.size() >= 4) {
-            // Remove '#' character if present in player ID
             std::string playerIdStr = args[0];
             if (!playerIdStr.empty() && playerIdStr[0] == '#') {
                 playerIdStr = playerIdStr.substr(1);
@@ -1023,7 +1022,17 @@ void Game::setupNetworkCallbacks()
             for (auto& player : players) {
                 if (player.getId() == playerId) {
                     found = true;
+                    Vector3 oldPos = player.getPosition();
+                    if (gameMap && oldPos.x != x && oldPos.z != y) {
+                        gameMap->setTilePlayer(static_cast<int>(oldPos.x), static_cast<int>(oldPos.z), 0);
+                    }
+
                     player.setPosition(Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)});
+
+                    if (gameMap) {
+                        gameMap->setTilePlayer(x, y, 1);
+                    }
+
                     PlayerDirection dir;
                     switch(orientation) {
                         case 1: dir = PlayerDirection::NORTH; break;
