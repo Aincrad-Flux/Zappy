@@ -1,4 +1,3 @@
-// filepath: /Users/pandorian/Delivery/B-YEP-400-LIL-4-1-zappy-thibault.pouch/gui/src/UI.cpp
 /*
 ** EPITECH PROJECT, 2024
 ** zappy
@@ -14,9 +13,14 @@
 
 UI::UI(int width, int height) : screenWidth(width), screenHeight(height),
                                 selectedPlayer(nullptr), showPlayerInfo(true), showTeamStats(false),
-                                showMenu(true), showHelp(false), messageDisplayTime(0), is3DMode(true)
+                                showMenu(true), showHelp(false), messageDisplayTime(0), is3DMode(true),
+                                selectedTile({-1, -1}), showTileInfo(false)
 {
     font = GetFontDefault();
+    // Initialiser le tableau des ressources de la tuile
+    for (int i = 0; i < 7; i++) {
+        tileResources[i] = 0;
+    }
     Logger::getInstance().info("UI initialized with resolution " + std::to_string(width) + "x" + std::to_string(height));
 }
 
@@ -39,6 +43,9 @@ void UI::draw(const std::vector<Player>& players)
         }
         if (showPlayerInfo) {
             drawPlayerInfo();
+        }
+        if (showTileInfo) {
+            drawTileInfo();
         }
         if (showTeamStats) {
             drawTeamStats();
@@ -284,7 +291,7 @@ void UI::drawMenu()
     int actualScreenHeight = GetScreenHeight();
 
     int menuWidth = 240;
-    int menuHeight = 210;
+    int menuHeight = 240;  // Augmenter la taille pour la nouvelle entrée
     int menuX = actualScreenWidth - menuWidth - 10;
     int menuY = actualScreenHeight - menuHeight - 10;
 
@@ -305,6 +312,9 @@ void UI::drawMenu()
     DrawText("T - Toggle Team Statistics", menuX + 20, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
+    DrawText("X - Toggle Tile Info Panel", menuX + 20, yOffset, 16, WHITE);
+    yOffset += lineHeight;
+
     DrawText("H - Show Help Screen", menuX + 20, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
@@ -312,12 +322,6 @@ void UI::drawMenu()
     yOffset += lineHeight;
 
     DrawText("WASD/Arrows - Move Camera", menuX + 20, yOffset, 16, WHITE);
-    yOffset += lineHeight;
-
-    DrawText("Mouse Wheel - Zoom In/Out", menuX + 20, yOffset, 16, WHITE);
-    yOffset += lineHeight;
-
-    DrawText("SPACE - Center Camera View", menuX + 20, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
     DrawText("Press M to hide this menu", menuX + menuWidth - 150, menuY + menuHeight - 20, 14, YELLOW);
@@ -342,6 +346,9 @@ void UI::handleInput()
     }
     if (IsKeyPressed(KEY_H)) {
         toggleHelp();
+    }
+    if (IsKeyPressed(KEY_X)) {
+        toggleTileInfo();
     }
     if (IsKeyPressed(KEY_ESCAPE) && showHelp) {
         showHelp = false;
@@ -396,7 +403,7 @@ bool UI::getIs3DMode() const
 void UI::drawHelp()
 {
     int helpWidth = 600;
-    int helpHeight = 500;
+    int helpHeight = 550;  // Augmenter la taille pour la nouvelle entrée
     int helpX = (screenWidth - helpWidth) / 2;
     int helpY = (screenHeight - helpHeight) / 2;
 
@@ -454,6 +461,10 @@ void UI::drawHelp()
     DrawText("Toggle Team Statistics", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight;
 
+    DrawText("X", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Toggle Tile Information", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    yOffset += lineHeight;
+
     DrawText("H", helpX + 40, yOffset, 16, WHITE);
     DrawText("Toggle This Help Screen", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight;
@@ -463,7 +474,7 @@ void UI::drawHelp()
     yOffset += lineHeight;
 
     DrawText("Left Click", helpX + 40, yOffset, 16, WHITE);
-    DrawText("Select Player", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    DrawText("Select Player or Tile", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight * 1.5f;
 
     DrawText("About:", helpX + 20, yOffset, 18, YELLOW);
@@ -487,4 +498,80 @@ std::string UI::getDirectionString(PlayerDirection direction) {
 
 void UI::setTeamColor(const std::string& teamName, Color color) {
     teamColors[teamName] = color;
+}
+
+void UI::drawTileInfo()
+{
+    int panelWidth = 250;
+    int panelHeight = 200;
+    int panelX = 10;
+    int panelY = selectedPlayer ? 620 : 230; // Positionner en dessous du panel d'information joueur s'il est affiché
+
+    DrawRectangle(panelX, panelY, panelWidth, panelHeight, ColorAlpha(BLACK, 0.8f));
+    DrawRectangleLines(panelX, panelY, panelWidth, panelHeight, WHITE);
+
+    DrawText("Tile Information", panelX + 10, panelY + 10, 20, WHITE);
+
+    if (selectedTile.x >= 0 && selectedTile.y >= 0) {
+        int yOffset = panelY + 40;
+        int lineHeight = 20;
+
+        DrawText(TextFormat("Position: (%.0f, %.0f)", selectedTile.x, selectedTile.y), panelX + 10, yOffset, 16, WHITE);
+        yOffset += lineHeight;
+
+        DrawText("Resources:", panelX + 10, yOffset, 16, WHITE);
+        yOffset += lineHeight;
+
+        // Display each resource with its count
+        int xOffset = 0;
+        int itemsPerRow = 2;
+        int itemCount = 0;
+        int itemSpacing = 120;
+
+        // Food
+        DrawText(TextFormat("Food: %d", tileResources[0]), panelX + 20 + xOffset, yOffset, 14, WHITE);
+        xOffset += itemSpacing;
+
+        // Linemate
+        DrawText(TextFormat("Linemate: %d", tileResources[1]), panelX + 20 + xOffset, yOffset, 14, WHITE);
+        xOffset = 0;
+        yOffset += lineHeight;
+
+        // Deraumere
+        DrawText(TextFormat("Deraumere: %d", tileResources[2]), panelX + 20 + xOffset, yOffset, 14, WHITE);
+        xOffset += itemSpacing;
+
+        // Sibur
+        DrawText(TextFormat("Sibur: %d", tileResources[3]), panelX + 20 + xOffset, yOffset, 14, WHITE);
+        xOffset = 0;
+        yOffset += lineHeight;
+
+        // Mendiane
+        DrawText(TextFormat("Mendiane: %d", tileResources[4]), panelX + 20 + xOffset, yOffset, 14, WHITE);
+        xOffset += itemSpacing;
+
+        // Phiras
+        DrawText(TextFormat("Phiras: %d", tileResources[5]), panelX + 20 + xOffset, yOffset, 14, WHITE);
+        xOffset = 0;
+        yOffset += lineHeight;
+
+        // Thystame
+        DrawText(TextFormat("Thystame: %d", tileResources[6]), panelX + 20 + xOffset, yOffset, 14, WHITE);
+    } else {
+        DrawText("No tile selected", panelX + 10, panelY + 40, 16, GRAY);
+    }
+}
+
+void UI::setSelectedTile(const Vector2& tile, const int resources[7])
+{
+    selectedTile = tile;
+    for (int i = 0; i < 7; i++) {
+        tileResources[i] = resources[i];
+    }
+    showTileInfo = true;
+}
+
+void UI::toggleTileInfo()
+{
+    showTileInfo = !showTileInfo;
 }
