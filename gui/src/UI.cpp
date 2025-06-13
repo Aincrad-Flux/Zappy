@@ -14,7 +14,7 @@
 UI::UI(int width, int height) : screenWidth(width), screenHeight(height),
                                 selectedPlayer(nullptr), showPlayerInfo(true), showTeamStats(false),
                                 showMenu(true), showHelp(false), messageDisplayTime(0), is3DMode(true),
-                                selectedTile({-1, -1}), showTileInfo(false)
+                                selectedTile({-1, -1}), showTileInfo(true)
 {
     font = GetFontDefault();
     // Initialiser le tableau des ressources de la tuile
@@ -203,10 +203,11 @@ void UI::drawResourceLegend()
     int actualScreenWidth = GetScreenWidth();
     int actualScreenHeight = GetScreenHeight();
 
-    int panelWidth = 200;
+    int panelWidth = 240;
     int panelHeight = 210;
-    int panelX = 10;
-    int panelY = 10;
+    // Positionnement au dessus du menu des contrôles GUI
+    int panelX = actualScreenWidth - panelWidth - 10;
+    int panelY = actualScreenHeight - panelHeight - 250; // Positionné au-dessus du menu des contrôles
 
     DrawRectangle(panelX, panelY, panelWidth, panelHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(panelX, panelY, panelWidth, panelHeight, WHITE);
@@ -306,13 +307,10 @@ void UI::drawMenu()
     DrawText("M - Toggle Menu & Legend", menuX + 20, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    DrawText("I - Toggle Player Info Panel", menuX + 20, yOffset, 16, WHITE);
+    DrawText("I - Toggle Player & Tile Info Panels", menuX + 20, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
     DrawText("T - Toggle Team Statistics", menuX + 20, yOffset, 16, WHITE);
-    yOffset += lineHeight;
-
-    DrawText("X - Toggle Tile Info Panel", menuX + 20, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
     DrawText("H - Show Help Screen", menuX + 20, yOffset, 16, WHITE);
@@ -336,7 +334,7 @@ void UI::showGameOverMessage(const std::string& message)
 void UI::handleInput()
 {
     if (IsKeyPressed(KEY_I)) {
-        togglePlayerInfo();
+        togglePlayerInfo(); // Cette méthode gère maintenant aussi showTileInfo
     }
     if (IsKeyPressed(KEY_T)) {
         toggleTeamStats();
@@ -347,9 +345,7 @@ void UI::handleInput()
     if (IsKeyPressed(KEY_H)) {
         toggleHelp();
     }
-    if (IsKeyPressed(KEY_X)) {
-        toggleTileInfo();
-    }
+    // La touche X n'est plus utilisée pour toggleTileInfo car elle est gérée par la touche I
     if (IsKeyPressed(KEY_ESCAPE) && showHelp) {
         showHelp = false;
     }
@@ -372,6 +368,7 @@ void UI::addTeam(const std::string& teamName)
 void UI::togglePlayerInfo()
 {
     showPlayerInfo = !showPlayerInfo;
+    showTileInfo = showPlayerInfo; // Synchronisation de l'affichage des deux panneaux
 }
 
 void UI::toggleTeamStats()
@@ -454,15 +451,11 @@ void UI::drawHelp()
     yOffset += lineHeight;
 
     DrawText("I", helpX + 40, yOffset, 16, WHITE);
-    DrawText("Toggle Player Information", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    DrawText("Toggle Player & Tile Information", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight;
 
     DrawText("T", helpX + 40, yOffset, 16, WHITE);
     DrawText("Toggle Team Statistics", helpX + 40 + colWidth, yOffset, 16, GRAY);
-    yOffset += lineHeight;
-
-    DrawText("X", helpX + 40, yOffset, 16, WHITE);
-    DrawText("Toggle Tile Information", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight;
 
     DrawText("H", helpX + 40, yOffset, 16, WHITE);
@@ -503,11 +496,11 @@ void UI::setTeamColor(const std::string& teamName, Color color) {
 void UI::drawTileInfo()
 {
     int actualScreenWidth = GetScreenWidth();
-    int panelWidth = 250;
-    int panelHeight = 200;
-    // Positionner à gauche de l'écran mais à distance du panneau de légende et du panneau d'infos joueur
-    int panelX = 220;
-    int panelY = 10; // En haut de l'écran pour éviter tout conflit avec d'autres panneaux
+    int panelWidth = 200;
+    int panelHeight = 210;
+    // Positionner à la place du menu des ressources
+    int panelX = 10;
+    int panelY = 10;
 
     DrawRectangle(panelX, panelY, panelWidth, panelHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(panelX, panelY, panelWidth, panelHeight, WHITE);
@@ -570,10 +563,12 @@ void UI::setSelectedTile(const Vector2& tile, const int resources[7])
     for (int i = 0; i < 7; i++) {
         tileResources[i] = resources[i];
     }
-    showTileInfo = true;
+    // Ne pas changer la visibilité du panneau, car elle est liée à showPlayerInfo
 }
 
 void UI::toggleTileInfo()
 {
+    // Cette méthode est maintenant rarement utilisée seule, car showTileInfo
+    // est généralement synchronisé avec showPlayerInfo
     showTileInfo = !showTileInfo;
 }
