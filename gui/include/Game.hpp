@@ -36,6 +36,8 @@ private:
     bool running;                        ///< Flag indicating if the game is running
     Vector3 lastClickPosition;           ///< Position of the last mouse click
     int selectedPlayerId;                ///< ID of the currently selected player
+    Vector2 selectedTile;                ///< Coordinates of the selected tile
+    int tileResources[7];                ///< Resources on the selected tile [food, linemate, deraumere, sibur, mendiane, phiras, thystame]
     bool debugMode;                      ///< Flag for showing debug information
     bool use2DMode;                      ///< Flag for using 2D mode instead of 3D
 
