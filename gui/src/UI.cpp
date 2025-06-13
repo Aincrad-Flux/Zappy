@@ -502,10 +502,12 @@ void UI::setTeamColor(const std::string& teamName, Color color) {
 
 void UI::drawTileInfo()
 {
+    int actualScreenWidth = GetScreenWidth();
     int panelWidth = 250;
     int panelHeight = 200;
-    int panelX = 10;
-    int panelY = selectedPlayer ? 620 : 230; // Positionner en dessous du panel d'information joueur s'il est affiché
+    // Positionner à gauche de l'écran mais à distance du panneau de légende et du panneau d'infos joueur
+    int panelX = 220;
+    int panelY = 10; // En haut de l'écran pour éviter tout conflit avec d'autres panneaux
 
     DrawRectangle(panelX, panelY, panelWidth, panelHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(panelX, panelY, panelWidth, panelHeight, WHITE);
