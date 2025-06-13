@@ -17,7 +17,6 @@ UI::UI(int width, int height) : screenWidth(width), screenHeight(height),
                                 selectedTile({-1, -1}), showTileInfo(true)
 {
     font = GetFontDefault();
-    // Initialiser le tableau des ressources de la tuile
     for (int i = 0; i < 7; i++) {
         tileResources[i] = 0;
     }
@@ -60,7 +59,7 @@ void UI::draw(const std::vector<Player>& players)
 
         if (!serverMessage.empty()) {
             messageDisplayTime += GetFrameTime();
-            if (messageDisplayTime < 5.0f) { // Display for 5 seconds
+            if (messageDisplayTime < 5.0f) {
                 int msgWidth = MeasureText(serverMessage.c_str(), 20);
                 DrawRectangle((screenWidth - msgWidth) / 2 - 10, 70, msgWidth + 20, 30, ColorAlpha(BLACK, 0.8f));
                 DrawRectangleLines((screenWidth - msgWidth) / 2 - 10, 70, msgWidth + 20, 30, WHITE);
@@ -111,7 +110,6 @@ void UI::drawPlayerInfo()
         DrawText("Inventory:", panelX + 10, yOffset, 16, WHITE);
         yOffset += lineHeight;
 
-        // Get inventory and display each resource
         const Inventory& inventory = selectedPlayer->getInventory();
         int xOffset = 0;
         int itemsPerRow = 2;
@@ -177,13 +175,11 @@ void UI::drawTeamStats()
 
     DrawRectangle(panelX, panelY, panelWidth, panelHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(panelX, panelY, panelWidth, panelHeight, WHITE);
-
     DrawText("Team Statistics", panelX + 10, panelY + 10, 20, WHITE);
 
     int yOffset = panelY + 40;
     int lineHeight = 25;
 
-    // Display team names with their associated colors
     for (size_t i = 0; i < teams.size(); i++) {
         const std::string& teamName = teams[i];
         Color teamColor = WHITE;
@@ -205,9 +201,8 @@ void UI::drawResourceLegend()
 
     int panelWidth = 240;
     int panelHeight = 210;
-    // Positionnement au dessus du menu des contrôles GUI
     int panelX = actualScreenWidth - panelWidth - 10;
-    int panelY = actualScreenHeight - panelHeight - 250; // Positionné au-dessus du menu des contrôles
+    int panelY = actualScreenHeight - panelHeight - 250;
 
     DrawRectangle(panelX, panelY, panelWidth, panelHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(panelX, panelY, panelWidth, panelHeight, WHITE);
@@ -215,38 +210,32 @@ void UI::drawResourceLegend()
     DrawText("Resource Legend", panelX + 10, panelY + 10, 20, WHITE);
 
     int yOffset = panelY + 40;
-    int lineHeight = 25;    // Display each resource type with its color
-    // Food (Red)
+    int lineHeight = 25;
+
     DrawRectangle(panelX + 10, yOffset, 10, 10, RED);
     DrawText("Food", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Linemate (Blue)
     DrawRectangle(panelX + 10, yOffset, 10, 10, BLUE);
     DrawText("Linemate", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Deraumere (Green)
     DrawRectangle(panelX + 10, yOffset, 10, 10, GREEN);
     DrawText("Deraumere", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Sibur (Yellow)
     DrawRectangle(panelX + 10, yOffset, 10, 10, YELLOW);
     DrawText("Sibur", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Mendiane (Purple)
     DrawRectangle(panelX + 10, yOffset, 10, 10, PURPLE);
     DrawText("Mendiane", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Phiras (Orange)
     DrawRectangle(panelX + 10, yOffset, 10, 10, ORANGE);
     DrawText("Phiras", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Thystame (Pink)
     DrawRectangle(panelX + 10, yOffset, 10, 10, PINK);
     DrawText("Thystame", panelX + 30, yOffset - 2, 16, WHITE);
 }
@@ -255,19 +244,7 @@ void UI::drawGameStats()
 {
     int actualScreenWidth = GetScreenWidth();
     int actualScreenHeight = GetScreenHeight();
-
     int timeHeight = 30;
-    int panelX = actualScreenWidth / 2 - 50;
-    int panelY = 10;
-
-    // Stats panel for time frequency
-    DrawRectangle(panelX - 10, panelY, 140, timeHeight, ColorAlpha(BLACK, 0.8f));
-    DrawRectangleLines(panelX - 10, panelY, 140, timeHeight, WHITE);
-
-    DrawText("Time Frequency:", panelX - 5, panelY + 7, 14, WHITE);
-    DrawText("F1-F5", panelX + 95, panelY + 7, 14, YELLOW);
-
-    // View mode panel (3D/2D)
     int viewModeWidth = 80;
     int viewModePanelX = actualScreenWidth / 2 - viewModeWidth / 2;
     int viewModePanelY = 50;
@@ -292,7 +269,7 @@ void UI::drawMenu()
     int actualScreenHeight = GetScreenHeight();
 
     int menuWidth = 240;
-    int menuHeight = 240;  // Augmenter la taille pour la nouvelle entrée
+    int menuHeight = 240;
     int menuX = actualScreenWidth - menuWidth - 10;
     int menuY = actualScreenHeight - menuHeight - 10;
 
@@ -334,7 +311,7 @@ void UI::showGameOverMessage(const std::string& message)
 void UI::handleInput()
 {
     if (IsKeyPressed(KEY_I)) {
-        togglePlayerInfo(); // Cette méthode gère maintenant aussi showTileInfo
+        togglePlayerInfo();
     }
     if (IsKeyPressed(KEY_T)) {
         toggleTeamStats();
@@ -345,7 +322,6 @@ void UI::handleInput()
     if (IsKeyPressed(KEY_H)) {
         toggleHelp();
     }
-    // La touche X n'est plus utilisée pour toggleTileInfo car elle est gérée par la touche I
     if (IsKeyPressed(KEY_ESCAPE) && showHelp) {
         showHelp = false;
     }
@@ -358,7 +334,6 @@ void UI::setSelectedPlayer(Player* player)
 
 void UI::addTeam(const std::string& teamName)
 {
-    // Check if team already exists
     if (std::find(teams.begin(), teams.end(), teamName) == teams.end()) {
         teams.push_back(teamName);
         Logger::getInstance().info("Added team: " + teamName);
@@ -368,7 +343,7 @@ void UI::addTeam(const std::string& teamName)
 void UI::togglePlayerInfo()
 {
     showPlayerInfo = !showPlayerInfo;
-    showTileInfo = showPlayerInfo; // Synchronisation de l'affichage des deux panneaux
+    showTileInfo = showPlayerInfo;
 }
 
 void UI::toggleTeamStats()
@@ -400,7 +375,7 @@ bool UI::getIs3DMode() const
 void UI::drawHelp()
 {
     int helpWidth = 600;
-    int helpHeight = 550;  // Augmenter la taille pour la nouvelle entrée
+    int helpHeight = 550;
     int helpX = (screenWidth - helpWidth) / 2;
     int helpY = (screenHeight - helpHeight) / 2;
 
@@ -498,7 +473,6 @@ void UI::drawTileInfo()
     int actualScreenWidth = GetScreenWidth();
     int panelWidth = 200;
     int panelHeight = 210;
-    // Positionner à la place du menu des ressources
     int panelX = 10;
     int panelY = 10;
 
@@ -517,40 +491,32 @@ void UI::drawTileInfo()
         DrawText("Resources:", panelX + 10, yOffset, 16, WHITE);
         yOffset += lineHeight;
 
-        // Display each resource with its count
         int xOffset = 0;
         int itemsPerRow = 2;
         int itemCount = 0;
         int itemSpacing = 120;
 
-        // Food
         DrawText(TextFormat("Food: %d", tileResources[0]), panelX + 20 + xOffset, yOffset, 14, WHITE);
         xOffset += itemSpacing;
 
-        // Linemate
         DrawText(TextFormat("Linemate: %d", tileResources[1]), panelX + 20 + xOffset, yOffset, 14, WHITE);
         xOffset = 0;
         yOffset += lineHeight;
 
-        // Deraumere
         DrawText(TextFormat("Deraumere: %d", tileResources[2]), panelX + 20 + xOffset, yOffset, 14, WHITE);
         xOffset += itemSpacing;
 
-        // Sibur
         DrawText(TextFormat("Sibur: %d", tileResources[3]), panelX + 20 + xOffset, yOffset, 14, WHITE);
         xOffset = 0;
         yOffset += lineHeight;
 
-        // Mendiane
         DrawText(TextFormat("Mendiane: %d", tileResources[4]), panelX + 20 + xOffset, yOffset, 14, WHITE);
         xOffset += itemSpacing;
 
-        // Phiras
         DrawText(TextFormat("Phiras: %d", tileResources[5]), panelX + 20 + xOffset, yOffset, 14, WHITE);
         xOffset = 0;
         yOffset += lineHeight;
 
-        // Thystame
         DrawText(TextFormat("Thystame: %d", tileResources[6]), panelX + 20 + xOffset, yOffset, 14, WHITE);
     } else {
         DrawText("No tile selected", panelX + 10, panelY + 40, 16, GRAY);
@@ -563,12 +529,9 @@ void UI::setSelectedTile(const Vector2& tile, const int resources[7])
     for (int i = 0; i < 7; i++) {
         tileResources[i] = resources[i];
     }
-    // Ne pas changer la visibilité du panneau, car elle est liée à showPlayerInfo
 }
 
 void UI::toggleTileInfo()
 {
-    // Cette méthode est maintenant rarement utilisée seule, car showTileInfo
-    // est généralement synchronisé avec showPlayerInfo
     showTileInfo = !showTileInfo;
 }
