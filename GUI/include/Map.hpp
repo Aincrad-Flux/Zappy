@@ -72,8 +72,9 @@ public:
      * @param x X coordinate in the grid
      * @param y Y coordinate in the grid
      * @param resourceType Type of resource to set
+     * @param count Optional count of the resource (defaults to 1)
      */
-    void setTileResource(int x, int y, int resourceType);
+    void setTileResource(int x, int y, int resourceType, int count = 1);
 
     /**
      * @brief Updates player information for a tile
