@@ -14,9 +14,11 @@
 
 Game::Game(int width, int height, const std::string& hostname, int port, bool use2D)
     : screenWidth(width), screenHeight(height), running(false), lastClickPosition({0, -1, 0}),
-      selectedPlayerId(-1), selectedTile({-1, -1}), debugMode(false), use2DMode(use2D), serverHostname(hostname), serverPort(port),
+      selectedPlayerId(-1), selectedTile({-1, -1}), debugMode(false), use2DMode(use2D), serverHostname(hostname),
       serverConnected(false), timeUnit(100)
 {
+    serverPort = port;
+
     for (int i = 0; i < 7; i++) {
         tileResources[i] = 0;
     }
