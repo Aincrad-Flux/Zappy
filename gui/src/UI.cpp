@@ -112,8 +112,6 @@ void UI::drawPlayerInfo()
 
         const Inventory& inventory = selectedPlayer->getInventory();
         int xOffset = 0;
-        int itemsPerRow = 2;
-        int itemCount = 0;
         int itemSpacing = 120;
 
         // Food
@@ -166,7 +164,6 @@ void UI::drawPlayerInfo()
 void UI::drawTeamStats()
 {
     int actualScreenWidth = GetScreenWidth();
-    int actualScreenHeight = GetScreenHeight();
 
     int panelWidth = 250;
     int panelHeight = 210;
@@ -243,7 +240,6 @@ void UI::drawResourceLegend()
 void UI::drawGameStats()
 {
     int actualScreenWidth = GetScreenWidth();
-    int actualScreenHeight = GetScreenHeight();
     int timeHeight = 30;
     int viewModeWidth = 80;
     int viewModePanelX = actualScreenWidth / 2 - viewModeWidth / 2;
@@ -470,7 +466,6 @@ void UI::setTeamColor(const std::string& teamName, Color color) {
 
 void UI::drawTileInfo()
 {
-    int actualScreenWidth = GetScreenWidth();
     int panelWidth = 250;
     int panelHeight = 210;
     int panelX = 10;
@@ -492,8 +487,6 @@ void UI::drawTileInfo()
         yOffset += lineHeight;
 
         int xOffset = 0;
-        int itemsPerRow = 2;
-        int itemCount = 0;
         int itemSpacing = 120;
 
         DrawText(TextFormat("Food: %d", tileResources[0]), panelX + 20 + xOffset, yOffset, 14, WHITE);
