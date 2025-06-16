@@ -188,8 +188,8 @@ void UI::drawResourceLegend()
     int actualScreenWidth = GetScreenWidth();
     int actualScreenHeight = GetScreenHeight();
 
-    int panelWidth = 240;
-    int panelHeight = 210;
+    int panelWidth = 250;
+    int panelHeight = 220;
     int panelX = actualScreenWidth - panelWidth - 10;
     int panelY = actualScreenHeight - panelHeight - 260;
 
@@ -237,9 +237,6 @@ void UI::drawGameStats()
 
     DrawRectangle(panelX - 10, panelY, 140, timeHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(panelX - 10, panelY, 140, timeHeight, WHITE);
-
-    DrawText("Time Frequency:", panelX - 5, panelY + 7, 14, WHITE);
-    DrawText("F1-F5", panelX + 95, panelY + 7, 14, YELLOW);
   
     int viewModeWidth = 80;
     int viewModePanelX = actualScreenWidth / 2 - viewModeWidth / 2;
@@ -265,8 +262,8 @@ void UI::drawMenu()
     int actualScreenHeight = GetScreenHeight();
 
 
-    int menuWidth = 240;
-    int menuHeight = 240;
+    int menuWidth = 250;
+    int menuHeight = 220;
 
     int menuX = actualScreenWidth - menuWidth - 10;
     int menuY = actualScreenHeight - menuHeight - 10;
@@ -279,18 +276,13 @@ void UI::drawMenu()
     int yOffset = menuY + 40;
     int lineHeight = 25;
 
-    DrawText("M - Toggle Menu & Legend", menuX + 20, yOffset, 16, WHITE);
+    DrawText("I - Toggle Player & Tile Info", menuX + 10, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    DrawText("I - Toggle Player & Tile Info Panels", menuX + 20, yOffset, 16, WHITE);
-    yOffset += lineHeight;
     DrawText("F2 - Switch 2D/3D Mode", menuX + 10, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
     DrawText("ZQSD/Arrows - Move Camera", menuX + 10, yOffset, 16, WHITE);
-    yOffset += lineHeight;
-
-    DrawText("I - Toggle Player Info Panel", menuX + 10, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
     DrawText("T - Toggle Team Statistics", menuX + 10, yOffset, 16, WHITE);

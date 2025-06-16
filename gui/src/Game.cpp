@@ -688,10 +688,7 @@ void Game::renderUIElements()
     if (!gameMap && serverConnected) {
         DrawText("Connected to server... Waiting for map data",
                 screenWidth/2 - 220, screenHeight/2 - 20, 20, YELLOW);
-    } else if (selectedPlayerId < 0 && !debugMode && gameMap) {
-        DrawText("Click on a player to see their information", screenWidth/2 - 180, 30, 20, ColorAlpha(YELLOW, 0.7f));
     }
-
     if (!serverConnected) {
         const char* warningMsg = "NON CONNECTÉ AU SERVEUR";
         int fontSize = 40;
@@ -708,8 +705,6 @@ void Game::renderUIElements()
                           RED);
         DrawText(warningMsg, screenWidth/2 - textWidth/2, screenHeight/2 - fontSize/2, fontSize, RED);
     }
-
-    DrawText("Press H for help.", 10, screenHeight - 30, 16, WHITE);
 }
 
 void Game::render()
