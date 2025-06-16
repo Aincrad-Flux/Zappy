@@ -113,46 +113,39 @@ void UI::drawPlayerInfo()
         int xOffset = 0;
         int itemSpacing = 120;
 
-        // Food
         DrawText(TextFormat("Food: %d", inventory.getFood()),
                 panelX + 20 + xOffset, yOffset, 14, WHITE);
 
         xOffset += itemSpacing;
 
-        // Linemate
         DrawText(TextFormat("Linemate: %d", inventory.getLinemate()),
                 panelX + 20 + xOffset, yOffset, 14, WHITE);
 
         xOffset = 0;
         yOffset += lineHeight;
 
-        // Deraumere
         DrawText(TextFormat("Deraumere: %d", inventory.getDeraumere()),
                 panelX + 20 + xOffset, yOffset, 14, WHITE);
 
         xOffset += itemSpacing;
 
-        // Sibur
         DrawText(TextFormat("Sibur: %d", inventory.getSibur()),
                 panelX + 20 + xOffset, yOffset, 14, WHITE);
 
         xOffset = 0;
         yOffset += lineHeight;
 
-        // Mendiane
         DrawText(TextFormat("Mendiane: %d", inventory.getMendiane()),
                 panelX + 20 + xOffset, yOffset, 14, WHITE);
 
         xOffset += itemSpacing;
 
-        // Phiras
         DrawText(TextFormat("Phiras: %d", inventory.getPhiras()),
                 panelX + 20 + xOffset, yOffset, 14, WHITE);
 
         xOffset = 0;
         yOffset += lineHeight;
 
-        // Thystame
         DrawText(TextFormat("Thystame: %d", inventory.getThystame()),
                 panelX + 20 + xOffset, yOffset, 14, WHITE);
     } else {
@@ -207,7 +200,6 @@ void UI::drawResourceLegend()
 
     int yOffset = panelY + 40;
     int lineHeight = 25;
-
     DrawRectangle(panelX + 10, yOffset, 10, 10, RED);
     DrawText("Food", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
@@ -240,6 +232,15 @@ void UI::drawGameStats()
 {
     int actualScreenWidth = GetScreenWidth();
     int timeHeight = 30;
+    int panelX = actualScreenWidth / 2 - 50;
+    int panelY = 10;
+
+    DrawRectangle(panelX - 10, panelY, 140, timeHeight, ColorAlpha(BLACK, 0.8f));
+    DrawRectangleLines(panelX - 10, panelY, 140, timeHeight, WHITE);
+
+    DrawText("Time Frequency:", panelX - 5, panelY + 7, 14, WHITE);
+    DrawText("F1-F5", panelX + 95, panelY + 7, 14, YELLOW);
+  
     int viewModeWidth = 80;
     int viewModePanelX = actualScreenWidth / 2 - viewModeWidth / 2;
     int viewModePanelY = 50;
@@ -263,8 +264,10 @@ void UI::drawMenu()
     int actualScreenWidth = GetScreenWidth();
     int actualScreenHeight = GetScreenHeight();
 
+
     int menuWidth = 240;
     int menuHeight = 240;
+
     int menuX = actualScreenWidth - menuWidth - 10;
     int menuY = actualScreenHeight - menuHeight - 10;
 
@@ -281,20 +284,26 @@ void UI::drawMenu()
 
     DrawText("I - Toggle Player & Tile Info Panels", menuX + 20, yOffset, 16, WHITE);
     yOffset += lineHeight;
-
-    DrawText("T - Toggle Team Statistics", menuX + 20, yOffset, 16, WHITE);
+    DrawText("F2 - Switch 2D/3D Mode", menuX + 10, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    DrawText("H - Show Help Screen", menuX + 20, yOffset, 16, WHITE);
+    DrawText("ZQSD/Arrows - Move Camera", menuX + 10, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    DrawText("F2 - Switch 2D/3D Mode", menuX + 20, yOffset, 16, YELLOW);
+    DrawText("I - Toggle Player Info Panel", menuX + 10, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    DrawText("WASD/Arrows - Move Camera", menuX + 20, yOffset, 16, WHITE);
+    DrawText("T - Toggle Team Statistics", menuX + 10, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    DrawText("Press M to hide this menu", menuX + menuWidth - 150, menuY + menuHeight - 20, 14, YELLOW);
+    DrawText("H - Show Help Screen", menuX + 10, yOffset, 16, WHITE);
+    yOffset += lineHeight;
+
+    DrawText("Mouse Wheel/Pad - Zoom +/-", menuX + 10, yOffset, 16, WHITE);
+    yOffset += lineHeight;
+
+    DrawText("SPACE - Center Camera View", menuX + 10, yOffset, 16, WHITE);
+    yOffset += lineHeight;
 }
 
 void UI::showGameOverMessage(const std::string& message)
@@ -386,7 +395,7 @@ void UI::drawHelp()
     DrawText("Camera Controls:", helpX + 20, yOffset, 18, YELLOW);
     yOffset += 30;
 
-    DrawText("WASD", helpX + 40, yOffset, 16, WHITE);
+    DrawText("ZQSD", helpX + 40, yOffset, 16, WHITE);
     DrawText("Move Camera", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight;
 
@@ -402,12 +411,12 @@ void UI::drawHelp()
     DrawText("Reset Camera View", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight * 1.5f;
 
-    DrawText("Time Controls:", helpX + 20, yOffset, 18, YELLOW);
+    DrawText("Mode Controls:", helpX + 20, yOffset, 18, YELLOW);
     yOffset += 30;
 
-    DrawText("F1-F5", helpX + 40, yOffset, 16, WHITE);
-    DrawText("Change Time Frequency", helpX + 40 + colWidth, yOffset, 16, GRAY);
-    yOffset += lineHeight;
+    DrawText("F1", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Toggle Debug Menu", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    yOffset += lineHeight * 1.5f;
 
     DrawText("F2", helpX + 40, yOffset, 16, WHITE);
     DrawText("Switch between 2D and 3D modes", helpX + 40 + colWidth, yOffset, 16, GRAY);
@@ -415,10 +424,6 @@ void UI::drawHelp()
 
     DrawText("Interface Controls:", helpX + 20, yOffset, 18, YELLOW);
     yOffset += 30;
-
-    DrawText("M", helpX + 40, yOffset, 16, WHITE);
-    DrawText("Toggle Menu", helpX + 40 + colWidth, yOffset, 16, GRAY);
-    yOffset += lineHeight;
 
     DrawText("I", helpX + 40, yOffset, 16, WHITE);
     DrawText("Toggle Player & Tile Information", helpX + 40 + colWidth, yOffset, 16, GRAY);
@@ -429,11 +434,15 @@ void UI::drawHelp()
     yOffset += lineHeight;
 
     DrawText("H", helpX + 40, yOffset, 16, WHITE);
-    DrawText("Toggle This Help Screen", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    DrawText("Open/Close This Help Window", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight;
 
     DrawText("ESC", helpX + 40, yOffset, 16, WHITE);
-    DrawText("Close Help Screen", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    DrawText("Close Program Window", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    yOffset += lineHeight;
+
+    DrawText("Right Click", helpX + 40, yOffset, 16, WHITE);
+    DrawText("Move Camera Focus Point", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight;
 
     DrawText("Left Click", helpX + 40, yOffset, 16, WHITE);
@@ -445,8 +454,6 @@ void UI::drawHelp()
 
     DrawText("Zappy GUI - A graphical visualization tool", helpX + 40, yOffset, 16, WHITE);
     yOffset += lineHeight;
-
-    DrawText("Press H or ESC to close this window", helpX + helpWidth/2 - 140, helpY + helpHeight - 30, 16, WHITE);
 }
 
 std::string UI::getDirectionString(PlayerDirection direction) {
