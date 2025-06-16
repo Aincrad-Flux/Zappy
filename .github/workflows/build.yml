@@ -47,7 +47,7 @@ jobs:
 
       - name: Build GUI
         run: |
-          cd gui
+          cd GUI
           make
 
   build-ai:
@@ -106,7 +106,7 @@ jobs:
 
       - name: Run GUI tests
         run: |
-          cd gui
+          cd GUI
           make test
 
   test-ai:
