@@ -1,0 +1,70 @@
+# Zappy GUI
+
+## Goal
+The Zappy GUI is a graphical visualization tool for the Zappy game server. It allows users to connect to a running Zappy server and observe the game world, players, resources, and teams in real time. The GUI provides both 2D and 3D visualization modes, as well as various panels for player, tile, and team information.
+
+## Installation
+
+### Dependencies:
+- [Raylib](https://www.raylib.com/) (graphics library)
+- C++17 compatible compiler (e.g., g++, clang++)
+- Make
+
+### Build:
+```sh
+cd gui
+make
+```
+This will produce the `zappy_gui` executable in the `gui/` directory.
+
+## Running the GUI
+
+You can run the GUI in two modes:
+- **Offline mode:** (no server connection, mock data)
+- **Online mode:** (connects to a Zappy server)
+
+### Command
+```sh
+./zappy_gui -p <port> -h <hostname> [-2d]
+```
+
+### Parameters
+- `-p <port>`: Port number of the Zappy server
+- `-h <hostname>`: Hostname or IP address of the Zappy server
+- `-2d`: (Optional) Run in 2D mode (default is 3D)
+
+### Examples:
+- Run in 3D mode (default):
+  ```sh
+  ./zappy_gui -p 4242 -h localhost
+  ```
+- Run in 2D mode:
+  ```sh
+  ./zappy_gui -p 4242 -h 127.0.0.1 -2d
+  ```
+- Run in offline mode (mock data):
+  ```sh
+  ./zappy_gui
+  ```
+
+## Keybinds
+
+| Key / Action      | Description                                 |
+|-------------------|---------------------------------------------|
+| I                 | Toggle Player & Tile Info panel             |
+| T                 | Toggle Team Statistics panel                |
+| C                 | Toggle Controls/Menu panel                  |
+| H                 | Show/Hide Help screen                       |
+| F1                | Toggle Debug Mode                           |
+| F2                | Switch between 2D and 3D modes              |
+| ZQSD / Arrows     | Move camera (3D) / Move view (2D)           |
+| Mouse Wheel       | Zoom in/out                                 |
+| SPACE             | Center camera on map                        |
+| ESC               | Deselect player / Close help / Exit         |
+| Left Click        | Select player or tile                       |
+| Right Click       | Move camera focus point (3D)                |
+
+## Notes
+- The GUI will display a warning if not connected to a server.
+- All logs are written to `zappy_gui.log` in the `gui/` directory.
+- For more information, use `./zappy_gui --help`.
