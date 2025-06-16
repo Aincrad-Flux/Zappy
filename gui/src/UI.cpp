@@ -232,15 +232,10 @@ void UI::drawGameStats()
 {
     int actualScreenWidth = GetScreenWidth();
     int timeHeight = 30;
-    int panelX = actualScreenWidth / 2 - 50;
-    int panelY = 10;
 
-    DrawRectangle(panelX - 10, panelY, 140, timeHeight, ColorAlpha(BLACK, 0.8f));
-    DrawRectangleLines(panelX - 10, panelY, 140, timeHeight, WHITE);
-  
     int viewModeWidth = 80;
     int viewModePanelX = actualScreenWidth / 2 - viewModeWidth / 2;
-    int viewModePanelY = 50;
+    int viewModePanelY = 10;
 
     DrawRectangle(viewModePanelX, viewModePanelY, viewModeWidth, timeHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(viewModePanelX, viewModePanelY, viewModeWidth, timeHeight, WHITE);

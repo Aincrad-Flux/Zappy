@@ -683,7 +683,7 @@ void Game::renderUIElements()
     }
 
     gameUI->draw(players);
-    DrawText(TextFormat("FPS: %i", GetFPS()), 400, 10, 20, LIME);
+    DrawText(TextFormat("FPS: %i", GetFPS()), 10, screenHeight - 30, 20, LIME);
 
     if (!gameMap && serverConnected) {
         DrawText("Connected to server... Waiting for map data",
