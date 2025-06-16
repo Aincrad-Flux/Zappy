@@ -60,12 +60,10 @@ public:
     void update();
 
     /**
-     * @brief Gets the map size
-     * @param width Reference to store width
-     * @param height Reference to store height
-     * @return True if map size was successfully received
+     * @brief Sends a request to get the map size from the server
+     * @return True if the request was sent successfully
      */
-    bool getMapSize(int& width, int& height);
+    bool getMapSize();
 
     /**
      * @brief Request tile content at specific coordinates

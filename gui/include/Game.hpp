@@ -11,6 +11,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <unordered_map>
 #include "Map.hpp"
 #include "Player.hpp"
 #include "Resource.hpp"
@@ -35,6 +36,8 @@ private:
     bool running;                        ///< Flag indicating if the game is running
     Vector3 lastClickPosition;           ///< Position of the last mouse click
     int selectedPlayerId;                ///< ID of the currently selected player
+    Vector2 selectedTile;                ///< Coordinates of the selected tile
+    int tileResources[7];                ///< Resources on the selected tile [food, linemate, deraumere, sibur, mendiane, phiras, thystame]
     bool debugMode;                      ///< Flag for showing debug information
     bool use2DMode;                      ///< Flag for using 2D mode instead of 3D
 
@@ -43,6 +46,7 @@ private:
     int serverPort;                      ///< Server port
     bool serverConnected;                ///< Flag indicating if connected to server
     int timeUnit;                        ///< Server time unit
+    std::unordered_map<std::string, Color> teamColors; ///< Map of team names to their colors
 
     /**
      * @brief Processes user input
@@ -159,4 +163,11 @@ public:
      * @brief Safely shuts down the game
      */
     void shutdown();
+
+    /**
+     * @brief Gets the color for a team, generating a new one if needed
+     * @param teamName Name of the team
+     * @return Color for the team
+     */
+    Color getTeamColor(const std::string& teamName);
 };

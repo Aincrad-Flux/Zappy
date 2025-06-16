@@ -14,9 +14,15 @@
 
 Game::Game(int width, int height, const std::string& hostname, int port, bool use2D)
     : screenWidth(width), screenHeight(height), running(false), lastClickPosition({0, -1, 0}),
-      selectedPlayerId(-1), debugMode(false), use2DMode(use2D), serverHostname(hostname), serverPort(port),
+      selectedPlayerId(-1), selectedTile({-1, -1}), debugMode(false), use2DMode(use2D), serverHostname(hostname),
       serverConnected(false), timeUnit(100)
 {
+    serverPort = port;
+
+    for (int i = 0; i < 7; i++) {
+        tileResources[i] = 0;
+    }
+
     Logger::getInstance().init("zappy_gui.log");
     Logger::getInstance().info("Game initialized with resolution " + std::to_string(width) + "x" + std::to_string(height) +
                                (use2DMode ? " (2D mode)" : " (3D mode)"));
@@ -26,6 +32,14 @@ Game::Game(int width, int height, const std::string& hostname, int port, bool us
     screenHeight = 900;
     SetTargetFPS(60);
     SetWindowState(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_MAXIMIZED);
+
+    camera.position = Vector3{ 0.0f, 20.0f, 20.0f };
+    camera.target = Vector3{ 0.0f, 0.0f, 0.0f };
+    camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
+    camera.fovy = 45.0f;
+    camera.projection = CAMERA_PERSPECTIVE;
+
+    gameUI = std::make_unique<UI>(screenWidth, screenHeight);
 
     networkManager = std::make_unique<NetworkManager>();
     gameUI = std::make_unique<UI>(screenWidth, screenHeight);
@@ -45,7 +59,6 @@ Game::Game(int width, int height, const std::string& hostname, int port, bool us
     }
 
     if (!serverConnected) {
-        // Create a default map for offline mode
         gameMap = std::make_unique<Map>(20, 15, 32);
 
         float mapWidth = gameMap->getWidth() * gameMap->getTileSize();
@@ -66,20 +79,24 @@ Game::~Game() {
 void Game::initializeMockData()
 {
     Logger::getInstance().info("Initializing mock game data");
-    gameUI->addTeam("Team Alpha");
-    gameUI->addTeam("Team Beta");
-    gameUI->addTeam("Team Gamma");
+
+    std::string teamNames[] = {"Team Alpha", "Team Beta", "Team Gamma"};
+
+    for (const auto& teamName : teamNames) {
+        Color teamColor = getTeamColor(teamName);
+        gameUI->addTeam(teamName);
+        gameUI->setTeamColor(teamName, teamColor);
+    }
 
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> posDist(0, std::min(gameMap->getWidth(), gameMap->getHeight()) - 1);
 
-    Color teamColors[] = {RED, BLUE, GREEN, YELLOW, PURPLE, ORANGE};
-    std::string teamNames[] = {"Alpha", "Beta", "Gamma"};
-
     for (int i = 0; i < 6; i++) {
         Vector3 pos = {(float)posDist(gen), 0.0f, (float)posDist(gen)};
-        players.emplace_back(i, teamNames[i % 3], pos, teamColors[i % 6]);
+        std::string teamName = teamNames[i % 3];
+        Color teamColor = getTeamColor(teamName);
+        players.emplace_back(i, teamName, pos, teamColor);
         gameMap->setTilePlayer((int)pos.x, (int)pos.z, 1);
     }
 
@@ -136,6 +153,22 @@ void Game::handleInput()
                             printf("Click hit ground at: (%.2f, %.2f, %.2f)\n",
                                 hitPoint.x, hitPoint.y, hitPoint.z);
                         }
+
+                        int tileX = static_cast<int>(hitPoint.x) / gameMap->getTileSize();
+                        int tileZ = static_cast<int>(hitPoint.z) / gameMap->getTileSize();
+
+                        if (tileX >= 0 && tileX < gameMap->getWidth() &&
+                            tileZ >= 0 && tileZ < gameMap->getHeight()) {
+                            selectedTile = {(float)tileX, (float)tileZ};
+                            selectedPlayerId = -1;
+                            if (networkManager) {
+                                networkManager->requestTileContent(tileX, tileZ);
+                                std::string logMsg = "Requesting tile content at (" +
+                                    std::to_string(tileX) + "," + std::to_string(tileZ) + ")";
+                                Logger::getInstance().info(logMsg);
+                                std::cout << logMsg << std::endl;
+                            }
+                        }
                     }
                 }
             }
@@ -143,6 +176,7 @@ void Game::handleInput()
 
         if (clickedPlayerId >= 0) {
             selectedPlayerId = clickedPlayerId;
+            selectedTile = {-1, -1};
             if (debugMode) {
                 printf("Player selected! ID: %d\n", selectedPlayerId);
             }
@@ -306,21 +340,22 @@ void Game::handleInput()
             dir.y = camera.position.y - camera.target.y;
             dir.z = camera.position.z - camera.target.z;
 
-            float distance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z) - wheel * 2.0f;
+            float currentDistance = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+            float zoomFactor = wheel > 0 ? 0.85f : 1.3f;
+            float newDistance = currentDistance * zoomFactor;
 
-            if (distance < 10.0f) distance = 10.0f;
-            if (distance > 100.0f) distance = 100.0f;
+            if (newDistance < 5.0f) newDistance = 5.0f;
+            if (newDistance > 1500.0f) newDistance = 1500.0f;
 
-            float len = sqrtf(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+            float len = currentDistance;
             if (len > 0) {
                 dir.x /= len;
                 dir.y /= len;
                 dir.z /= len;
             }
-
-            camera.position.x = camera.target.x + dir.x * distance;
-            camera.position.y = camera.target.y + dir.y * distance;
-            camera.position.z = camera.target.z + dir.z * distance;
+            camera.position.x = camera.target.x + dir.x * newDistance;
+            camera.position.y = camera.target.y + dir.y * newDistance;
+            camera.position.z = camera.target.z + dir.z * newDistance;
         }
 
         static Vector2 prevMousePos = { 0, 0 };
@@ -363,9 +398,15 @@ void Game::handleInput()
 
     if (IsKeyPressed(KEY_I)) gameUI->togglePlayerInfo();
     if (IsKeyPressed(KEY_T)) gameUI->toggleTeamStats();
-    if (IsKeyPressed(KEY_M)) gameUI->toggleMenu();
+    if (IsKeyPressed(KEY_C)) gameUI->toggleMenu();
     if (IsKeyPressed(KEY_H)) gameUI->toggleHelp();
     if (IsKeyPressed(KEY_F1)) debugMode = !debugMode;
+    if (IsKeyPressed(KEY_F2)) {
+        use2DMode = !use2DMode;
+        gameUI->set3DMode(!use2DMode);
+        SetWindowTitle(use2DMode ? "Zappy GUI 2D - Raylib" : "Zappy GUI 3D - Raylib");
+        centerCamera();
+    }
     if (IsKeyPressed(KEY_ESCAPE)) selectedPlayerId = -1;
 }
 
@@ -536,7 +577,6 @@ void Game::render2DElements()
         int tileW = tileSize * scale;
         int tileH = tileSize * scale;
 
-        // Draw player as a colored circle
         Color playerColor = player.getTeamColor();
         Vector2 center = {tileX + tileW/2.0f, tileY + tileH/2.0f};
         float radius = tileW * 0.35f;
@@ -638,16 +678,17 @@ void Game::renderUIElements()
         gameUI->setSelectedPlayer(nullptr);
     }
 
+    if (selectedTile.x >= 0 && selectedTile.y >= 0) {
+        gameUI->setSelectedTile(selectedTile, tileResources);
+    }
+
     gameUI->draw(players);
-    DrawText(TextFormat("FPS: %i", GetFPS()), 10, 10, 20, LIME);
+    DrawText(TextFormat("FPS: %i", GetFPS()), 10, screenHeight - 30, 20, LIME);
 
     if (!gameMap && serverConnected) {
         DrawText("Connected to server... Waiting for map data",
                 screenWidth/2 - 220, screenHeight/2 - 20, 20, YELLOW);
-    } else if (selectedPlayerId < 0 && !debugMode && gameMap) {
-        DrawText("Click on a player to see their information", screenWidth/2 - 180, 30, 20, ColorAlpha(YELLOW, 0.7f));
     }
-
     if (!serverConnected) {
         const char* warningMsg = "NON CONNECTÉ AU SERVEUR";
         int fontSize = 40;
@@ -664,8 +705,6 @@ void Game::renderUIElements()
                           RED);
         DrawText(warningMsg, screenWidth/2 - textWidth/2, screenHeight/2 - fontSize/2, fontSize, RED);
     }
-
-    DrawText("Press H for help.", 10, screenHeight - 30, 16, WHITE);
 }
 
 void Game::render()
@@ -695,6 +734,7 @@ void Game::run()
 {
     Logger::getInstance().info("Game starting main loop");
     running = true;
+    gameUI->set3DMode(!use2DMode);
 
     while (!WindowShouldClose() && running) {
         handleInput();
@@ -718,16 +758,23 @@ void Game::centerCamera()
     screenWidth = GetScreenWidth();
     screenHeight = GetScreenHeight();
 
-    // Only update camera if gameMap exists
     if (gameMap) {
         float mapWidth = (float)gameMap->getWidth() * gameMap->getTileSize();
         float mapHeight = (float)gameMap->getHeight() * gameMap->getTileSize();
 
+    if (use2DMode) {
+        camera.position = Vector3{ mapWidth / 2.0f, mapHeight * 3.0f, mapHeight / 2.0f };
+        camera.target = Vector3{ mapWidth / 2.0f, 0.0f, mapHeight / 2.0f };
+        camera.up = Vector3{ 0.0f, 0.0f, -1.0f };
+        camera.fovy = 45.0f;
+        camera.projection = CAMERA_ORTHOGRAPHIC;
+    } else {
         camera.position = Vector3{ mapWidth / 2.0f, mapHeight * 1.2f, mapHeight * 0.8f };
         camera.target = Vector3{ mapWidth / 2.0f, 0.0f, mapHeight / 2.0f };
         camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
         camera.fovy = 45.0f;
         camera.projection = CAMERA_PERSPECTIVE;
+    }
     }
 }
 
@@ -883,6 +930,16 @@ int Game::checkPlayerClick2D(Vector2 mousePos)
     if (mapX >= 0 && mapX < mapWidth && mapY >= 0 && mapY < mapHeight) {
         lastClickPosition = {(float)mapX, 0.0f, (float)mapY};
 
+        selectedTile = {(float)mapX, (float)mapY};
+        selectedPlayerId = -1;
+        if (networkManager) {
+            networkManager->requestTileContent(mapX, mapY);
+            std::string logMsg = "Requesting tile content at (" +
+                std::to_string(mapX) + "," + std::to_string(mapY) + ")";
+            Logger::getInstance().info(logMsg);
+            std::cout << logMsg << std::endl;
+        }
+
         if (debugMode) {
             printf("Click on map at tile position (%d, %d)\n", mapX, mapY);
         }
@@ -961,6 +1018,19 @@ void Game::setupNetworkCallbacks()
             std::string logMsg = "Received tile content at (" + std::to_string(x) + "," + std::to_string(y) + ")";
             Logger::getInstance().debug(logMsg);
 
+            if (selectedTile.x == x && selectedTile.y == y) {
+                tileResources[0] = food;
+                tileResources[1] = linemate;
+                tileResources[2] = deraumere;
+                tileResources[3] = sibur;
+                tileResources[4] = mendiane;
+                tileResources[5] = phiras;
+                tileResources[6] = thystame;
+
+                std::string selectedMsg = "Updated selected tile resources at (" + std::to_string(x) + "," + std::to_string(y) + ")";
+                Logger::getInstance().info(selectedMsg);
+            }
+
             if (food > 0) gameMap->setTileResource(x, y, 0, food);
             if (linemate > 0) gameMap->setTileResource(x, y, 1, linemate);
             if (deraumere > 0) gameMap->setTileResource(x, y, 2, deraumere);
@@ -996,7 +1066,10 @@ void Game::setupNetworkCallbacks()
             std::string logMsg = "Received team name: " + teamName;
             Logger::getInstance().info(logMsg);
             std::cout << logMsg << std::endl;
+
+            Color teamColor = getTeamColor(teamName);
             gameUI->addTeam(teamName);
+            gameUI->setTeamColor(teamName, teamColor);
         }
     });
 
@@ -1047,7 +1120,7 @@ void Game::setupNetworkCallbacks()
             }
 
             if (!found) {
-                Color defaultColor = BLUE;
+                Color defaultColor = getTeamColor("Unknown");
                 players.emplace_back(playerId, "Unknown", Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)}, defaultColor);
                 gameMap->setTilePlayer(x, y, 1);
             }
@@ -1057,7 +1130,6 @@ void Game::setupNetworkCallbacks()
     // Player level (plv #n L\n)
     networkManager->registerCallback("plv", [this](const std::vector<std::string>& args) {
         if (args.size() >= 2) {
-            // Remove '#' character if present in player ID
             std::string playerIdStr = args[0];
             if (!playerIdStr.empty() && playerIdStr[0] == '#') {
                 playerIdStr = playerIdStr.substr(1);
@@ -1082,7 +1154,6 @@ void Game::setupNetworkCallbacks()
     // Player inventory (pin #n X Y q0 q1 q2 q3 q4 q5 q6\n)
     networkManager->registerCallback("pin", [this](const std::vector<std::string>& args) {
         if (args.size() >= 10) {
-            // Remove '#' character if present in player ID
             std::string playerIdStr = args[0];
             if (!playerIdStr.empty() && playerIdStr[0] == '#') {
                 playerIdStr = playerIdStr.substr(1);
@@ -1140,34 +1211,13 @@ void Game::setupNetworkCallbacks()
                     found = true;
                     player.setTeam(teamName);
                     player.setLevel(level);
-
-                    int colorHash = 0;
-                    for (char c : teamName) {
-                        colorHash += static_cast<int>(c);
-                    }
-                    Color teamColor = {
-                        static_cast<unsigned char>((colorHash * 124) % 200 + 55),
-                        static_cast<unsigned char>((colorHash * 91) % 200 + 55),
-                        static_cast<unsigned char>((colorHash * 137) % 200 + 55),
-                        255
-                    };
-                    player.setColor(teamColor);
+                    player.setColor(getTeamColor(teamName));
                     break;
                 }
             }
 
             if (!found) {
-                int colorHash = 0;
-                for (char c : teamName) {
-                    colorHash += static_cast<int>(c);
-                }
-                Color teamColor = {
-                    static_cast<unsigned char>((colorHash * 124) % 200 + 55),
-                    static_cast<unsigned char>((colorHash * 91) % 200 + 55),
-                    static_cast<unsigned char>((colorHash * 137) % 200 + 55),
-                    255
-                };
-
+                Color teamColor = getTeamColor(teamName);
                 players.emplace_back(playerId, teamName, Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)}, teamColor);
                 players.back().setLevel(level);
                 gameMap->setTilePlayer(x, y, 1);
@@ -1178,7 +1228,6 @@ void Game::setupNetworkCallbacks()
     // Player death (pdi #n\n)
     networkManager->registerCallback("pdi", [this](const std::vector<std::string>& args) {
         if (!args.empty()) {
-            // Remove '#' character if present in player ID
             std::string playerIdStr = args[0];
             if (!playerIdStr.empty() && playerIdStr[0] == '#') {
                 playerIdStr = playerIdStr.substr(1);
@@ -1243,7 +1292,6 @@ void Game::setupNetworkCallbacks()
     // Egg laying (pfk #n\n)
     networkManager->registerCallback("pfk", [](const std::vector<std::string>& args) {
         if (!args.empty()) {
-            // Remove '#' character if present in player ID
             std::string playerIdStr = args[0];
             if (!playerIdStr.empty() && playerIdStr[0] == '#') {
                 playerIdStr = playerIdStr.substr(1);
@@ -1260,7 +1308,6 @@ void Game::setupNetworkCallbacks()
     networkManager->registerCallback("enw", [](const std::vector<std::string>& args) {
         if (args.size() >= 4) {
             try {
-                // Pre-process the arguments to clean them
                 std::string eggIdStr = args[0];
                 std::string playerIdStr = args[1];
                 std::string xStr = args[2];
@@ -1303,7 +1350,6 @@ void Game::setupNetworkCallbacks()
     networkManager->registerCallback("ebo", [](const std::vector<std::string>& args) {
         if (!args.empty()) {
             try {
-                // Pre-process the argument to clean it
                 std::string eggIdStr = args[0];
                 if (!eggIdStr.empty() && eggIdStr[0] == '#') {
                     eggIdStr = eggIdStr.substr(1);
@@ -1325,7 +1371,6 @@ void Game::setupNetworkCallbacks()
     networkManager->registerCallback("edi", [](const std::vector<std::string>& args) {
         if (!args.empty()) {
             try {
-                // Pre-process the argument to clean it
                 std::string eggIdStr = args[0];
                 if (!eggIdStr.empty() && eggIdStr[0] == '#') {
                     eggIdStr = eggIdStr.substr(1);
@@ -1351,4 +1396,27 @@ void Game::updateNetwork()
         return;
     }
     networkManager->update();
+}
+
+Color Game::getTeamColor(const std::string& teamName)
+{
+    auto it = teamColors.find(teamName);
+    if (it != teamColors.end()) {
+        return it->second;
+    }
+
+    int colorHash = 0;
+    for (char c : teamName) {
+        colorHash += static_cast<int>(c);
+    }
+
+    Color teamColor = {
+        static_cast<unsigned char>((colorHash * 124) % 200 + 55),
+        static_cast<unsigned char>((colorHash * 91) % 200 + 55),
+        static_cast<unsigned char>((colorHash * 137) % 200 + 55),
+        255
+    };
+
+    teamColors[teamName] = teamColor;
+    return teamColor;
 }
