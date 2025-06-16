@@ -13,8 +13,7 @@
 
 UI::UI(int width, int height) : screenWidth(width), screenHeight(height),
                                 selectedPlayer(nullptr), showPlayerInfo(true), showTeamStats(false),
-                                showMenu(true), showHelp(false), messageDisplayTime(0), is3DMode(true),
-                                selectedTile({-1, -1}), showTileInfo(true)
+                                showMenu(true), showHelp(false), is3DMode(true), selectedTile({-1, -1}), showTileInfo(true), messageDisplayTime(0)
 {
     font = GetFontDefault();
     for (int i = 0; i < 7; i++) {
