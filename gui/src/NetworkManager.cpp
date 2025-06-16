@@ -134,7 +134,7 @@ void NetworkManager::update()
     }
 }
 
-bool NetworkManager::getMapSize(int& width, int& height)
+bool NetworkManager::getMapSize()
 {
     if (!connected) {
         std::cerr << "Not connected to server" << std::endl;

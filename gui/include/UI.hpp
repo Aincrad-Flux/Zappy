@@ -33,11 +33,19 @@ private:
     std::vector<std::string> teams;   ///< List of team names
     std::unordered_map<std::string, Color> teamColors; ///< Map of team names to colors
     bool is3DMode;                    ///< Flag indicating if we're in 3D mode
+    Vector2 selectedTile;             ///< Coordinates of the selected tile
+    int tileResources[7];             ///< Resources on the selected tile [food, linemate, deraumere, sibur, mendiane, phiras, thystame]
+    bool showTileInfo;                ///< Flag to toggle tile information panel visibility
 
     /**
      * @brief Draws the player information panel
      */
     void drawPlayerInfo();
+
+    /**
+     * @brief Draws the tile information panel
+     */
+    void drawTileInfo();
 
     /**
      * @brief Draws the team statistics panel
@@ -150,6 +158,18 @@ public:
      * @param color Color to associate with the team
      */
     void setTeamColor(const std::string& teamName, Color color);
+
+    /**
+     * @brief Sets the selected tile coordinates
+     * @param tile The coordinates of the selected tile
+     * @param resources Array of resources on the tile [food, linemate, deraumere, sibur, mendiane, phiras, thystame]
+     */
+    void setSelectedTile(const Vector2& tile, const int resources[7]);
+
+    /**
+     * @brief Toggles the tile information panel visibility
+     */
+    void toggleTileInfo();
 
 private:
     std::string getDirectionString(PlayerDirection direction);
