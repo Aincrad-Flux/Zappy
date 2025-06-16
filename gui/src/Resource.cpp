@@ -19,7 +19,6 @@ Resource::~Resource() {}
 void Resource::draw(Vector3 worldPos, int tileSize) const
 {
     int hash = (static_cast<int>(position.x) * 17 + static_cast<int>(position.z) * 31 + static_cast<int>(type)) % 20;
-    float offset = tileSize * 0.35f;
     float edgeOffset = tileSize * 0.2f;
     Vector3 center;
     if (hash < 5) {

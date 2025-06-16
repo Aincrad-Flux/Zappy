@@ -65,7 +65,7 @@ clean:
 fclean: clean
 	rm -f $(TARGET)
 	rm -f $(CONSOLE_TARGET)
-	rm *.log
+	rm -f *.log
 
 re: fclean all
 

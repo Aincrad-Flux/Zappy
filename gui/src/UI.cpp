@@ -1,4 +1,3 @@
-// filepath: /Users/pandorian/Delivery/B-YEP-400-LIL-4-1-zappy-thibault.pouch/gui/src/UI.cpp
 /*
 ** EPITECH PROJECT, 2024
 ** zappy
@@ -14,9 +13,12 @@
 
 UI::UI(int width, int height) : screenWidth(width), screenHeight(height),
                                 selectedPlayer(nullptr), showPlayerInfo(true), showTeamStats(false),
-                                showMenu(true), showHelp(false), messageDisplayTime(0), is3DMode(true)
+                                showMenu(true), showHelp(false), is3DMode(true), selectedTile({-1, -1}), showTileInfo(true), messageDisplayTime(0)
 {
     font = GetFontDefault();
+    for (int i = 0; i < 7; i++) {
+        tileResources[i] = 0;
+    }
     Logger::getInstance().info("UI initialized with resolution " + std::to_string(width) + "x" + std::to_string(height));
 }
 
@@ -40,6 +42,9 @@ void UI::draw(const std::vector<Player>& players)
         if (showPlayerInfo) {
             drawPlayerInfo();
         }
+        if (showTileInfo) {
+            drawTileInfo();
+        }
         if (showTeamStats) {
             drawTeamStats();
         }
@@ -53,7 +58,7 @@ void UI::draw(const std::vector<Player>& players)
 
         if (!serverMessage.empty()) {
             messageDisplayTime += GetFrameTime();
-            if (messageDisplayTime < 5.0f) { // Display for 5 seconds
+            if (messageDisplayTime < 5.0f) {
                 int msgWidth = MeasureText(serverMessage.c_str(), 20);
                 DrawRectangle((screenWidth - msgWidth) / 2 - 10, 70, msgWidth + 20, 30, ColorAlpha(BLACK, 0.8f));
                 DrawRectangleLines((screenWidth - msgWidth) / 2 - 10, 70, msgWidth + 20, 30, WHITE);
@@ -104,11 +109,8 @@ void UI::drawPlayerInfo()
         DrawText("Inventory:", panelX + 10, yOffset, 16, WHITE);
         yOffset += lineHeight;
 
-        // Get inventory and display each resource
         const Inventory& inventory = selectedPlayer->getInventory();
         int xOffset = 0;
-        int itemsPerRow = 2;
-        int itemCount = 0;
         int itemSpacing = 120;
 
         // Food
@@ -154,14 +156,13 @@ void UI::drawPlayerInfo()
         DrawText(TextFormat("Thystame: %d", inventory.getThystame()),
                 panelX + 20 + xOffset, yOffset, 14, WHITE);
     } else {
-        DrawText("No player selected or player is dead", panelX + 10, panelY + 40, 16, GRAY);
+        DrawText("No player selected", panelX + 10, panelY + 40, 16, GRAY);
     }
 }
 
 void UI::drawTeamStats()
 {
     int actualScreenWidth = GetScreenWidth();
-    int actualScreenHeight = GetScreenHeight();
 
     int panelWidth = 250;
     int panelHeight = 210;
@@ -170,13 +171,11 @@ void UI::drawTeamStats()
 
     DrawRectangle(panelX, panelY, panelWidth, panelHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(panelX, panelY, panelWidth, panelHeight, WHITE);
-
     DrawText("Team Statistics", panelX + 10, panelY + 10, 20, WHITE);
 
     int yOffset = panelY + 40;
     int lineHeight = 25;
 
-    // Display team names with their associated colors
     for (size_t i = 0; i < teams.size(); i++) {
         const std::string& teamName = teams[i];
         Color teamColor = WHITE;
@@ -196,10 +195,10 @@ void UI::drawResourceLegend()
     int actualScreenWidth = GetScreenWidth();
     int actualScreenHeight = GetScreenHeight();
 
-    int panelWidth = 200;
+    int panelWidth = 240;
     int panelHeight = 210;
-    int panelX = 10;
-    int panelY = 10;
+    int panelX = actualScreenWidth - panelWidth - 10;
+    int panelY = actualScreenHeight - panelHeight - 260;
 
     DrawRectangle(panelX, panelY, panelWidth, panelHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(panelX, panelY, panelWidth, panelHeight, WHITE);
@@ -207,38 +206,32 @@ void UI::drawResourceLegend()
     DrawText("Resource Legend", panelX + 10, panelY + 10, 20, WHITE);
 
     int yOffset = panelY + 40;
-    int lineHeight = 25;    // Display each resource type with its color
-    // Food (Red)
+    int lineHeight = 25;
+
     DrawRectangle(panelX + 10, yOffset, 10, 10, RED);
     DrawText("Food", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Linemate (Blue)
     DrawRectangle(panelX + 10, yOffset, 10, 10, BLUE);
     DrawText("Linemate", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Deraumere (Green)
     DrawRectangle(panelX + 10, yOffset, 10, 10, GREEN);
     DrawText("Deraumere", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Sibur (Yellow)
     DrawRectangle(panelX + 10, yOffset, 10, 10, YELLOW);
     DrawText("Sibur", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Mendiane (Purple)
     DrawRectangle(panelX + 10, yOffset, 10, 10, PURPLE);
     DrawText("Mendiane", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Phiras (Orange)
     DrawRectangle(panelX + 10, yOffset, 10, 10, ORANGE);
     DrawText("Phiras", panelX + 30, yOffset - 2, 16, WHITE);
     yOffset += lineHeight;
 
-    // Thystame (Pink)
     DrawRectangle(panelX + 10, yOffset, 10, 10, PINK);
     DrawText("Thystame", panelX + 30, yOffset - 2, 16, WHITE);
 }
@@ -246,20 +239,7 @@ void UI::drawResourceLegend()
 void UI::drawGameStats()
 {
     int actualScreenWidth = GetScreenWidth();
-    int actualScreenHeight = GetScreenHeight();
-
     int timeHeight = 30;
-    int panelX = actualScreenWidth / 2 - 50;
-    int panelY = 10;
-
-    // Stats panel for time frequency
-    DrawRectangle(panelX - 10, panelY, 140, timeHeight, ColorAlpha(BLACK, 0.8f));
-    DrawRectangleLines(panelX - 10, panelY, 140, timeHeight, WHITE);
-
-    DrawText("Time Frequency:", panelX - 5, panelY + 7, 14, WHITE);
-    DrawText("F1-F5", panelX + 95, panelY + 7, 14, YELLOW);
-
-    // View mode panel (3D/2D)
     int viewModeWidth = 80;
     int viewModePanelX = actualScreenWidth / 2 - viewModeWidth / 2;
     int viewModePanelY = 50;
@@ -284,7 +264,7 @@ void UI::drawMenu()
     int actualScreenHeight = GetScreenHeight();
 
     int menuWidth = 240;
-    int menuHeight = 210;
+    int menuHeight = 240;
     int menuX = actualScreenWidth - menuWidth - 10;
     int menuY = actualScreenHeight - menuHeight - 10;
 
@@ -299,7 +279,7 @@ void UI::drawMenu()
     DrawText("M - Toggle Menu & Legend", menuX + 20, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
-    DrawText("I - Toggle Player Info Panel", menuX + 20, yOffset, 16, WHITE);
+    DrawText("I - Toggle Player & Tile Info Panels", menuX + 20, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
     DrawText("T - Toggle Team Statistics", menuX + 20, yOffset, 16, WHITE);
@@ -312,12 +292,6 @@ void UI::drawMenu()
     yOffset += lineHeight;
 
     DrawText("WASD/Arrows - Move Camera", menuX + 20, yOffset, 16, WHITE);
-    yOffset += lineHeight;
-
-    DrawText("Mouse Wheel - Zoom In/Out", menuX + 20, yOffset, 16, WHITE);
-    yOffset += lineHeight;
-
-    DrawText("SPACE - Center Camera View", menuX + 20, yOffset, 16, WHITE);
     yOffset += lineHeight;
 
     DrawText("Press M to hide this menu", menuX + menuWidth - 150, menuY + menuHeight - 20, 14, YELLOW);
@@ -355,7 +329,6 @@ void UI::setSelectedPlayer(Player* player)
 
 void UI::addTeam(const std::string& teamName)
 {
-    // Check if team already exists
     if (std::find(teams.begin(), teams.end(), teamName) == teams.end()) {
         teams.push_back(teamName);
         Logger::getInstance().info("Added team: " + teamName);
@@ -365,6 +338,7 @@ void UI::addTeam(const std::string& teamName)
 void UI::togglePlayerInfo()
 {
     showPlayerInfo = !showPlayerInfo;
+    showTileInfo = showPlayerInfo;
 }
 
 void UI::toggleTeamStats()
@@ -396,7 +370,7 @@ bool UI::getIs3DMode() const
 void UI::drawHelp()
 {
     int helpWidth = 600;
-    int helpHeight = 500;
+    int helpHeight = 550;
     int helpX = (screenWidth - helpWidth) / 2;
     int helpY = (screenHeight - helpHeight) / 2;
 
@@ -447,7 +421,7 @@ void UI::drawHelp()
     yOffset += lineHeight;
 
     DrawText("I", helpX + 40, yOffset, 16, WHITE);
-    DrawText("Toggle Player Information", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    DrawText("Toggle Player & Tile Information", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight;
 
     DrawText("T", helpX + 40, yOffset, 16, WHITE);
@@ -463,7 +437,7 @@ void UI::drawHelp()
     yOffset += lineHeight;
 
     DrawText("Left Click", helpX + 40, yOffset, 16, WHITE);
-    DrawText("Select Player", helpX + 40 + colWidth, yOffset, 16, GRAY);
+    DrawText("Select Player or Tile", helpX + 40 + colWidth, yOffset, 16, GRAY);
     yOffset += lineHeight * 1.5f;
 
     DrawText("About:", helpX + 20, yOffset, 18, YELLOW);
@@ -487,4 +461,69 @@ std::string UI::getDirectionString(PlayerDirection direction) {
 
 void UI::setTeamColor(const std::string& teamName, Color color) {
     teamColors[teamName] = color;
+}
+
+void UI::drawTileInfo()
+{
+    int panelWidth = 250;
+    int panelHeight = 210;
+    int panelX = 10;
+    int panelY = 10;
+
+    DrawRectangle(panelX, panelY, panelWidth, panelHeight, ColorAlpha(BLACK, 0.8f));
+    DrawRectangleLines(panelX, panelY, panelWidth, panelHeight, WHITE);
+
+    DrawText("Tile Information", panelX + 10, panelY + 10, 20, WHITE);
+
+    if (selectedTile.x >= 0 && selectedTile.y >= 0) {
+        int yOffset = panelY + 40;
+        int lineHeight = 20;
+
+        DrawText(TextFormat("Position: (%.0f, %.0f)", selectedTile.x, selectedTile.y), panelX + 10, yOffset, 16, WHITE);
+        yOffset += lineHeight;
+
+        DrawText("Resources:", panelX + 10, yOffset, 16, WHITE);
+        yOffset += lineHeight;
+
+        int xOffset = 0;
+        int itemSpacing = 120;
+
+        DrawText(TextFormat("Food: %d", tileResources[0]), panelX + 20 + xOffset, yOffset, 14, WHITE);
+        xOffset += itemSpacing;
+
+        DrawText(TextFormat("Linemate: %d", tileResources[1]), panelX + 20 + xOffset, yOffset, 14, WHITE);
+        xOffset = 0;
+        yOffset += lineHeight;
+
+        DrawText(TextFormat("Deraumere: %d", tileResources[2]), panelX + 20 + xOffset, yOffset, 14, WHITE);
+        xOffset += itemSpacing;
+
+        DrawText(TextFormat("Sibur: %d", tileResources[3]), panelX + 20 + xOffset, yOffset, 14, WHITE);
+        xOffset = 0;
+        yOffset += lineHeight;
+
+        DrawText(TextFormat("Mendiane: %d", tileResources[4]), panelX + 20 + xOffset, yOffset, 14, WHITE);
+        xOffset += itemSpacing;
+
+        DrawText(TextFormat("Phiras: %d", tileResources[5]), panelX + 20 + xOffset, yOffset, 14, WHITE);
+        xOffset = 0;
+        yOffset += lineHeight;
+
+        DrawText(TextFormat("Thystame: %d", tileResources[6]), panelX + 20 + xOffset, yOffset, 14, WHITE);
+    } else {
+        DrawText("No tile selected", panelX + 10, panelY + 40, 16, GRAY);
+    }
+}
+
+void UI::setSelectedTile(const Vector2& tile, const int resources[7])
+{
+    selectedTile = tile;
+    for (int i = 0; i < 7; i++) {
+        tileResources[i] = resources[i];
+    }
+}
+
+void UI::toggleTileInfo()
+{
+    showTileInfo = !showTileInfo;
 }
