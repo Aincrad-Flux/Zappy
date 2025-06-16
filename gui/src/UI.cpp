@@ -159,7 +159,7 @@ void UI::drawPlayerInfo()
         DrawText(TextFormat("Thystame: %d", inventory.getThystame()),
                 panelX + 20 + xOffset, yOffset, 14, WHITE);
     } else {
-        DrawText("No player selected or player is dead", panelX + 10, panelY + 40, 16, GRAY);
+        DrawText("No player selected", panelX + 10, panelY + 40, 16, GRAY);
     }
 }
 
@@ -202,7 +202,7 @@ void UI::drawResourceLegend()
     int panelWidth = 240;
     int panelHeight = 210;
     int panelX = actualScreenWidth - panelWidth - 10;
-    int panelY = actualScreenHeight - panelHeight - 250;
+    int panelY = actualScreenHeight - panelHeight - 260;
 
     DrawRectangle(panelX, panelY, panelWidth, panelHeight, ColorAlpha(BLACK, 0.8f));
     DrawRectangleLines(panelX, panelY, panelWidth, panelHeight, WHITE);
@@ -471,7 +471,7 @@ void UI::setTeamColor(const std::string& teamName, Color color) {
 void UI::drawTileInfo()
 {
     int actualScreenWidth = GetScreenWidth();
-    int panelWidth = 200;
+    int panelWidth = 250;
     int panelHeight = 210;
     int panelX = 10;
     int panelY = 10;
