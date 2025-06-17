@@ -16,7 +16,6 @@ LDFLAGS =
 
 # Bibliothèques
 LIBS_SERVER =
-# Detect OS for GUI libs
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
     LIBS_GUI = -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
@@ -48,15 +47,17 @@ AI_OBJ = $(AI_SRC:$(AI_DIR)/%.c=$(OBJ_DIR)/ai/%.o)
 SERVER_BIN = zappy_server
 GUI_BIN = zappy_gui
 AI_BIN = zappy_ai
+PYTHON_IA_ENTRY = ia/src/main.py
+PYTHON_IA_BIN = zappy_ia
 
-# Couleurs pour l'affichage
+# Couleurs
 GREEN = \033[0;32m
 YELLOW = \033[0;33m
 RED = \033[0;31m
 NC = \033[0m # No Color
 
 # Règles principales
-all: $(SERVER_BIN) $(GUI_BIN) $(AI_BIN)
+all: $(SERVER_BIN) $(GUI_BIN) $(AI_BIN) $(PYTHON_IA_BIN)
 
 $(SERVER_BIN): $(SERVER_OBJ)
 	@echo "$(YELLOW)Linking $(SERVER_BIN)...$(NC)"
@@ -73,30 +74,33 @@ $(AI_BIN): $(AI_OBJ)
 	@$(CC) $(AI_OBJ) -o $(AI_BIN) $(LDFLAGS) $(LIBS_AI)
 	@echo "$(GREEN)$(AI_BIN) compiled successfully!$(NC)"
 
-# Règles individuelles pour chaque binaire
-zappy_server: $(SERVER_BIN)
+$(PYTHON_IA_BIN):
+	@command -v pyinstaller >/dev/null 2>&1 || { \
+		echo "$(RED)[ERROR] PyInstaller is not installed. Use: pip install pyinstaller$(NC)"; exit 1; }
+	@echo "$(YELLOW)[PYTHON] Building Python IA executable...$(NC)"
+	@pyinstaller --onefile --name $(PYTHON_IA_BIN) --distpath . --workpath obj/py --specpath obj/py $(PYTHON_IA_ENTRY)
+	@echo "$(GREEN)[PYTHON] Executable $(PYTHON_IA_BIN) built successfully!$(NC)"
 
-zappy_gui: $(GUI_BIN)
-
-zappy_ai: $(AI_BIN)
-
-# Compilation des fichiers objets du serveur
+# Compilation des fichiers objets
 $(OBJ_DIR)/server/%.o: $(SERVER_DIR)/%.c
 	@mkdir -p $(OBJ_DIR)/server
 	@echo "$(YELLOW)Compiling $<...$(NC)"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-# Compilation des fichiers objets de l'interface graphique
 $(OBJ_DIR)/gui/%.o: $(GUI_DIR)/%.cpp
 	@mkdir -p $(OBJ_DIR)/gui
 	@echo "$(YELLOW)Compiling $<...$(NC)"
 	@$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Compilation des fichiers objets de l'IA
 $(OBJ_DIR)/ai/%.o: $(AI_DIR)/%.c
 	@mkdir -p $(OBJ_DIR)/ai
 	@echo "$(YELLOW)Compiling $<...$(NC)"
 	@$(CC) $(CFLAGS) -c $< -o $@
+
+# Règles spécifiques
+zappy_server: $(SERVER_BIN)
+zappy_gui: $(GUI_BIN)
+zappy_ai: $(AI_BIN)
 
 # Nettoyage
 clean:
@@ -105,13 +109,13 @@ clean:
 
 fclean: clean
 	@echo "$(RED)Cleaning binaries...$(NC)"
-	@rm -f $(SERVER_BIN) $(GUI_BIN) $(AI_BIN)
+	@rm -f $(SERVER_BIN) $(GUI_BIN) $(AI_BIN) $(PYTHON_IA_BIN)
+	@rm -rf obj/py __pycache__ zappy_ia.spec build
 
 re: fclean all
 
-# Tests et debug
 debug: CFLAGS += -g3 -DDEBUG
 debug: CXXFLAGS += -g3 -DDEBUG
 debug: all
 
-.PHONY: all clean fclean re debug install-deps tests_run help init zappy_server zappy_gui zappy_ai
+.PHONY: all clean fclean re debug install-deps tests_run help init zappy_server zappy_gui zappy_ai zappy_ia
