@@ -11,6 +11,7 @@
 #include <random>
 #include <cmath>
 #include <algorithm>
+#include <map>
 #include <raymath.h>
 
 Game::Game(int width, int height, const std::string& hostname, int port, bool use2D)
@@ -523,47 +524,84 @@ void Game::render2DElements()
         }
     }
 
-    // Draw resources
+    // Comptabiliser les ressources par tuile pour optimiser l'affichage
+    std::map<std::pair<int, int>, std::map<ResourceType, int>> resourceByTile;
+
+    // Regrouper les ressources par tuile et par type
     for (const auto& resource : resources) {
         int x = (int)resource.getPosition().x;
         int y = (int)resource.getPosition().z;
+        resourceByTile[{x, y}][resource.getType()] = resource.getCount();
+    }
+
+    // Afficher les ressources de manière optimisée
+    for (const auto& [tilePos, resourceMap] : resourceByTile) {
+        int x = tilePos.first;
+        int y = tilePos.second;
         int tileX = offsetX + x * tileSize * scale;
         int tileY = offsetY + y * tileSize * scale;
         int tileW = tileSize * scale;
         int tileH = tileSize * scale;
 
-        Color resColor = WHITE;
-        switch (resource.getType()) {
-            case ResourceType::FOOD:      resColor = BROWN; break;
-            case ResourceType::LINEMATE:  resColor = LIGHTGRAY; break;
-            case ResourceType::DERAUMERE: resColor = BLUE; break;
-            case ResourceType::SIBUR:     resColor = YELLOW; break;
-            case ResourceType::MENDIANE:  resColor = PURPLE; break;
-            case ResourceType::PHIRAS:    resColor = ORANGE; break;
-            case ResourceType::THYSTAME:  resColor = PINK; break;
-        }
+        int resourceIdx = 0;
+        for (const auto& [type, count] : resourceMap) {
+            Color resColor = WHITE;
+            switch (type) {
+                case ResourceType::FOOD:      resColor = BROWN; break;
+                case ResourceType::LINEMATE:  resColor = LIGHTGRAY; break;
+                case ResourceType::DERAUMERE: resColor = BLUE; break;
+                case ResourceType::SIBUR:     resColor = YELLOW; break;
+                case ResourceType::MENDIANE:  resColor = PURPLE; break;
+                case ResourceType::PHIRAS:    resColor = ORANGE; break;
+                case ResourceType::THYSTAME:  resColor = PINK; break;
+            }
 
-        Vector2 center = {tileX + tileW/2.0f, tileY + tileH/2.0f};
-        float radius = tileW * 0.1f;
+            // Calculer la position d'affichage - répartir les icônes sur la tuile
+            float offsetX = 0, offsetY = 0;
 
-        switch (resource.getType()) {
-            case ResourceType::FOOD: // Circle
-                DrawCircleV(center, radius, resColor);
-                break;
-            case ResourceType::LINEMATE: // Triangle
-                DrawTriangle(
-                    {center.x, center.y - radius},
-                    {center.x - radius, center.y + radius},
-                    {center.x + radius, center.y + radius},
-                    resColor
-                );
-                break;
-            case ResourceType::DERAUMERE: // Square
-                DrawRectangle(center.x - radius, center.y - radius, radius*2, radius*2, resColor);
-                break;
-            default:
-                DrawCircleV(center, radius, resColor);
-                break;
+            // Si plusieurs types de ressources sur la tuile, les répartir
+            if (resourceMap.size() > 1) {
+                switch (resourceIdx % 4) {
+                    case 0: offsetX = -0.25f; offsetY = -0.25f; break; // haut gauche
+                    case 1: offsetX = 0.25f; offsetY = -0.25f; break;  // haut droite
+                    case 2: offsetX = -0.25f; offsetY = 0.25f; break;  // bas gauche
+                    case 3: offsetX = 0.25f; offsetY = 0.25f; break;   // bas droite
+                }
+            }
+
+            Vector2 center = {
+                tileX + tileW/2.0f + tileW * offsetX,
+                tileY + tileH/2.0f + tileH * offsetY
+            };
+            float radius = tileW * 0.1f;
+
+            // Dessiner l'icône de ressource selon son type
+            switch (type) {
+                case ResourceType::FOOD: // Circle
+                    DrawCircleV(center, radius, resColor);
+                    break;
+                case ResourceType::LINEMATE: // Triangle
+                    DrawTriangle(
+                        {center.x, center.y - radius},
+                        {center.x - radius, center.y + radius},
+                        {center.x + radius, center.y + radius},
+                        resColor
+                    );
+                    break;
+                case ResourceType::DERAUMERE: // Square
+                    DrawRectangle(center.x - radius, center.y - radius, radius*2, radius*2, resColor);
+                    break;
+                default:
+                    DrawCircleV(center, radius, resColor);
+                    break;
+            }
+
+            // Afficher le nombre si > 1
+            if (count > 1) {
+                DrawText(TextFormat("x%d", count), center.x - 10, center.y + radius + 2, 14, WHITE);
+            }
+
+            resourceIdx++;
         }
     }
 
@@ -1032,6 +1070,7 @@ void Game::setupNetworkCallbacks()
                 Logger::getInstance().info(selectedMsg);
             }
 
+            // Mettre à jour les ressources dans la map
             if (food > 0) gameMap->setTileResource(x, y, 0, food);
             if (linemate > 0) gameMap->setTileResource(x, y, 1, linemate);
             if (deraumere > 0) gameMap->setTileResource(x, y, 2, deraumere);
@@ -1040,21 +1079,44 @@ void Game::setupNetworkCallbacks()
             if (phiras > 0) gameMap->setTileResource(x, y, 5, phiras);
             if (thystame > 0) gameMap->setTileResource(x, y, 6, thystame);
 
+            // Supprimer les ressources existantes pour cette case
+            auto it = std::remove_if(resources.begin(), resources.end(),
+                [x, y](const Resource& res) {
+                    return (static_cast<int>(res.getPosition().x) == x &&
+                            static_cast<int>(res.getPosition().z) == y);
+                });
+            resources.erase(it, resources.end());
+
+            // Ajouter les nouvelles ressources avec une limite par type
+            const int MAX_DISPLAY_PER_TYPE = 3; // Maximum de ressources affichées par type
             for (int i = 0; i < 7; ++i) {
                 int count = 0;
+                int actualCount = 0; // Nombre réel de ressources
                 switch (i) {
-                    case 0: count = food; break;
-                    case 1: count = linemate; break;
-                    case 2: count = deraumere; break;
-                    case 3: count = sibur; break;
-                    case 4: count = mendiane; break;
-                    case 5: count = phiras; break;
-                    case 6: count = thystame; break;
+                    case 0: actualCount = food; break;
+                    case 1: actualCount = linemate; break;
+                    case 2: actualCount = deraumere; break;
+                    case 3: actualCount = sibur; break;
+                    case 4: actualCount = mendiane; break;
+                    case 5: actualCount = phiras; break;
+                    case 6: actualCount = thystame; break;
                 }
 
-                for (int j = 0; j < count; ++j) {
+                // Limiter le nombre affiché
+                count = std::min(actualCount, MAX_DISPLAY_PER_TYPE);
+
+                if (count > 0) {
+                    // Passer le nombre réel à la ressource pour l'affichage
                     resources.emplace_back(static_cast<ResourceType>(i),
-                                           Vector3{static_cast<float>(x) + j*0.01f, 0.0f, static_cast<float>(y) + j*0.01f});
+                                         Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)});
+                    resources.back().setCount(actualCount);
+
+                    // Si on a plusieurs ressources à afficher, les répartir sur la case
+                    for (int j = 1; j < count; ++j) {
+                        resources.emplace_back(static_cast<ResourceType>(i),
+                                             Vector3{static_cast<float>(x) + j*0.05f, 0.0f, static_cast<float>(y) + j*0.05f});
+                        resources.back().setCount(actualCount);
+                    }
                 }
             }
         }
