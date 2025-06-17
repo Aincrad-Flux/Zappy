@@ -17,13 +17,7 @@ struct List{
 };
 
 typedef struct {
-    int food;
-    int linemate;
-    int deraumere;
-    int sibur;
-    int mendiane;
-    int phiras;
-    int thystame;
+    int *resource;
     List *players_on_tile;
 } Tile;
 

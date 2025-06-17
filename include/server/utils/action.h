@@ -11,6 +11,8 @@
 #include "time.h"
 #include <stdio.h>
 #include <math.h>
+#define BUFFER_SIZE 1024
+
 typedef struct Server Server;
 typedef struct Player Player;
 

@@ -9,24 +9,22 @@
 #include "../../../../include/server/command/gui_commands.h"
 
 void handle_broadcast_command(Player *player, Server *server, const char *
-message, char *response)
+    message, char *response)
 {
     int player_id = player - server->players;
     char broadcast_msg[512];
+    int direction;
 
     strcpy(response, "ok\n");
-    // Send to all players with direction calculation
     for (int i = 0; i < server->num_players; i++) {
         if (i != player_id) {
-            int direction = calculate_sound_direction(player,
+            direction = calculate_sound_direction(player,
                 &server->players[i], server);
             snprintf(broadcast_msg, sizeof(broadcast_msg),
                 "message %d, %s\n", direction, message);
             send(server->players[i].socket, broadcast_msg,
-                 strlen(broadcast_msg), 0);
+                strlen(broadcast_msg), 0);
         }
     }
-
-    // Send to GUI clients
     send_gui_pbc(server, player_id, message);
 }

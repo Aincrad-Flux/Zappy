@@ -18,12 +18,9 @@ void init_map(Server *server)
     map->tiles = malloc(sizeof(Tile*) * map->height);
     for (int y = 0; y < map->height; y++) {
         map->tiles[y] = malloc(sizeof(Tile) * map->width);
-        for (int x = 0; x < map->width; x++) {
+        for (int x = 0; x < map->width; x++)
             memset(&map->tiles[y][x], 0, sizeof(Tile));
-        }
     }
     init_ressources(map);
     server->map = map;
 }
-
-

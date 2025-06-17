@@ -9,8 +9,10 @@
 #define RESOURCE
 #include "map.h"
 
+#define RESOURCE_COUNT 7
+
 typedef enum {
-    FOOD,
+    FOOD = 0,
     LINEMATE,
     DERAUMERE,
     SIBUR,

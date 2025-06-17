@@ -13,5 +13,5 @@ void handle_incantation_command(Player *player, Server *server,
 {
     (void)player;
     (void)server;
-    (void )response;
+    (void)response;
 }

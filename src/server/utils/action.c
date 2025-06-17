@@ -9,23 +9,16 @@
 #include "../../../include/server/player.h"
 #include "../../../include/server/server.h"
 #include "../../../include/server/command/command.h"
-#define BUFFER_SIZE 1024
 
-void add_action_to_queue(Player *player, const char *command, int freq)
+static void add_action(Player *player, time_t base_time, Action *new_action,
+    int freq)
 {
-    Action *new_action = malloc(sizeof(Action));
-    time_t base_time;
-    int duration_ticks = get_command_duration(command);
     Action *curr;
+    int duration_ticks = get_command_duration(command);
 
-    if (!new_action)
-        return;
-    base_time = time(NULL);
-    strncpy(new_action->command, command, sizeof(new_action->command) - 1);
-    new_action->command[sizeof(new_action->command) - 1] = '\0';
     if (player->action_queue == NULL) {
         new_action->end_time = base_time +
-                (int)ceil((double)duration_ticks / freq);
+            (int)ceil((double)duration_ticks / freq);
         new_action->next = NULL;
         player->action_queue = new_action;
     } else {
@@ -33,10 +26,24 @@ void add_action_to_queue(Player *player, const char *command, int freq)
         while (curr->next)
             curr = curr->next;
         new_action->end_time = curr->end_time +
-                (int)ceil((double)duration_ticks / freq);
+            (int)ceil((double)duration_ticks / freq);
         new_action->next = NULL;
         curr->next = new_action;
     }
+}
+
+void add_action_to_queue(Player *player, const char *command, int freq)
+{
+    Action *new_action = malloc(sizeof(Action));
+    time_t base_time;
+    int duration_ticks = get_command_duration(command);
+
+    if (!new_action)
+        return;
+    base_time = time(NULL);
+    strncpy(new_action->command, command, sizeof(new_action->command) - 1);
+    new_action->command[sizeof(new_action->command) - 1] = '\0';
+    add_action(player, base_time, new_action, duration_ticks, freq);
     new_action->duration = duration_ticks;
 }
 
@@ -69,7 +76,6 @@ static void handle_action(Server *server, int i)
 
 void process_pending_action(Server *server)
 {
-    for (int i = 0; i < server->num_players; i++) {
+    for (int i = 0; i < server->num_players; i++)
         handle_action(server, i);
-    }
 }

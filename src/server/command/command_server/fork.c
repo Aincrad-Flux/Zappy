@@ -15,11 +15,7 @@ void handle_fork_command(Player *player, Server *server, char *response)
     int egg_id = server->next_egg_id++;
 
     strcpy(response, "ok\n");
-
-    // Add slot to team
     server->teams[player->team_id].max_clients++;
-
-    // Notify GUI clients
     send_gui_pfk(server, player_id);
     send_gui_enw(server, egg_id, player_id, player->x, player->y);
 }

@@ -7,12 +7,16 @@
 
 #include "../../../../include/server/server.h"
 #include "../../../../include/server/player.h"
-#define BUFFER_SIZE 1024
+#include "../../../../include/server/map/resource.h"
 
 void handle_inventory_command(Player *player, char *response)
 {
-    snprintf(response, BUFFER_SIZE, "[ food %d, linemate %d, deraumere %d, "
-        "sibur %d, mendiane %d, phiras %d, thystame %d ]\n",
-            player->food, player->linemate, player->deraumere, player->sibur,
-                player->mendiane, player->phiras, player->thystame);
+    snprintf(response, BUFFER_SIZE,
+        "[ food %d, linemate %d, deraumere %d, sibur %d, "
+            "mendiane %d, phiras %d, thystame %d ]\n",
+                player->inventory[FOOD], player->inventory[LINEMATE],
+                    player->inventory[DERAUMERE], player->inventory[SIBUR],
+                        player->inventory[MENDIANE], player->inventory[PHIRAS],
+                            player->inventory[THYSTAME]
+    );
 }

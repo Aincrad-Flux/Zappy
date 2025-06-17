@@ -7,25 +7,13 @@
 
 #include "../../../include/server/map/resource.h"
 
-void add_resource(Tile *tile, ResourceType type)
+static void add_resource(Tile *tile, ResourceType type)
 {
-    if (type == FOOD)
-        tile->food++;
-    if (type == LINEMATE)
-        tile->linemate++;
-    if (type == DERAUMERE)
-        tile->deraumere++;
-    if (type == SIBUR)
-        tile->sibur++;
-    if (type == MENDIANE)
-        tile->mendiane++;
-    if (type == PHIRAS)
-        tile->phiras++;
-    if (type == THYSTAME)
-        tile->thystame++;
+    if (type >= 0 && type < RESOURCE_COUNT)
+        tile->resources[type]++;
 }
 
-void distribute_resource(Map *map, int count, ResourceType type)
+static void distribute_resource(Map *map, int count, ResourceType type)
 {
     int x = 0;
     int y = 0;
@@ -53,18 +41,21 @@ void init_ressources(Map *map)
     distribute_resource(map, num_tiles * 0.05, THYSTAME);
 }
 
+void count_tile(Tile *tile, int *counts)
+{
+    for (int i = 0; i < RESOURCE_COUNT; i++) {
+        counts[i] += tile->resources[i];
+    }
+}
+
 void count_resources(Map *map, int *counts)
 {
+    Tile *tile;
+
     for (int y = 0; y < map->height; y++) {
         for (int x = 0; x < map->width; x++) {
-            Tile *tile = &map->tiles[y][x];
-            counts[FOOD]     += tile->food;
-            counts[LINEMATE] += tile->linemate;
-            counts[DERAUMERE] += tile->deraumere;
-            counts[SIBUR]    += tile->sibur;
-            counts[MENDIANE] += tile->mendiane;
-            counts[PHIRAS]   += tile->phiras;
-            counts[THYSTAME] += tile->thystame;
+            tile = &map->tiles[y][x];
+            count_tile(tile, counts);
         }
     }
 }

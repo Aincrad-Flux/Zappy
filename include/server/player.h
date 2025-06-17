@@ -24,8 +24,7 @@ typedef struct Player {
     int x, y;
     int orientation;
     int level;
-    int food;
-    int linemate, deraumere, sibur, mendiane, phiras, thystame;
+    int *inventory;
     int team_id;
     int socket;
     char team_name[MAX_TEAM_NAME];
