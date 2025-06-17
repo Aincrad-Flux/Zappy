@@ -30,11 +30,14 @@ AI_OBJ = $(AI_SRC:$(AI_DIR)/%.c=$(OBJ_DIR)/ai/%.o)
 SERVER_BIN = zappy_server
 GUI_BIN = zappy_gui
 AI_BIN = zappy_ai
+PYTHON_IA_ENTRY = ia/src/main.py
+PYTHON_IA_BIN = zappy_ia
 
 GREEN = \033[0;32m
 YELLOW = \033[0;33m
 RED = \033[0;31m
 NC = \033[0m
+
 
 
 all: $(SERVER_BIN) $(GUI_BIN) $(AI_BIN)
@@ -54,12 +57,6 @@ $(AI_BIN): $(AI_OBJ)
 	@echo "$(YELLOW)Linking $(AI_BIN)...$(NC)"
 	@$(CC) $(AI_OBJ) -o $(AI_BIN) $(LDFLAGS) $(LIBS_AI)
 	@echo "$(GREEN)$(AI_BIN) compiled successfully!$(NC)"
-
-zappy_server: $(SERVER_BIN)
-
-zappy_gui: $(GUI_BIN)
-
-zappy_ai: $(AI_BIN)
 
 $(OBJ_DIR)/server/%.o: $(SERVER_DIR)/%.c
 	@mkdir -p $(OBJ_DIR)/server
@@ -87,4 +84,4 @@ debug: CFLAGS += -g3 -DDEBUG
 debug: CXXFLAGS += -g3 -DDEBUG
 debug: all
 
-.PHONY: all clean fclean re debug install-deps tests_run help init zappy_server zappy_gui zappy_ai
+.PHONY: all clean fclean re debug install-deps tests_run help init zappy_server zappy_gui zappy_ai zappy_ia
