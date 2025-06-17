@@ -73,3 +73,15 @@ bool Inventory::removeThystame(int amount) {
     }
     return false;
 }
+
+void Inventory::setResource(ResourceType type, int value) {
+    switch (type) {
+        case ResourceType::FOOD: setFood(value); break;
+        case ResourceType::LINEMATE: setLinemate(value); break;
+        case ResourceType::DERAUMERE: setDeraumere(value); break;
+        case ResourceType::SIBUR: setSibur(value); break;
+        case ResourceType::MENDIANE: setMendiane(value); break;
+        case ResourceType::PHIRAS: setPhiras(value); break;
+        case ResourceType::THYSTAME: setThystame(value); break;
+    }
+}
