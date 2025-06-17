@@ -14,7 +14,7 @@ Map::Map(int mapWidth, int mapHeight, int tileSz)
     : width(mapWidth), height(mapHeight), tileSize(tileSz)
 {
     Logger::getInstance().info("Creating map with dimensions " + std::to_string(width) + "x" + std::to_string(height) + ", tile size: " + std::to_string(tileSize));
-    
+
     tiles.resize(height);
     for (int y = 0; y < height; y++) {
         tiles[y].resize(width);
@@ -29,7 +29,7 @@ Map::Map(int mapWidth, int mapHeight, int tileSz)
             );
         }
     }
-    
+
     Logger::getInstance().info("Map created successfully");
 }
 
@@ -102,28 +102,29 @@ Tile& Map::getTile(int x, int y)
 {
     x = ((x % width) + width) % width;
     y = ((y % height) + height) % height;
-    
+
     // Only log if coordinates were wrapped
     if (x != x % width || y != y % height) {
-        Logger::getInstance().debug("Tile coordinates wrapped: original (" + 
-            std::to_string(x) + "," + std::to_string(y) + "), wrapped to (" + 
+        Logger::getInstance().debug("Tile coordinates wrapped: original (" +
+            std::to_string(x) + "," + std::to_string(y) + "), wrapped to (" +
             std::to_string(x % width) + "," + std::to_string(y % height) + ")");
     }
-    
+
     return tiles[y][x];
 }
 
 void Map::setTileResource(int x, int y, int resourceType, int count)
 {
     if (x >= 0 && x < width && y >= 0 && y < height) {
-        tiles[y][x].setHasResource(resourceType >= 0);
+        tiles[y][x].setHasResource(resourceType >= 0 && count > 0);
         tiles[y][x].setResourceType(resourceType);
-        
-        Logger::getInstance().debug("Tile resource set at (" + std::to_string(x) + "," + 
-            std::to_string(y) + "), resource type: " + std::to_string(resourceType) + 
+        tiles[y][x].setResourceCount(count);
+
+        Logger::getInstance().debug("Tile resource set at (" + std::to_string(x) + "," +
+            std::to_string(y) + "), resource type: " + std::to_string(resourceType) +
             ", count: " + std::to_string(count));
     } else {
-        Logger::getInstance().warning("Attempted to set resource outside map bounds: (" + 
+        Logger::getInstance().warning("Attempted to set resource outside map bounds: (" +
             std::to_string(x) + "," + std::to_string(y) + ")");
     }
 }
@@ -134,14 +135,14 @@ void Map::setTilePlayer(int x, int y, int playerCount)
         int oldCount = tiles[y][x].getPlayerCount();
         tiles[y][x].setHasPlayer(playerCount > 0);
         tiles[y][x].setPlayerCount(playerCount);
-        
+
         if (oldCount != playerCount) {
-            Logger::getInstance().debug("Tile player count updated at (" + std::to_string(x) + "," + 
-                std::to_string(y) + "), from " + std::to_string(oldCount) + 
+            Logger::getInstance().debug("Tile player count updated at (" + std::to_string(x) + "," +
+                std::to_string(y) + "), from " + std::to_string(oldCount) +
                 " to " + std::to_string(playerCount));
         }
     } else {
-        Logger::getInstance().warning("Attempted to set player count outside map bounds: (" + 
+        Logger::getInstance().warning("Attempted to set player count outside map bounds: (" +
             std::to_string(x) + "," + std::to_string(y) + ")");
     }
 }

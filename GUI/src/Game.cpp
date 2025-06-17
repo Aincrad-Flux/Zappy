@@ -10,6 +10,7 @@
 #include <iostream>
 #include <random>
 #include <cmath>
+#include <algorithm>
 #include <raymath.h>
 
 Game::Game(int width, int height, const std::string& hostname, int port, bool use2D)
@@ -1385,6 +1386,72 @@ void Game::setupNetworkCallbacks()
                 Logger::getInstance().error(errorMsg);
                 std::cerr << errorMsg << std::endl;
             }
+        }
+    });
+
+    // Player gets resource (pgt #n i\n)
+    networkManager->registerCallback("pgt", [this](const std::vector<std::string>& args) {
+        if (args.size() >= 2) {
+            std::string playerIdStr = args[0];
+            if (!playerIdStr.empty() && playerIdStr[0] == '#') {
+                playerIdStr = playerIdStr.substr(1);
+            }
+
+            int playerId = std::stoi(playerIdStr);
+            int resourceType = std::stoi(args[1]);
+
+            std::string logMsg = "Player #" + std::to_string(playerId) + " took resource type " + std::to_string(resourceType);
+            Logger::getInstance().debug(logMsg);
+            std::cout << logMsg << std::endl;
+
+            // Find the player to get its position
+            for (auto& player : players) {
+                if (player.getId() == playerId) {
+                    Vector3 playerPos = player.getPosition();
+                    int x = static_cast<int>(playerPos.x);
+                    int y = static_cast<int>(playerPos.z);
+
+                    // Remove resource from tile
+                    Tile& tile = gameMap->getTile(x, y);
+                    if (tile.getHasResource() && tile.getResourceType() == resourceType) {
+                        int oldCount = tile.getResourceCount();
+                        tile.removeResource();
+
+                        std::string actionMsg = "Removed resource type " + std::to_string(resourceType) +
+                                               " from tile (" + std::to_string(x) + "," +
+                                               std::to_string(y) + "), count was " + std::to_string(oldCount) +
+                                               ", now " + std::to_string(tile.getResourceCount());
+                        Logger::getInstance().info(actionMsg);
+
+                        // Update resources vector to reflect the change
+                        // Only needed if the count becomes zero
+                        if (!tile.getHasResource()) {
+                            // Remove the resource from the resources vector
+                            auto it = std::remove_if(resources.begin(), resources.end(),
+                                [x, y, resourceType](const Resource& res) {
+                                    return static_cast<int>(res.getType()) == resourceType &&
+                                           static_cast<int>(res.getPosition().x) == x &&
+                                           static_cast<int>(res.getPosition().z) == y;
+                                });
+                            resources.erase(it, resources.end());
+                        }
+
+                        // Request updated tile content from server to ensure consistency
+                        networkManager->requestTileContent(x, y);
+                    }
+                    break;
+                }
+            }
+        }
+    });
+
+    // Player drops resource (pdr #n i\n)
+    networkManager->registerCallback("pdr", [this](const std::vector<std::string>& args) {
+        if (args.size() >= 2) {
+            // We don't need to handle this explicitly as the server will send
+            // a bct message with updated tile content anyway
+            std::string logMsg = "Player dropped resource (handled by bct update)";
+            Logger::getInstance().debug(logMsg);
         }
     });
 }

@@ -19,6 +19,7 @@ private:
     bool m_hasResource;   ///< Whether the tile has a resource
     bool m_hasPlayer;     ///< Whether a player is on the tile
     int m_resourceType;   ///< Type of resource on the tile
+    int m_resourceCount;  ///< Count of resources on the tile
     int m_playerCount;    ///< Number of players on the tile
 
 public:
@@ -49,6 +50,7 @@ public:
     bool getHasResource() const { return m_hasResource; }
     bool getHasPlayer() const { return m_hasPlayer; }
     int getResourceType() const { return m_resourceType; }
+    int getResourceCount() const { return m_resourceCount; }
     int getPlayerCount() const { return m_playerCount; }
 
     // Setters
@@ -57,6 +59,7 @@ public:
     void setHasResource(bool hasResource) { m_hasResource = hasResource; }
     void setHasPlayer(bool hasPlayer) { m_hasPlayer = hasPlayer; }
     void setResourceType(int resourceType) { m_resourceType = resourceType; }
+    void setResourceCount(int count) { m_resourceCount = count; }
     void setPlayerCount(int count) { m_playerCount = count; }
 
     // Utility methods
@@ -66,11 +69,21 @@ public:
         m_hasPlayer = (m_playerCount > 0);
     }
     void addResource(int type) {
-        m_resourceType = type;
-        m_hasResource = true;
+        if (m_hasResource && m_resourceType == type) {
+            m_resourceCount++;
+        } else {
+            m_resourceType = type;
+            m_resourceCount = 1;
+            m_hasResource = true;
+        }
     }
     void removeResource() {
-        m_resourceType = 0;
-        m_hasResource = false;
+        if (m_resourceCount > 1) {
+            m_resourceCount--;
+        } else {
+            m_resourceType = 0;
+            m_resourceCount = 0;
+            m_hasResource = false;
+        }
     }
 };
