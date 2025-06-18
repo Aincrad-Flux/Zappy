@@ -61,7 +61,7 @@ jobs:
 
       - name: Build AI
         run: |
-          cd ai
+          cd AI
           make
 
   test-server:
@@ -121,5 +121,5 @@ jobs:
 
       - name: Run AI tests
         run: |
-          cd ai
+          cd AI
           make test
