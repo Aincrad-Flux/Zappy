@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Zappy AI client
@@ -14,7 +13,7 @@ import sys
 
 # Add the parent directory to the path so we can import the ai module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from zappy_ai.ai import ZappyAI
+from AI.ai import ZappyAI
 
 def parse_arguments():
     """Parse command line arguments"""
