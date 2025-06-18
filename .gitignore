@@ -24,6 +24,8 @@ obj/
 *.DS_Store
 zappy_gui
 zappy_console
+zappy_ai
 .vscode/
 .idea
 /zappy_ref-*
+*.sh
