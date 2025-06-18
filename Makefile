@@ -53,9 +53,10 @@ $(GUI_BIN):
 	@cp GUI/$(GUI_BIN) ./$(GUI_BIN)
 	@echo "$(GREEN)$(GUI_BIN) compiled successfully!$(NC)"
 
-$(AI_BIN): $(AI_OBJ)
-	@echo "$(YELLOW)Linking $(AI_BIN)...$(NC)"
-	@$(CC) $(AI_OBJ) -o $(AI_BIN) $(LDFLAGS) $(LIBS_AI)
+$(AI_BIN):
+	@echo "$(YELLOW)Building AI using AI/Makefile...$(NC)"
+	@$(MAKE) -C AI
+	@cp AI/$(AI_BIN) ./$(AI_BIN)
 	@echo "$(GREEN)$(AI_BIN) compiled successfully!$(NC)"
 
 $(OBJ_DIR)/server/%.o: $(SERVER_DIR)/%.c
@@ -63,20 +64,17 @@ $(OBJ_DIR)/server/%.o: $(SERVER_DIR)/%.c
 	@echo "$(YELLOW)Compiling $<...$(NC)"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/ai/%.o: $(AI_DIR)/%.c
-	@mkdir -p $(OBJ_DIR)/ai
-	@echo "$(YELLOW)Compiling $<...$(NC)"
-	@$(CC) $(CFLAGS) -c $< -o $@
-
 clean:
 	@echo "$(RED)Cleaning object files...$(NC)"
 	@rm -rf $(OBJ_DIR)
 	@$(MAKE) -C GUI clean
+	@$(MAKE) -C AI clean
 
 fclean: clean
 	@echo "$(RED)Cleaning binaries...$(NC)"
 	@rm -f $(SERVER_BIN) $(GUI_BIN) $(AI_BIN)
 	@$(MAKE) -C GUI fclean
+	@$(MAKE) -C AI fclean
 
 re: fclean all
 
