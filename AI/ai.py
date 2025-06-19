@@ -904,6 +904,12 @@ class ZappyAI:
         if self.level >= 2:
             food_threshold = 10  # More aggressive food searching at higher levels
 
+        # Pour le niveau 2 (passage au niveau 3), on exige au moins 5 de nourriture avant de tenter l'élévation
+        if self.level == 2 and self.state == "ELEVATION" and self.inventory[ResourceType.FOOD] < 5:
+            self.logger.info(f"Niveau 2: besoin de plus de nourriture avant élévation (actuellement: {self.inventory[ResourceType.FOOD]}/5)")
+            self.state = "SEARCHING_FOOD"
+            return
+
         # If food is critically low, prioritize finding food
         if self.inventory[ResourceType.FOOD] <= food_threshold:
             if self.state != "SEARCHING_FOOD":
@@ -972,7 +978,19 @@ class ZappyAI:
                                         ResourceType.SIBUR, ResourceType.MENDIANE,
                                         ResourceType.PHIRAS, ResourceType.THYSTAME]])
             message = f"TEAM:{self.client_num}:ELEVATION:{self.level}:{resources}"
+
+            # Pour le niveau 3, réduire temporairement le cooldown
+            original_cooldown = None
+            if self.level == 2:  # Pour passage au niveau 3
+                original_cooldown = self.broadcast_cooldown
+                self.broadcast_cooldown = 0.5
+
+            # Envoyer le message
             self.broadcast_team_message(message)
+
+            # Restaurer le cooldown si nécessaire
+            if original_cooldown is not None:
+                self.broadcast_cooldown = original_cooldown
 
         elif random.random() < 0.1:  # Occasionally share other information
             if self.state == "COLLECTING_RESOURCES":
@@ -1072,11 +1090,43 @@ class ZappyAI:
         # Debug info about current situation
         self.logger.info(f"Client {self.client_num}, Level {self.level}: {current_tile['players']} other players detected on my tile (total: {total_players}, need {required_players})")
 
+        if self.level == 2 and self.inventory[ResourceType.FOOD] < 10:
+            self.logger.warning(f"Pas assez de nourriture pour passer niveau 3! Actuellement: {self.inventory[ResourceType.FOOD]}/5")
+            self.state = "SEARCHING_FOOD"
+            return False
+
         # If not enough players present for levels > 1, abort elevation immediately
         if self.level > 1 and total_players < required_players:
             self.logger.warning(f"Not enough players for elevation! Have {total_players}, need {required_players}")
-            self.state = "COLLECTING_RESOURCES"
-            return False
+
+            # Pour le niveau 3, continuer à envoyer le message d'élévation jusqu'à avoir assez de joueurs
+            if self.level == 2:
+                # Préparer un message détaillé de nos ressources
+                resources = ",".join([f"{self._get_resource_name(r)}:{self.inventory[r]}"
+                              for r in [ResourceType.LINEMATE, ResourceType.DERAUMERE,
+                                        ResourceType.SIBUR, ResourceType.MENDIANE,
+                                        ResourceType.PHIRAS, ResourceType.THYSTAME]])
+
+                # Envoi du message en boucle avec un intervalle réduit pour le niveau 3
+                message = f"TEAM:{self.client_num}:ELEVATION:{self.level}:{resources}"
+                self.logger.info(f"Broadcasting en boucle pour niveau 3: {message}")
+
+                # Réduire le cooldown temporairement pour permettre des broadcasts plus fréquents
+                original_cooldown = self.broadcast_cooldown
+                self.broadcast_cooldown = 0.5  # Réduire le cooldown à 0.5s pour le niveau 3
+
+                success = self.broadcast_team_message(message)
+                self.logger.info(f"Broadcast success: {success}")
+
+                # Restaurer le cooldown original
+                self.broadcast_cooldown = original_cooldown
+
+                # Rester en mode ELEVATION pour continuer à essayer
+                return False
+            else:
+                # Pour les autres niveaux, comportement normal
+                self.state = "COLLECTING_RESOURCES"
+                return False
 
         # More detailed inventory logging
         self.logger.info(f"Current inventory: {[(self._get_resource_name(r), self.inventory[r]) for r in [ResourceType.LINEMATE, ResourceType.DERAUMERE, ResourceType.SIBUR, ResourceType.MENDIANE, ResourceType.PHIRAS, ResourceType.THYSTAME]]}")
@@ -1128,7 +1178,17 @@ class ZappyAI:
 
                 # Debug message before broadcasting
                 self.logger.info(f"Broadcasting for help: {message}")
+
+                # Pour le niveau 3, réduire le cooldown pour permettre des broadcasts plus fréquents
+                original_cooldown = self.broadcast_cooldown
+                if self.level == 2:
+                    self.broadcast_cooldown = 0.5  # Réduire le cooldown à 0.5s pour le niveau 3
+
                 success = self.broadcast_team_message(message)
+
+                # Restaurer le cooldown original
+                self.broadcast_cooldown = original_cooldown
+
                 self.logger.info(f"Broadcast success: {success}")
 
                 # Check if we have teammates who have responded
@@ -1138,9 +1198,13 @@ class ZappyAI:
                     time.sleep(1)  # Brief pause to wait
                 else:
                     # No responses yet, keep collecting or retry later
-                    self.logger.info("No responses from teammates, returning to resource collection")
-                    self.state = "COLLECTING_RESOURCES"
-                    return False
+                    if self.level == 2:  # Pour le niveau 3, continuer en mode ELEVATION
+                        self.logger.info("Pas encore de réponse mais on reste en mode ELEVATION pour le niveau 3")
+                        return False
+                    else:
+                        self.logger.info("No responses from teammates, returning to resource collection")
+                        self.state = "COLLECTING_RESOURCES"
+                        return False
 
             # Check if we have enough players now
             tiles = self.look_around()
@@ -1194,11 +1258,14 @@ class ZappyAI:
                         return False
                 else:
                     self.logger.info(f"Not enough players yet ({current_tile['players'] + 1}/{required_players})")
-                    self.state = "COLLECTING_RESOURCES"
+                    if self.level != 2:  # Pour les autres niveaux que 3, revenir à la collecte
+                        self.state = "COLLECTING_RESOURCES"
+                    # Pour le niveau 3, rester en mode ELEVATION pour continuer à essayer
                     return False
 
         # If we reach here, something went wrong
-        self.state = "COLLECTING_RESOURCES"
+        if self.level != 2:  # Pour les autres niveaux que 3, revenir à la collecte
+            self.state = "COLLECTING_RESOURCES"
         return False
 
     def _broadcast_need_help(self):
@@ -1216,7 +1283,13 @@ class ZappyAI:
         resource_request_cooldown = 30  # Time between resource requests
 
         # Reduced cooldown for broadcasts at level 2+ to improve communication
-        self.broadcast_cooldown = 1 if self.level >= 2 else 2
+        if self.level == 2 and self.state == "ELEVATION":
+            # Cooldown spécifique pour les broadcasts au niveau 2 en mode élévation
+            self.broadcast_cooldown = 0.5  # Plus agressif pour le passage au niveau 3
+        elif self.level >= 2:
+            self.broadcast_cooldown = 1  # Broadcasts assez fréquents pour niveaux supérieurs
+        else:
+            self.broadcast_cooldown = 2  # Cooldown normal
 
         try:
             while self.running:
