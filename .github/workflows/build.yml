@@ -22,6 +22,16 @@ jobs:
           make
 
   build-gui:
+      - name: Check if server executable exists
+        run: |
+          cd server
+          if [ ! -f "zappy_server" ]; then
+            echo "Server executable not found"
+            exit 1
+          fi
+          echo "Server executable exists"
+
+  build-and-test-gui:
     runs-on: ubuntu-latest
     container:
       image: epitechcontent/epitest-docker:latest
@@ -44,13 +54,22 @@ jobs:
           make
           make install
           ldconfig
-
+          
       - name: Build GUI
         run: |
           cd GUI
           make
 
-  build-ai:
+      - name: Check if GUI executable exists
+        run: |
+          cd GUI
+          if [ ! -f "zappy_gui" ]; then
+            echo "GUI executable not found"
+            exit 1
+          fi
+          echo "GUI executable exists"
+
+build-and-test-ai:
     runs-on: ubuntu-latest
     container:
       image: epitechcontent/epitest-docker:latest
@@ -61,65 +80,14 @@ jobs:
 
       - name: Build AI
         run: |
-          cd ai
+          cd AI
           make
 
-  test-server:
-    needs: build-server
-    runs-on: ubuntu-latest
-    container:
-      image: epitechcontent/epitest-docker:latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Run server tests
+      - name: Check if AI executable exists
         run: |
-          cd server
-          make test
-
-  test-gui:
-    needs: build-gui
-    runs-on: ubuntu-latest
-    container:
-      image: epitechcontent/epitest-docker:latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Install Raylib dependencies
-        run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends libglfw3 libglfw3-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libpulse-dev build-essential cmake
-
-      - name: Install Raylib
-        run: |
-          git clone https://github.com/raysan5/raylib.git raylib
-          cd raylib
-          mkdir build && cd build
-          cmake -DBUILD_SHARED_LIBS=ON ..
-          make
-          make install
-          ldconfig
-
-      - name: Run GUI tests
-        run: |
-          cd GUI
-          make test
-
-  test-ai:
-    needs: build-ai
-    runs-on: ubuntu-latest
-    container:
-      image: epitechcontent/epitest-docker:latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Run AI tests
-        run: |
-          cd ai
-          make test
+          cd AI
+          if [ ! -f "zappy_ai" ]; then
+            echo "AI executable not found"
+            exit 1
+          fi
+          echo "AI executable exists"

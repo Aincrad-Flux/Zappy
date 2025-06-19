@@ -1,0 +1,52 @@
+name: Generate Documentation
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  doxygen:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Doxygen
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y doxygen graphviz
+
+    - name: Create Doxyfile
+      run: |
+        cat > Doxyfile << 'EOF'
+        PROJECT_NAME           = "ThePlazza"
+        PROJECT_BRIEF          = "Pizza ordering and kitchen management simulation"
+        OUTPUT_DIRECTORY       = ./docs
+        INPUT                  = ./src ./include
+        RECURSIVE              = YES
+        EXTRACT_ALL            = YES
+        EXTRACT_PRIVATE        = YES
+        EXTRACT_STATIC         = YES
+        GENERATE_HTML          = YES
+        HTML_OUTPUT            = html
+        GENERATE_LATEX         = NO
+        HAVE_DOT               = YES
+        UML_LOOK               = YES
+        CALL_GRAPH             = YES
+        CALLER_GRAPH           = YES
+        DOT_IMAGE_FORMAT       = svg
+        INTERACTIVE_SVG        = YES
+        EOF
+
+    - name: Generate documentation
+      run: doxygen Doxyfile
+
+    - name: Archive documentation
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation
+        path: docs/html
+        retention-days: 14
