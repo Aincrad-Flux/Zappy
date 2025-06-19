@@ -279,6 +279,26 @@ class ZappyAI:
                     encrypted_part = content[4:]  # Skip the "ENC:" prefix
                     decrypted_content = decrypt_message(encrypted_part, self.encryption_key)
                     self.logger.info(f"Successfully decrypted team message: {decrypted_content}")
+
+                    # Store the direction immediately for fast response
+                    if "TEAM:" in decrypted_content:
+                        parts = decrypted_content.split(":")
+                        if len(parts) >= 2:
+                            sender_id = parts[1]
+                            # Store this high-priority direction to move toward
+                            self.team_member_positions[sender_id] = {
+                                "direction": direction,
+                                "timestamp": time.time(),
+                                "high_priority": True
+                            }
+
+                            # Immediately attempt to move toward the signal if it's an urgent message
+                            message_type = parts[2] if len(parts) >= 3 else ""
+                            if message_type in ["ELEVATION", "NEED_RESOURCES", "NEED_HELP"]:
+                                # Try to move immediately toward the sender
+                                self.logger.info(f"Urgent message received! Moving toward {sender_id} in direction {direction}")
+                                self._move_toward_player(direction)
+
                 except Exception as e:
                     self.logger.warning(f"Failed to decrypt message: {e}")
                     return
@@ -339,7 +359,11 @@ class ZappyAI:
                         if level == self.level and self.state == "ELEVATION":
                             # Prevent duplicate entries
                             if sender_id not in self.incantation_participants:
-                                self.incantation_participants.append(sender_id)
+                                self.incantation_participants[sender_id] = {
+                                    "type": "ELEVATION_RESPONSE",
+                                    "level": level,
+                                    "timestamp": time.time()
+                                }
                                 self.logger.info(f"Added participant {sender_id} to elevation (total: {len(self.incantation_participants)})")
                             else:
                                 self.logger.info(f"Participant {sender_id} already in list")
@@ -513,8 +537,11 @@ class ZappyAI:
     def _send_position_update(self):
         """Share our position estimate with team members"""
         # We don't know our exact position, but we can share what we think it is
-        message = f"TEAM:{self.client_num}:POSITION:{self.position[0]}:{self.position[1]}"
-        self.broadcast_team_message(message)
+        if self.position and isinstance(self.position, (list, tuple)) and len(self.position) >= 2:
+            message = f"TEAM:{self.client_num}:POSITION:{self.position[0]}:{self.position[1]}"
+            self.broadcast_team_message(message)
+            return True
+        return False
 
     def _broadcast_level_up(self):
         """Announce to the team that we've leveled up"""
@@ -599,6 +626,18 @@ class ZappyAI:
     def incantation(self):
         """Start an incantation"""
         self.logger.info("Starting incantation ritual for level " + str(self.level))
+
+        # For levels > 1, double-check that we have enough players
+        if self.level > 1:
+            tiles = self.look_around()
+            if tiles:
+                current_tile = self._analyze_tile(tiles[0])
+                required_players = self.ELEVATION_REQUIREMENTS[self.level][0]
+                total_players = current_tile["players"] + 1  # +1 for self
+
+                if total_players < required_players:
+                    self.logger.error(f"Cannot start incantation: not enough players! Have {total_players}, need {required_players}")
+                    return False
 
         # Log current inventory before incantation
         self.logger.info(f"Current inventory before incantation: {self.inventory}")
@@ -860,8 +899,13 @@ class ZappyAI:
         old_state = self.state
         self.get_inventory()
 
+        # Adjust food threshold based on level - higher levels need more food priority
+        food_threshold = 5
+        if self.level >= 2:
+            food_threshold = 10  # More aggressive food searching at higher levels
+
         # If food is critically low, prioritize finding food
-        if self.inventory[ResourceType.FOOD] <= 5:
+        if self.inventory[ResourceType.FOOD] <= food_threshold:
             if self.state != "SEARCHING_FOOD":
                 self.logger.info(f"Changing state from {self.state} to SEARCHING_FOOD (food={self.inventory[ResourceType.FOOD]})")
                 self.state = "SEARCHING_FOOD"
@@ -948,20 +992,35 @@ class ZappyAI:
         # Look around for food
         tiles = self.look_around()
 
+        # Broadcast for help if food is critically low (especially for level 2+)
+        if self.inventory[ResourceType.FOOD] <= 3 or (self.level >= 2 and self.inventory[ResourceType.FOOD] <= 5):
+            # Ask for help more urgently
+            self._broadcast_need_help()
+
         if tiles:
             # Check if there's food on current tile
             current_tile = self._analyze_tile(tiles[0])
             if current_tile["food"] > 0:
                 if self.take_object("food"):
+                    self.logger.info(f"Found and took food! Current food: {self.inventory[ResourceType.FOOD]}")
                     return True
 
             # Check nearby tiles for food
             for i in range(1, len(tiles)):
                 tile = self._analyze_tile(tiles[i])
                 if tile["food"] > 0:
-                    # Move toward food (simplistic approach: just move forward)
+                    # Move toward food
+                    self.logger.info(f"Found food on tile {i}, moving toward it")
                     self.move_forward()
                     return True
+
+        # Check if any teammates have signaled recently - maybe they have food
+        for sender_id, pos_data in self.team_member_positions.items():
+            if 'direction' in pos_data and time.time() - pos_data.get('timestamp', 0) < 15:  # Messages less than 15 seconds old
+                if pos_data.get('high_priority', False):
+                    # Move toward the teammate who signaled
+                    self.logger.info(f"Moving toward teammate {sender_id} in direction {pos_data['direction']}")
+                    return self._move_toward_player(pos_data['direction'])
 
         # No food visible, move randomly
         return self._perform_random_movement()
@@ -1008,9 +1067,16 @@ class ZappyAI:
 
         current_tile = self._analyze_tile(tiles[0])
         required_players = self.ELEVATION_REQUIREMENTS[self.level][0]
+        total_players = current_tile['players'] + 1  # +1 for self
 
         # Debug info about current situation
-        self.logger.info(f"Client {self.client_num}, Level {self.level}: {current_tile['players']} other players detected on my tile (need {required_players} including self)")
+        self.logger.info(f"Client {self.client_num}, Level {self.level}: {current_tile['players']} other players detected on my tile (total: {total_players}, need {required_players})")
+
+        # If not enough players present for levels > 1, abort elevation immediately
+        if self.level > 1 and total_players < required_players:
+            self.logger.warning(f"Not enough players for elevation! Have {total_players}, need {required_players}")
+            self.state = "COLLECTING_RESOURCES"
+            return False
 
         # More detailed inventory logging
         self.logger.info(f"Current inventory: {[(self._get_resource_name(r), self.inventory[r]) for r in [ResourceType.LINEMATE, ResourceType.DERAUMERE, ResourceType.SIBUR, ResourceType.MENDIANE, ResourceType.PHIRAS, ResourceType.THYSTAME]]}")
@@ -1082,16 +1148,29 @@ class ZappyAI:
                 current_tile = self._analyze_tile(tiles[0])
                 self.logger.info(f"Rechecking tile: {current_tile['players']} players visible (need {required_players})")
 
-                if current_tile["players"] + 1 >= required_players:
-                    self.logger.info(f"Enough players detected ({current_tile['players'] + 1}/{required_players}), preparing for elevation")
+                # We need to check if there are actually enough players on the tile
+                total_players = current_tile["players"] + 1  # +1 for self
+                if total_players >= required_players:
+                    self.logger.info(f"Enough players detected ({total_players}/{required_players}), preparing for elevation")
 
                     # Place resources for elevation
                     resources_placed = self._prepare_for_elevation()
                     self.logger.info(f"Resources placed: {resources_placed}")
 
                     if resources_placed:
+                        # Double-check player count before starting incantation
+                        tiles = self.look_around()
+                        if tiles:
+                            current_tile = self._analyze_tile(tiles[0])
+                            total_players = current_tile["players"] + 1  # +1 for self
+
+                            if total_players < required_players:
+                                self.logger.warning(f"Not enough players! Only have {total_players}/{required_players} - cancelling incantation")
+                                self.state = "COLLECTING_RESOURCES"
+                                return False
+
                         # Start incantation
-                        self.logger.info("Starting incantation...")
+                        self.logger.info(f"Starting incantation with {total_players} players (required: {required_players})...")
                         result = self.incantation()
                         if result:
                             self.logger.info(f"Elevation successful! New level: {self.level}")
@@ -1122,12 +1201,22 @@ class ZappyAI:
         self.state = "COLLECTING_RESOURCES"
         return False
 
+    def _broadcast_need_help(self):
+        """Broadcast that we need help (low food or critical resources)"""
+        message = f"TEAM:{self.client_num}:NEED_HELP:{self.level}:{self.inventory[ResourceType.FOOD]}"
+        self.broadcast_team_message(message)
+        self.logger.info("Broadcasted help request due to critical situation")
+        return True
+
     def run(self):
         """Main AI loop"""
         last_fork_time = 0
         fork_cooldown = 100  # Time between fork attempts
         last_resource_request_time = 0
         resource_request_cooldown = 30  # Time between resource requests
+
+        # Reduced cooldown for broadcasts at level 2+ to improve communication
+        self.broadcast_cooldown = 1 if self.level >= 2 else 2
 
         try:
             while self.running:
@@ -1137,71 +1226,91 @@ class ZappyAI:
                 # Decide what to do next
                 self._decide_next_action()
 
-                # Broadcast status to teammates as needed
-                self._broadcast_status()
-
-                # Check if we need specific resources for elevation
+                # Check for team signals that need immediate attention
                 current_time = time.time()
-                if (self.state == "COLLECTING_RESOURCES" and
-                    current_time - last_resource_request_time > resource_request_cooldown):
+                urgent_signal = False
 
-                    # Find what resources we're missing for next level
-                    for res_type, amount_needed in self.target_resources.items():
-                        if self.inventory[res_type] < amount_needed:
-                            # Request this specific resource
-                            self._request_resources(self._get_resource_name(res_type))
-                            last_resource_request_time = current_time
-                            break
+                for sender_id, pos_data in self.team_member_positions.items():
+                    if 'high_priority' in pos_data and pos_data['high_priority'] and \
+                       current_time - pos_data.get('timestamp', 0) < 10:  # Recent urgent message
+                        self.logger.info(f"Responding to urgent signal from {sender_id}")
+                        self._move_toward_player(pos_data['direction'])
+                        urgent_signal = True
+                        break
 
-                # Try to fork new players periodically when we have food
-                if (current_time - last_fork_time > fork_cooldown and
-                    self.inventory[ResourceType.FOOD] > 20):  # Only fork if we have enough food
-                    slots = self.connect_nbr()
-                    if slots > 0:
-                        self.fork()
-                        last_fork_time = current_time
+                # Only continue with normal behavior if not responding to urgent signal
+                if not urgent_signal:
+                    # Broadcast status to teammates as needed
+                    self._broadcast_status()
 
-                # Execute action based on current state
-                if self.state == "SEARCHING_FOOD":
-                    self._handle_food_search()
+                    # For level 2+, be more aggressive about requesting help when food is low
+                    if self.level >= 2 and self.inventory[ResourceType.FOOD] <= 7:
+                        self._broadcast_need_help()
 
-                elif self.state == "COLLECTING_RESOURCES" or self.state == "SEARCHING_RESOURCES":
-                    self._handle_resource_collection()
+                    # Check if we need specific resources for elevation
+                    if (self.state == "COLLECTING_RESOURCES" and
+                        current_time - last_resource_request_time > resource_request_cooldown):
 
-                elif self.state == "ELEVATION":
-                    # Check if we've been trying to elevate for too long
-                    if current_time - self.elevation_attempt_time > self.elevation_timeout:
-                        self.logger.info("Elevation timed out, returning to resource collection")
-                        self.state = "COLLECTING_RESOURCES"
-                        self.incantation_participants = []  # Reset
-                    else:
-                        # If we have a response from another player who needs help with elevation
-                        # Try to move toward them
-                        moved = False
-                        for sender_id, pos_data in self.team_member_positions.items():
-                            if 'direction' in pos_data and current_time - pos_data.get('timestamp', 0) < 10:
-                                # Only move toward players who have communicated recently
-                                if sender_id in self.incantation_participants and self.incantation_participants[sender_id].get('type') == 'ELEVATION':
-                                    self.logger.info(f"Moving toward player {sender_id} for elevation")
-                                    self._move_toward_player(pos_data['direction'])
-                                    moved = True
-                                    break
+                        # Find what resources we're missing for next level
+                        for res_type, amount_needed in self.target_resources.items():
+                            if self.inventory[res_type] < amount_needed:
+                                # Request this specific resource
+                                self._request_resources(self._get_resource_name(res_type))
+                                last_resource_request_time = current_time
+                                break
 
-                        # Try elevation regardless of movement
-                        if self._handle_elevation():
-                            # Successfully elevated, reset timer
-                            self.elevation_attempt_time = 0
-                        elif self.elevation_attempt_time == 0:
-                            # First attempt at elevation, start timer
-                            self.elevation_attempt_time = current_time
+                    # Try to fork new players periodically when we have food
+                    # Level 2+ AIs need more food before forking
+                    food_for_fork = 20 if self.level == 1 else 25
+                    if (current_time - last_fork_time > fork_cooldown and
+                        self.inventory[ResourceType.FOOD] > food_for_fork):
+                        slots = self.connect_nbr()
+                        if slots > 0:
+                            self.fork()
+                            last_fork_time = current_time
 
-                        # If we didn't move toward anyone but we're still in elevation state,
-                        # broadcast our status again
-                        if not moved and random.random() < 0.2:  # 20% chance each cycle
-                            self._broadcast_status()
+                    # Execute action based on current state
+                    if self.state == "SEARCHING_FOOD":
+                        self._handle_food_search()
 
-                # Sleep to avoid overwhelming the server
-                time.sleep(0.1)
+                    elif self.state == "COLLECTING_RESOURCES" or self.state == "SEARCHING_RESOURCES":
+                        self._handle_resource_collection()
+
+                    elif self.state == "ELEVATION":
+                        # Check if we've been trying to elevate for too long
+                        if current_time - self.elevation_attempt_time > self.elevation_timeout:
+                            self.logger.info("Elevation timed out, returning to resource collection")
+                            self.state = "COLLECTING_RESOURCES"
+                            self.incantation_participants = {}  # Reset with empty dict
+                        else:
+                            # If we have a response from another player who needs help with elevation
+                            # Try to move toward them
+                            moved = False
+                            for sender_id, pos_data in self.team_member_positions.items():
+                                if 'direction' in pos_data and current_time - pos_data.get('timestamp', 0) < 10:
+                                    # Only move toward players who have communicated recently
+                                    if sender_id in self.incantation_participants and isinstance(self.incantation_participants, dict) and \
+                                       self.incantation_participants[sender_id].get('type') == 'ELEVATION':
+                                        self.logger.info(f"Moving toward player {sender_id} for elevation")
+                                        self._move_toward_player(pos_data['direction'])
+                                        moved = True
+                                        break
+
+                            # Try elevation regardless of movement
+                            if self._handle_elevation():
+                                # Successfully elevated, reset timer
+                                self.elevation_attempt_time = 0
+                            elif self.elevation_attempt_time == 0:
+                                # First attempt at elevation, start timer
+                                self.elevation_attempt_time = current_time
+
+                            # If we didn't move toward anyone but we're still in elevation state,
+                            # broadcast our status again
+                            if not moved and random.random() < 0.3:  # 30% chance each cycle (increased from original)
+                                self._broadcast_status()
+
+                # Sleep to avoid overwhelming the server (shorter time for level 2+ for more responsiveness)
+                time.sleep(0.08 if self.level >= 2 else 0.1)
 
         except Exception as e:
             self.logger.error(f"Error in AI loop: {e}")
