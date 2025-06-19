@@ -20,21 +20,25 @@ from ai_core import ZappyAI
 
 # Configure main logger
 LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
-print(f"Main logger directory: {LOG_DIR}")
 os.makedirs(LOG_DIR, exist_ok=True)
 
-def setup_main_logger():
+# Main logger will be initialized properly in main()
+main_logger = None
+
+def setup_main_logger(terminal_ui=False):
     """Setup the main logger for the application"""
     timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     log_filename = f"zappy_ai_main_{timestamp}.log"
     log_path = os.path.join(LOG_DIR, log_filename)
 
-    print(f"Setting up main logger")
-    print(f"Main log file path: {log_path}")
+    if not terminal_ui:
+        print(f"Setting up main logger")
+        print(f"Main log file path: {log_path}")
 
     # Ensure logs directory exists
     if not os.path.exists(LOG_DIR):
-        print(f"Main log directory does not exist, creating: {LOG_DIR}")
+        if not terminal_ui:
+            print(f"Main log directory does not exist, creating: {LOG_DIR}")
         os.makedirs(LOG_DIR, exist_ok=True)
 
     # Configure the logger
@@ -49,24 +53,33 @@ def setup_main_logger():
     # Create a file handler and console handler
     try:
         file_handler = RotatingFileHandler(log_path, maxBytes=10*1024*1024, backupCount=5)
-        print(f"Successfully created main log file handler for {log_path}")
+        if not terminal_ui:
+            print(f"Successfully created main log file handler for {log_path}")
     except Exception as e:
-        print(f"Error creating main log file handler: {e}")
+        if not terminal_ui:
+            print(f"Error creating main log file handler: {e}")
         # Create a fallback log in the current directory
         fallback_path = os.path.join(os.getcwd(), log_filename)
-        print(f"Trying fallback main log path: {fallback_path}")
+        if not terminal_ui:
+            print(f"Trying fallback main log path: {fallback_path}")
         file_handler = RotatingFileHandler(fallback_path, maxBytes=10*1024*1024, backupCount=5)
 
-    console_handler = logging.StreamHandler(sys.stdout)
+    # Only add console handler if not in terminal UI mode
+    console_handler = None
+    if not terminal_ui:
+        console_handler = logging.StreamHandler(sys.stdout)
 
     # Set formatter
     formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
     file_handler.setFormatter(formatter)
-    console_handler.setFormatter(formatter)
 
     # Add the handlers to the logger
     logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
+
+    # Add console handler only if not in terminal UI mode
+    if not terminal_ui and console_handler:
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
 
     return logger
 
@@ -83,6 +96,8 @@ def parse_arguments():
     parser.add_argument('-n', '--name', type=str, required=True, help='Name of the team')
     parser.add_argument('-h', '--host', type=str, default='localhost',
                         help='Name or IP of the machine; localhost by default')
+    parser.add_argument('-u', '--terminal-ui', action='store_true',
+                        help='Enable the terminal user interface mode (disables console logging)')
 
     return parser.parse_args()
 
@@ -93,12 +108,23 @@ def connect_to_server(host, port):
         client_socket.connect((host, port))
         return client_socket
     except socket.error as e:
-        main_logger.error(f"Connection error: {e}")
+        if main_logger:
+            main_logger.error(f"Connection error: {e}")
+        else:
+            print(f"Connection error: {e}")
         sys.exit(1)
 
 def main():
     """Main function"""
     args = parse_arguments()
+
+    # Setup main logger with terminal UI option
+    global main_logger
+    main_logger = setup_main_logger(args.terminal_ui)
+
+    # Print startup info only if not in terminal UI mode
+    if not args.terminal_ui:
+        print(f"Connecting to server {args.host}:{args.port}")
 
     # Connect to the server
     client_socket = connect_to_server(args.host, args.port)
@@ -138,15 +164,16 @@ def main():
         main_logger.info(f"Connected to server as client #{client_num}")
         main_logger.info(f"Map dimensions: {width}x{height}")
 
-        # Create and start the AI
-        ai = ZappyAI(client_socket, client_num, width, height, args.name)
+        # Create and start the AI (pass terminal_ui parameter)
+        ai = ZappyAI(client_socket, client_num, width, height, args.name, args.terminal_ui)
         ai.run()
 
     except (ValueError, IndexError) as e:
         main_logger.error(f"Error parsing server response: {e}")
         sys.exit(1)
     finally:
-        main_logger.info("AI client shutting down")
+        if main_logger:
+            main_logger.info("AI client shutting down")
         client_socket.close()
 
 # Initialize the main logger

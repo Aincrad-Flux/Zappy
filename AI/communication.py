@@ -9,6 +9,8 @@ import re
 import queue
 import threading
 import time
+import os
+import sys
 from utils import encrypt_message, decrypt_message
 
 class CommunicationManager:
@@ -29,9 +31,30 @@ class CommunicationManager:
         self.team_member_positions = {}  # Store teammate positions
         self.incantation_participants = {}  # Players who've responded to elevation
 
+        # Beacon system
+        self.active_beacons = {}  # Dictionary of active beacons by level
+        self.beacon_last_update = {}  # Last time a beacon was heard from
+
         # Broadcasting configuration
         self.last_broadcast_time = 0
         self.broadcast_cooldown = 2  # Seconds between broadcasts
+
+        # Terminal UI state
+        self.is_beacon = False
+        self.beacon_mode = ""
+        self.inventory = {}
+        self.override_message = ""
+        self.override_beacon_id = None
+        self.override_level = None
+        self.override_time = 0
+        self.override_duration = 5  # Seconds to display the override message
+        self.ui_update_interval = 0.5  # Update UI every 0.5 seconds
+        self.last_ui_update = 0
+
+        # Start the UI update thread
+        self.ui_thread = threading.Thread(target=self._update_terminal_ui)
+        self.ui_thread.daemon = True
+        self.ui_thread.start()
 
         # Start the receiver thread
         self.receiver_thread = threading.Thread(target=self._response_receiver)
@@ -138,7 +161,44 @@ class CommunicationManager:
                 "timestamp": time.time()
             }
 
-            if message_type == "ELEVATION":
+            if message_type == "BEACON":
+                # Someone is broadcasting as a beacon for elevation
+                level = int(parts[3]) if len(parts) > 3 else 1
+
+                self.logger.info(f"Received BEACON signal from {sender_id} for level {level}")
+
+                # Update or add to active beacons
+                self.active_beacons[level] = sender_id
+                self.beacon_last_update[sender_id] = time.time()
+
+                # Show override message in terminal UI
+                self.show_override_message(sender_id, level)
+
+                # Record direction to beacon
+                self.team_member_positions[sender_id] = {
+                    "direction": direction,
+                    "timestamp": time.time(),
+                    "is_beacon": True,
+                    "level": level
+                }
+
+            elif message_type == "BEACON_RESPONSE":
+                # Someone is responding to a beacon
+                beacon_id = parts[3] if len(parts) > 3 else None
+                level = int(parts[4]) if len(parts) > 4 else 1
+
+                if beacon_id and beacon_id == str(self.client_num):
+                    self.logger.info(f"Received BEACON_RESPONSE from {sender_id} for level {level}")
+
+                    # Record the participant
+                    self.incantation_participants[sender_id] = {
+                        "type": "BEACON_RESPONSE",
+                        "level": level,
+                        "timestamp": time.time(),
+                        "direction": direction
+                    }
+
+            elif message_type == "ELEVATION":
                 # Someone is asking for elevation
                 level = int(parts[3]) if len(parts) > 3 else 1
                 resources_data = parts[4] if len(parts) > 4 else ""
@@ -225,13 +285,144 @@ class CommunicationManager:
         message = f"TEAM:{self.client_num}:LEVEL_UP:{level}"
         self.broadcast(message)
 
+    def broadcast_beacon(self, level):
+        """Broadcast a beacon signal for players to join for evolution"""
+        message = f"TEAM:{self.client_num}:BEACON:{level}"
+        self.broadcast(message)
+
+    def broadcast_beacon_response(self, beacon_id, level):
+        """Broadcast a response to a beacon signal"""
+        message = f"TEAM:{self.client_num}:BEACON_RESPONSE:{beacon_id}:{level}"
+        self.broadcast(message)
+
+    def get_active_beacon(self, level=None):
+        """Get active beacon for a specific level if provided, otherwise any beacon"""
+        current_time = time.time()
+        beacon_timeout = 10  # Consider beacons older than 10 seconds expired
+
+        if level and level in self.active_beacons:
+            beacon_id = self.active_beacons[level]
+            last_update = self.beacon_last_update.get(beacon_id, 0)
+
+            if current_time - last_update < beacon_timeout:
+                # Show override message for a newly detected beacon
+                if beacon_id != self.override_beacon_id or level != self.override_level:
+                    self.show_override_message(beacon_id, level)
+                return beacon_id
+
+        # If level not specified or no beacon for that level, check for any beacon
+        for l, beacon_id in self.active_beacons.items():
+            last_update = self.beacon_last_update.get(beacon_id, 0)
+            if current_time - last_update < beacon_timeout:
+                if level is None or l == level:
+                    # Show override message for a newly detected beacon
+                    if beacon_id != self.override_beacon_id or l != self.override_level:
+                        self.show_override_message(beacon_id, l)
+                    return beacon_id
+
+        return None
+
+    def cleanup(self):
+        """Cleanup resources"""
+        self.running = False
+        if hasattr(self, 'receiver_thread') and self.receiver_thread.is_alive():
+            self.receiver_thread.join(timeout=1)
+        if hasattr(self, 'ui_thread') and self.ui_thread.is_alive():
+            self.ui_thread.join(timeout=1)
+
+    def _update_terminal_ui(self):
+        """Update the terminal UI with player info"""
+        while self.running:
+            try:
+                current_time = time.time()
+
+                if current_time - self.last_ui_update >= self.ui_update_interval:
+                    # Clear screen - works on both Unix/Linux and Windows
+                    os.system('cls' if os.name == 'nt' else 'clear')
+
+                    # Print header
+                    print(f"{'='*60}")
+                    print(f"ZAPPY AI #{self.client_num} - TEAM: {self.team_name}")
+                    print(f"{'='*60}")
+
+                    # Print beacon status
+                    if self.is_beacon:
+                        print(f"\n[BEACON MODE: {self.beacon_mode}]")
+                    else:
+                        # Check if we're following a beacon
+                        following_beacon_id = self.override_beacon_id
+                        if following_beacon_id:
+                            # Display direction information if available
+                            direction = self.get_beacon_direction(following_beacon_id)
+                            if direction is not None:
+                                direction_labels = ["Behind", "Behind-Right", "Right", "Front-Right", "Front", "Front-Left", "Left", "Behind-Left"]
+                                direction_label = direction_labels[direction]
+                                print(f"\n[FOLLOWING BEACON #{following_beacon_id} - Direction: {direction_label} ({direction})]")
+                            else:
+                                print(f"\n[FOLLOWING BEACON #{following_beacon_id}]")
+                        else:
+                            print("\n[NORMAL MODE]")
+
+                    # Print inventory
+                    print("\nINVENTORY:")
+                    print("-" * 30)
+                    for resource, amount in self.inventory.items():
+                        print(f"{resource}: {amount}")
+
+                    # Print override message if active
+                    if self.override_message and (current_time - self.override_time < self.override_duration):
+                        print("\n" + "!" * 60)
+                        print(self.override_message)
+                        print("!" * 60)
+
+                    sys.stdout.flush()
+                    self.last_ui_update = current_time
+
+                time.sleep(0.1)
+
+            except Exception as e:
+                self.logger.error(f"Error updating terminal UI: {e}")
+                time.sleep(1)
+
+    def update_inventory(self, inventory):
+        """Update the UI with current inventory"""
+        self.inventory = inventory
+
+    def set_beacon_mode(self, is_beacon, level=""):
+        """Update the UI with current beacon status"""
+        self.is_beacon = is_beacon
+        self.beacon_mode = f"Level {level}" if level else ""
+
+    def show_override_message(self, beacon_id, level):
+        """Show beacon override message"""
+        # Get direction if available
+        direction = self.get_beacon_direction(beacon_id)
+        direction_info = ""
+        if direction is not None:
+            direction_labels = ["Behind", "Behind-Right", "Right", "Front-Right", "Front", "Front-Left", "Left", "Behind-Left"]
+            direction_info = f" - Direction: {direction_labels[direction]} ({direction})"
+
+        self.override_message = f"BEACON DETECTED! Player #{beacon_id} is signaling for Level {level} elevation!{direction_info}"
+        self.override_beacon_id = beacon_id
+        self.override_level = level
+        self.override_time = time.time()
+
+    def clear_override_message(self):
+        """Clear the override message"""
+        self.override_message = ""
+        self.override_beacon_id = None
+
+    def get_beacon_direction(self, beacon_id):
+        """Get the direction to a specific beacon"""
+        if beacon_id in self.team_member_positions:
+            position = self.team_member_positions[beacon_id]
+            if 'direction' in position and time.time() - position['timestamp'] < 5:
+                return position['direction']
+        return None
+
     def get_team_member_info(self):
         """Get information about team members"""
         return {
-            "positions": self.team_member_positions,
-            "participants": self.incantation_participants
+            'positions': self.team_member_positions,
+            'participants': self.incantation_participants
         }
-
-    def cleanup(self):
-        """Cleanup resources and stop threads"""
-        self.running = False

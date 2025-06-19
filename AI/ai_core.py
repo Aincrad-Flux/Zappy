@@ -15,12 +15,15 @@ from strategy import StrategyManager
 class ZappyAI:
     """Implementation of the Zappy AI"""
 
-    def __init__(self, socket, client_num, width, height, team_name=""):
+    def __init__(self, socket, client_num, width, height, team_name="", terminal_ui=False):
         """Initialize the AI"""
         # Setup logger
-        self.logger = setup_logger(client_num, team_name)
+        self.logger = setup_logger(client_num, team_name, terminal_ui)
         self.logger.info(f"AI client #{client_num} for team {team_name} initialized")
         self.logger.info(f"Map dimensions: {width}x{height}")
+
+        # Store terminal UI flag
+        self.terminal_ui = terminal_ui
 
         # Game parameters
         self.client_num = client_num

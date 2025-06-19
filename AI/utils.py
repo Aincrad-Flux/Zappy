@@ -14,20 +14,22 @@ import base64
 LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
-def setup_logger(client_num, team_name):
+def setup_logger(client_num, team_name, terminal_ui=False):
     """Setup a logger for a specific AI client"""
     # Create a unique log file for this AI client
     timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     log_filename = f"ai_{team_name}_{client_num}_{timestamp}.log"
     log_path = os.path.join(LOG_DIR, log_filename)
 
-    # Print debug info
-    print(f"Setting up logger for AI client #{client_num}, team {team_name}")
-    print(f"Log file path: {log_path}")
+    # Only print debug info if not in terminal UI mode
+    if not terminal_ui:
+        print(f"Setting up logger for AI client #{client_num}, team {team_name}")
+        print(f"Log file path: {log_path}")
 
     # Ensure logs directory exists
     if not os.path.exists(LOG_DIR):
-        print(f"Log directory does not exist, creating: {LOG_DIR}")
+        if not terminal_ui:
+            print(f"Log directory does not exist, creating: {LOG_DIR}")
         os.makedirs(LOG_DIR, exist_ok=True)
 
     # Configure the logger
@@ -44,12 +46,15 @@ def setup_logger(client_num, team_name):
         handler = RotatingFileHandler(log_path, maxBytes=10*1024*1024, backupCount=5)
         formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
         handler.setFormatter(formatter)
-        print(f"Successfully created log file handler for {log_path}")
+        if not terminal_ui:
+            print(f"Successfully created log file handler for {log_path}")
     except Exception as e:
-        print(f"Error creating log file handler: {e}")
+        if not terminal_ui:
+            print(f"Error creating log file handler: {e}")
         # Create a fallback log in the current directory
         fallback_path = os.path.join(os.getcwd(), log_filename)
-        print(f"Trying fallback log path: {fallback_path}")
+        if not terminal_ui:
+            print(f"Trying fallback log path: {fallback_path}")
         handler = RotatingFileHandler(fallback_path, maxBytes=10*1024*1024, backupCount=5)
         formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
         handler.setFormatter(formatter)
@@ -57,10 +62,11 @@ def setup_logger(client_num, team_name):
     # Add the file handler to the logger
     logger.addHandler(handler)
 
-    # Add a console handler as well for direct visibility
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
+    # Add a console handler only if not in terminal UI mode
+    if not terminal_ui:
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
 
     return logger
 
