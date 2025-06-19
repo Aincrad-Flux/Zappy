@@ -10,10 +10,65 @@ import sys
 import time
 import os
 import sys
+import logging
+import datetime
+from logging.handlers import RotatingFileHandler
 
 # Add the parent directory to the path so we can import the ai module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from AI.ai import ZappyAI
+from AI.ai import ZappyAI, setup_logger
+
+# Configure main logger
+LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
+print(f"Main logger directory: {LOG_DIR}")
+os.makedirs(LOG_DIR, exist_ok=True)
+
+def setup_main_logger():
+    """Setup the main logger for the application"""
+    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    log_filename = f"zappy_ai_main_{timestamp}.log"
+    log_path = os.path.join(LOG_DIR, log_filename)
+
+    print(f"Setting up main logger")
+    print(f"Main log file path: {log_path}")
+
+    # Ensure logs directory exists
+    if not os.path.exists(LOG_DIR):
+        print(f"Main log directory does not exist, creating: {LOG_DIR}")
+        os.makedirs(LOG_DIR, exist_ok=True)
+
+    # Configure the logger
+    logger = logging.getLogger("zappy_ai_main")
+    logger.setLevel(logging.DEBUG)
+
+    # Clear any existing handlers
+    if logger.handlers:
+        for handler in logger.handlers:
+            logger.removeHandler(handler)
+
+    # Create a file handler and console handler
+    try:
+        file_handler = RotatingFileHandler(log_path, maxBytes=10*1024*1024, backupCount=5)
+        print(f"Successfully created main log file handler for {log_path}")
+    except Exception as e:
+        print(f"Error creating main log file handler: {e}")
+        # Create a fallback log in the current directory
+        fallback_path = os.path.join(os.getcwd(), log_filename)
+        print(f"Trying fallback main log path: {fallback_path}")
+        file_handler = RotatingFileHandler(fallback_path, maxBytes=10*1024*1024, backupCount=5)
+
+    console_handler = logging.StreamHandler(sys.stdout)
+
+    # Set formatter
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+    file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
+
+    # Add the handlers to the logger
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+
+    return logger
 
 def parse_arguments():
     """Parse command line arguments"""
@@ -38,7 +93,7 @@ def connect_to_server(host, port):
         client_socket.connect((host, port))
         return client_socket
     except socket.error as e:
-        print(f"Connection error: {e}")
+        main_logger.error(f"Connection error: {e}")
         sys.exit(1)
 
 def main():
@@ -51,16 +106,17 @@ def main():
     # Wait for "WELCOME" message
     welcome_msg = client_socket.recv(1024).decode('utf-8').strip()
     if welcome_msg != "WELCOME":
-        print(f"Expected 'WELCOME', got '{welcome_msg}'")
+        main_logger.error(f"Expected 'WELCOME', got '{welcome_msg}'")
         sys.exit(1)
 
     # Send team name
     client_socket.sendall(f"{args.name}\n".encode('utf-8'))
+    main_logger.info(f"Team name sent: {args.name}")
 
     # Wait for client num and map dimensions
     response = client_socket.recv(1024).decode('utf-8').strip()
     if "ko" in response.lower():
-        print(f"Server rejected team name: {response}")
+        main_logger.error(f"Server rejected team name: {response}")
         sys.exit(1)
 
     try:
@@ -79,18 +135,22 @@ def main():
 
         width, height = int(dimensions[0]), int(dimensions[1])
 
-        print(f"Connected to server as client #{client_num}")
-        print(f"Map dimensions: {width}x{height}")
+        main_logger.info(f"Connected to server as client #{client_num}")
+        main_logger.info(f"Map dimensions: {width}x{height}")
 
         # Create and start the AI
-        ai = ZappyAI(client_socket, client_num, width, height)
+        ai = ZappyAI(client_socket, client_num, width, height, args.name)
         ai.run()
 
     except (ValueError, IndexError) as e:
-        print(f"Error parsing server response: {e}")
+        main_logger.error(f"Error parsing server response: {e}")
         sys.exit(1)
     finally:
+        main_logger.info("AI client shutting down")
         client_socket.close()
+
+# Initialize the main logger
+main_logger = setup_main_logger()
 
 if __name__ == "__main__":
     main()
