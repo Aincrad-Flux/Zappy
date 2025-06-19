@@ -36,6 +36,7 @@ private:
     Vector3 position;     ///< Position in 3D space
     Color color;          ///< Color representation
     std::string name;     ///< Resource name
+    int count;            ///< Number of resources of this type
 
 public:
     /**
@@ -75,6 +76,18 @@ public:
      */
     Color getColor() const;
     std::string getName() const;
+
+    /**
+     * @brief Gets the count of resources
+     * @return The number of resources of this type
+     */
+    int getCount() const;
+
+    /**
+     * @brief Sets the count of resources
+     * @param newCount The new number of resources
+     */
+    void setCount(int newCount);
 
     static Color getResourceColor(ResourceType type);
     static std::string getResourceName(ResourceType type);

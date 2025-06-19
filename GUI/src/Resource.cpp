@@ -8,7 +8,7 @@
 #include "Resource.hpp"
 #include <cmath>
 
-Resource::Resource(ResourceType resType, Vector3 pos) : type(resType), position(pos)
+Resource::Resource(ResourceType resType, Vector3 pos) : type(resType), position(pos), count(1)
 {
     color = getResourceColor(resType);
     name = getResourceName(resType);
@@ -132,6 +132,19 @@ void Resource::draw(Vector3 worldPos, int tileSize) const
             break;
         }
     }
+
+    // Ajouter un indicateur visuel de quantité pour les ressources multiples
+    if (count > 3) {
+        // Créer un halo autour de la ressource pour indiquer qu'il y en a plusieurs
+        Color highlightColor = WHITE;
+        highlightColor.a = 100; // Semi-transparent
+
+        // Rendre la ressource légèrement plus grande et plus brillante pour indiquer quantité
+        float pulseIntensity = 0.1f * sinf(GetTime() * 2.0f) + 1.1f; // Effet de pulsation
+
+        // Dessiner un halo ou une sphère additionnelle autour de la ressource
+        DrawSphere(center, 0.6f * scaleFactor * pulseIntensity, highlightColor);
+    }
 }
 
 ResourceType Resource::getType() const
@@ -152,6 +165,16 @@ Color Resource::getColor() const
 std::string Resource::getName() const
 {
     return name;
+}
+
+int Resource::getCount() const
+{
+    return count;
+}
+
+void Resource::setCount(int newCount)
+{
+    count = newCount;
 }
 
 Color Resource::getResourceColor(ResourceType type)
