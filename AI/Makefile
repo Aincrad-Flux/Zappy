@@ -10,14 +10,24 @@ DIST_DIR = dist
 BUILD_DIR = build
 SPEC_DIR = spec
 
+# Module files (new modular structure)
+MODULES = ai_core.py models.py utils.py communication.py actions.py strategy.py
+
 # Required Python packages
 REQUIREMENTS = pyinstaller
 
-.PHONY: all clean fclean re zappy_ai install
+.PHONY: all clean fclean re zappy_ai install check
 
 all: $(NAME)
 
-zappy_ai: install
+# Add check target to verify all modules compile correctly
+check:
+	@echo "Checking Python syntax..."
+	@$(PYTHON) -m py_compile $(MAIN_FILE) $(MODULES)
+	@echo "All modules syntax OK"
+
+# Update zappy_ai target to depend on check
+zappy_ai: install check
 	@echo "Building $(NAME) binary..."
 	$(PYTHON) -m PyInstaller --onefile --name=$(NAME) $(MAIN_FILE)
 	@if [ -f $(DIST_DIR)/$(NAME) ]; then \

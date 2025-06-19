@@ -14,9 +14,9 @@ import logging
 import datetime
 from logging.handlers import RotatingFileHandler
 
-# Add the parent directory to the path so we can import the ai module
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from AI.ai import ZappyAI, setup_logger
+# Import our new modules
+from utils import setup_logger
+from ai_core import ZappyAI
 
 # Configure main logger
 LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
