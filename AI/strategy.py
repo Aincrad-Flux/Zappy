@@ -73,6 +73,10 @@ class StrategyManager:
         # Update the UI with inventory information
         self.comm_manager.update_inventory(self.inventory)
 
+        # Update the vision level in the UI
+        if hasattr(self.comm_manager, 'vision_level'):
+            self.comm_manager.vision_level = self.vision_range
+
         # If food is critically low, prioritize finding food
         if self.inventory[ResourceType.FOOD] <= 5:
             self.state = "SEARCHING_FOOD"

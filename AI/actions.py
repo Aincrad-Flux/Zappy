@@ -66,6 +66,25 @@ class ActionManager:
                 for item in items:
                     tile.append(item)
                 tiles.append(tile)
+
+            # Update the vision data in communication manager for terminal UI
+            if hasattr(self.comm_manager, 'update_vision_data'):
+                # Get vision level from the number of tiles
+                # For a level n vision, there are n^2 tiles
+                # Level 1: 1 tiles (just current position)
+                # Level 2: 4 tiles (current position + 3 adjacent)
+                # Level 3: 9 tiles (current position + 8 around)
+                # Level n: n^2 tiles
+
+                vision_level = 1
+                if len(tiles) > 1:
+                    # Calculate vision level based on tiles count
+                    tile_count = len(tiles)
+                    import math
+                    vision_level = int(math.sqrt(tile_count))
+
+                self.comm_manager.update_vision_data(tiles, vision_level)
+
             return tiles
         return []
 

@@ -48,8 +48,12 @@ class CommunicationManager:
         self.override_level = None
         self.override_time = 0
         self.override_duration = 5  # Seconds to display the override message
-        self.ui_update_interval = 0.5  # Update UI every 0.5 seconds
         self.last_ui_update = 0
+        self.ui_update_interval = 0.5  # Update the UI every 0.5 seconds
+
+        # Vision cone display
+        self.last_vision_tiles = []  # Store the last vision data
+        self.vision_level = 1  # Current vision level
 
         # Start the UI update thread
         self.ui_thread = threading.Thread(target=self._update_terminal_ui)
@@ -369,11 +373,22 @@ class CommunicationManager:
                     for resource, amount in self.inventory.items():
                         print(f"{resource}: {amount}")
 
+                    # Print vision cone
+                    vision_display = self._generate_vision_display()
+                    print(vision_display)
+
                     # Print override message if active
                     if self.override_message and (current_time - self.override_time < self.override_duration):
                         print("\n" + "!" * 60)
                         print(self.override_message)
                         print("!" * 60)
+
+                    # Print vision cone
+                    if self.last_vision_tiles:
+                        print("\nVISION CONE:")
+                        print("-" * 30)
+                        for tile in self.last_vision_tiles:
+                            print(f"Tile: {tile}")
 
                     sys.stdout.flush()
                     self.last_ui_update = current_time
@@ -426,3 +441,107 @@ class CommunicationManager:
             'positions': self.team_member_positions,
             'participants': self.incantation_participants
         }
+
+    def update_vision_data(self, vision_tiles, vision_level):
+        """Update the vision data for the terminal UI"""
+        self.last_vision_tiles = vision_tiles
+        self.vision_level = vision_level
+
+    def _generate_vision_display(self):
+        """Generate a string representation of the vision cone"""
+        if not self.last_vision_tiles:
+            return "\nVISION CONE:\n" + "-" * 30 + "\nNo vision data available"
+
+        # ANSI color codes for better visibility
+        RESET = "\033[0m"
+        PLAYER_COLOR = "\033[1;36m"  # Bright Cyan
+        FOOD_COLOR = "\033[1;32m"    # Bright Green
+        RESOURCE_COLOR = "\033[1;33m" # Bright Yellow
+        EMPTY_COLOR = "\033[0;90m"   # Dark Gray
+
+        # Create a string representation of the vision cone
+        display = []
+        display.append("\nVISION CONE:")
+        display.append("-" * 30)
+
+        # Add legend with colors
+        display.append(f"Legend: {PLAYER_COLOR}p{RESET} - player, {FOOD_COLOR}f{RESET} - food, {RESOURCE_COLOR}*{RESET} - resource")
+
+        # In Zappy, vision works differently:
+        # Level 1: [current tile + 3 in front = 4 tiles]
+        # Level 2: [current tile + 5 in front + 3 more = 9 tiles]
+        # Level n: n+(n+1)+(n+2)+...+(n+(n-1)) = n^2 tiles
+
+        # We need to organize these tiles into a diamond/triangle shape
+        # For the example of level 2 vision:
+        #     .
+        #    . .
+        #   . . .
+        #    . .
+        #     p
+
+        level = self.vision_level
+        if level < 1:
+            level = 1
+
+        # Calculate number of rows and layout
+        rows = 2 * level - 1
+        middle_row = level - 1  # 0-indexed
+
+        # Start with the player's position (last tile)
+        player_tile_index = 0
+
+        # For each row, calculate the number of tiles and their indices
+        tile_index = 0
+
+        # Process each row of the vision cone (from top to bottom)
+        for row_idx in range(rows):
+            # Calculate how far we are from the middle row (0 for middle, positive for both directions)
+            distance_from_middle = abs(row_idx - middle_row)
+
+            # Calculate row width (widest at middle_row, narrower at edges)
+            row_width = 2 * (level - distance_from_middle) - 1
+
+            # Leading spaces for centering
+            leading_spaces = " " * distance_from_middle
+
+            row_str = leading_spaces
+
+            # Process each tile in the current row
+            for j in range(row_width):
+                if tile_index < len(self.last_vision_tiles):
+                    tile_content = self.last_vision_tiles[tile_index]
+
+                    # Create a visual representation of the tile
+                    has_player = False
+                    has_food = False
+                    has_resource = False
+
+                    for item in tile_content:
+                        if item == "player":
+                            has_player = True
+                        elif item == "food":
+                            has_food = True
+                        elif item in ["linemate", "deraumere", "sibur", "mendiane", "phiras", "thystame"]:
+                            has_resource = True
+
+                    # If there's nothing in the tile, show a dot
+                    if not (has_player or has_food or has_resource):
+                        row_str += f"{EMPTY_COLOR}.{RESET} "
+                    else:
+                        # Prioritize player, then food, then resources
+                        if has_player:
+                            row_str += f"{PLAYER_COLOR}p{RESET} "
+                        elif has_food:
+                            row_str += f"{FOOD_COLOR}f{RESET} "
+                        elif has_resource:
+                            row_str += f"{RESOURCE_COLOR}*{RESET} "
+
+                    tile_index += 1
+                else:
+                    row_str += f"{EMPTY_COLOR}.{RESET} "  # Fill with empty tiles if we run out
+
+            display.append(row_str)
+
+        # Return the complete vision display as a string
+        return "\n".join(display)
