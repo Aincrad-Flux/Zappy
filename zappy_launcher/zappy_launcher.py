@@ -46,10 +46,167 @@ class ZappyLauncher:
         self.gui_process = None
         self.ai_processes = []
 
+        # Add terminal command variable based on platform
+        self.terminal_cmd = self._get_terminal_command()
+
         # UI creation
         self._create_config_tab()
         self._create_build_tab()
         self._create_logs_tab()
+
+    def _get_terminal_command(self):
+        """Get the appropriate terminal command based on the platform"""
+        if sys.platform.startswith('linux'):
+            # Check common Linux terminals
+            terminals = [
+                ('gnome-terminal', ['--', 'bash', '-c']),
+                ('xterm', ['-e', 'bash', '-c']),
+                ('konsole', ['--', 'bash', '-c']),
+                ('terminator', ['-e', 'bash -c']),
+                ('xfce4-terminal', ['--', 'bash', '-c'])
+            ]
+
+            for term, args in terminals:
+                try:
+                    if subprocess.run(['which', term], stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode == 0:
+                        return [term] + args
+                except:
+                    pass
+
+            # Fallback to xterm which is usually available
+            return ['xterm', '-e', 'bash', '-c']
+        elif sys.platform == 'darwin':  # macOS
+            return ['osascript', '-e', 'tell app "Terminal" to do script']
+        else:  # Windows or other
+            self.log("Warning: Separate terminal windows not supported on this platform")
+            return None
+
+    def start_ai(self):
+        """Start AI clients in separate terminal windows or in background"""
+        # Get active teams
+        active_teams = self.get_active_teams()
+        if not active_teams:
+            self.log("Error: At least one team must be enabled")
+            return
+
+        # Get path to AI binary
+        ai_path = os.path.join(os.getcwd(), "AI", "zappy_ai")
+
+        # Vérifier que le fichier existe
+        if not os.path.isfile(ai_path):
+            ai_path = os.path.join(os.getcwd(), "zappy_ai")
+            if not os.path.isfile(ai_path):
+                self.log(f"Error: AI binary not found at {ai_path}")
+                return
+
+        # Make sure the AI binary is executable
+        try:
+            os.chmod(ai_path, os.stat(ai_path).st_mode | 0o111)
+        except Exception as e:
+            self.log(f"Warning: Could not set executable permission on AI binary: {e}")
+
+        # Counter for AI instances
+        ai_count = 0
+
+        # Option to open in separate terminals
+        open_in_terminal = True  # Added this option, could be made configurable
+
+        for team in active_teams:
+            instances = self.ai_count_vars[team].get()
+            for i in range(instances):
+                # Build the command
+                ai_args = [
+                    ai_path,
+                    "-p", self.port.get(),
+                    "-h", self.host.get(),
+                    "-n", team
+                ]
+
+                if self.ai_terminal_ui.get():
+                    ai_args.append("--terminal-ui")
+
+                cmd_str = " ".join(ai_args)
+                self.log(f"Starting AI #{ai_count+1} for team {team} with command: {cmd_str}")
+
+                try:
+                    if open_in_terminal and self.terminal_cmd:
+                        # For terminal execution, we need to handle differently
+                        if sys.platform.startswith('linux'):
+                            # Get current directory for correct path resolution
+                            cwd = os.getcwd()
+
+                            # DEBUG: Print terminal detection info
+                            self.log(f"Using terminal command: {self.terminal_cmd}")
+
+                            # Form the command to run in terminal - CORRECTED APPROACH
+                            command_inside_terminal = f"{ai_path} -p {self.port.get()} -h {self.host.get()} -n {team}"
+                            if self.ai_terminal_ui.get():
+                                command_inside_terminal += " --terminal-ui"
+
+                            # More reliable way to execute commands in different terminal emulators
+                            if self.terminal_cmd[0] == "gnome-terminal":
+                                # For gnome-terminal, needs special handling
+                                terminal_full_cmd = [
+                                    "gnome-terminal",
+                                    "--working-directory=" + cwd,
+                                    "--", "bash", "-c",
+                                    f"{command_inside_terminal}; echo 'AI process terminated. Press Enter to close.'; read"
+                                ]
+                            elif self.terminal_cmd[0] == "konsole":
+                                # For KDE Konsole
+                                terminal_full_cmd = [
+                                    "konsole",
+                                    "--workdir", cwd,
+                                    "-e", "bash", "-c",
+                                    f"{command_inside_terminal}; echo 'AI process terminated. Press Enter to close.'; read"
+                                ]
+                            else:
+                                # For xterm, terminator, xfce4-terminal and others
+                                terminal_full_cmd = [
+                                    self.terminal_cmd[0],
+                                    "-e", f"cd {cwd} && {command_inside_terminal}; echo 'AI process terminated. Press Enter to close.'; read"
+                                ]
+
+                            # Log the full command for debugging
+                            self.log(f"Full terminal command: {terminal_full_cmd}")
+
+                            # Start detached process without capturing output
+                            subprocess.Popen(
+                                terminal_full_cmd,
+                                stdout=subprocess.PIPE,  # Changed from DEVNULL to capture potential errors
+                                stderr=subprocess.PIPE,
+                                start_new_session=True
+                            )
+
+                        elif sys.platform == 'darwin':  # macOS
+                            # For macOS, it's a bit different with osascript
+                            command_inside_terminal = f"cd {os.getcwd()} && {cmd_str}"
+                            terminal_full_cmd = [
+                                "osascript",
+                                "-e",
+                                f'tell app "Terminal" to do script "{command_inside_terminal}; echo \'AI process terminated. Press Enter to close.\'; read"'
+                            ]
+                            subprocess.Popen(terminal_full_cmd)
+
+                        self.log(f"AI #{ai_count+1} for team {team} started in a new terminal window")
+                    else:
+                        # Original method - run in background
+                        ai_process = subprocess.Popen(
+                            ai_args,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            text=True
+                        )
+                        self.ai_processes.append(ai_process)
+                        self.log(f"AI #{ai_count+1} for team {team} started in background")
+
+                    ai_count += 1
+                except Exception as e:
+                    self.log(f"Error starting AI for team {team}: {e}")
+                    import traceback
+                    self.log(traceback.format_exc())
+
+        self.log(f"Started {ai_count} AI clients")
 
     def _create_config_tab(self):
         # Create a frame with scrollbar for the config tab
@@ -451,19 +608,40 @@ class ZappyLauncher:
             self.log(f"Error starting GUI: {e}")
 
     def start_ai(self):
+        """Start AI clients in separate terminal windows or in background"""
         # Get active teams
         active_teams = self.get_active_teams()
         if not active_teams:
             self.log("Error: At least one team must be enabled")
             return
 
-        # Build the command
+        # Get path to AI binary
         ai_path = os.path.join(os.getcwd(), "AI", "zappy_ai")
 
+        # Vérifier que le fichier existe
+        if not os.path.isfile(ai_path):
+            ai_path = os.path.join(os.getcwd(), "zappy_ai")
+            if not os.path.isfile(ai_path):
+                self.log(f"Error: AI binary not found at {ai_path}")
+                return
+
+        # Make sure the AI binary is executable
+        try:
+            os.chmod(ai_path, os.stat(ai_path).st_mode | 0o111)
+        except Exception as e:
+            self.log(f"Warning: Could not set executable permission on AI binary: {e}")
+
+        # Counter for AI instances
+        ai_count = 0
+
+        # Option to open in separate terminals
+        open_in_terminal = True  # Added this option, could be made configurable
+
         for team in active_teams:
-            ai_count = self.ai_count_vars[team].get()
-            for _ in range(ai_count):
-                cmd = [
+            instances = self.ai_count_vars[team].get()
+            for i in range(instances):
+                # Build the command
+                ai_args = [
                     ai_path,
                     "-p", self.port.get(),
                     "-h", self.host.get(),
@@ -471,29 +649,90 @@ class ZappyLauncher:
                 ]
 
                 if self.ai_terminal_ui.get():
-                    cmd.append("--terminal-ui")
+                    ai_args.append("--terminal-ui")
 
-                cmd_str = " ".join(cmd)
-                self.log(f"Starting AI for team {team} with command: {cmd_str}")
+                cmd_str = " ".join(ai_args)
+                self.log(f"Starting AI #{ai_count+1} for team {team} with command: {cmd_str}")
 
                 try:
-                    ai_process = subprocess.Popen(
-                        cmd,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        text=True
-                    )
-                    self.ai_processes.append(ai_process)
-                    self.log(f"AI for team {team} started successfully")
+                    if open_in_terminal and self.terminal_cmd:
+                        # For terminal execution, we need to handle differently
+                        if sys.platform.startswith('linux'):
+                            # Get current directory for correct path resolution
+                            cwd = os.getcwd()
+
+                            # DEBUG: Print terminal detection info
+                            self.log(f"Using terminal command: {self.terminal_cmd}")
+
+                            # Form the command to run in terminal - CORRECTED APPROACH
+                            command_inside_terminal = f"{ai_path} -p {self.port.get()} -h {self.host.get()} -n {team}"
+                            if self.ai_terminal_ui.get():
+                                command_inside_terminal += " --terminal-ui"
+
+                            # More reliable way to execute commands in different terminal emulators
+                            if self.terminal_cmd[0] == "gnome-terminal":
+                                # For gnome-terminal, needs special handling
+                                terminal_full_cmd = [
+                                    "gnome-terminal",
+                                    "--working-directory=" + cwd,
+                                    "--", "bash", "-c",
+                                    f"{command_inside_terminal}; echo 'AI process terminated. Press Enter to close.'; read"
+                                ]
+                            elif self.terminal_cmd[0] == "konsole":
+                                # For KDE Konsole
+                                terminal_full_cmd = [
+                                    "konsole",
+                                    "--workdir", cwd,
+                                    "-e", "bash", "-c",
+                                    f"{command_inside_terminal}; echo 'AI process terminated. Press Enter to close.'; read"
+                                ]
+                            else:
+                                # For xterm, terminator, xfce4-terminal and others
+                                terminal_full_cmd = [
+                                    self.terminal_cmd[0],
+                                    "-e", f"cd {cwd} && {command_inside_terminal}; echo 'AI process terminated. Press Enter to close.'; read"
+                                ]
+
+                            # Log the full command for debugging
+                            self.log(f"Full terminal command: {terminal_full_cmd}")
+
+                            # Start detached process without capturing output
+                            subprocess.Popen(
+                                terminal_full_cmd,
+                                stdout=subprocess.PIPE,  # Changed from DEVNULL to capture potential errors
+                                stderr=subprocess.PIPE,
+                                start_new_session=True
+                            )
+
+                        elif sys.platform == 'darwin':  # macOS
+                            # For macOS, it's a bit different with osascript
+                            command_inside_terminal = f"cd {os.getcwd()} && {cmd_str}"
+                            terminal_full_cmd = [
+                                "osascript",
+                                "-e",
+                                f'tell app "Terminal" to do script "{command_inside_terminal}; echo \'AI process terminated. Press Enter to close.\'; read"'
+                            ]
+                            subprocess.Popen(terminal_full_cmd)
+
+                        self.log(f"AI #{ai_count+1} for team {team} started in a new terminal window")
+                    else:
+                        # Original method - run in background
+                        ai_process = subprocess.Popen(
+                            ai_args,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            text=True
+                        )
+                        self.ai_processes.append(ai_process)
+                        self.log(f"AI #{ai_count+1} for team {team} started in background")
+
+                    ai_count += 1
                 except Exception as e:
                     self.log(f"Error starting AI for team {team}: {e}")
+                    import traceback
+                    self.log(traceback.format_exc())
 
-    def start_all(self):
-        self.start_server()
-        # Sleep briefly to allow the server to start
-        self.root.after(1000, self.start_gui)
-        # Sleep again before starting AI
-        self.root.after(2000, self.start_ai)
+        self.log(f"Started {ai_count} AI clients")
 
     def stop_all(self):
         # Stop server
@@ -517,6 +756,24 @@ class ZappyLauncher:
                 pass
         self.ai_processes = []
         self.log("All processes stopped")
+
+    def start_all(self):
+        """Start all components in sequence: server, GUI, then AI."""
+        self.log("Starting all components...")
+        self.start_server()
+        # Sleep briefly to allow the server to start
+        self.root.after(1000, self._start_gui_after_server)
+
+    def _start_gui_after_server(self):
+        """Helper method to start GUI after server has started"""
+        self.start_gui()
+        # Sleep again before starting AI
+        self.root.after(2000, self._start_ai_after_gui)
+
+    def _start_ai_after_gui(self):
+        """Helper method to start AI after GUI has started"""
+        self.start_ai()
+        self.log("All components started")
 
     def on_close(self):
         self.stop_all()
