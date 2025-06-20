@@ -34,3 +34,4 @@ zappy_ai
 AI/__pycache__/
 AI/build/
 AI/dist/
+logs/

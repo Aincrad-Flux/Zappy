@@ -19,7 +19,7 @@ from utils import setup_logger
 from ai_core import ZappyAI
 
 # Configure main logger
-LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
+LOG_DIR = os.path.join(os.getcwd(), "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
 # Main logger will be initialized properly in main()

@@ -10,8 +10,8 @@ import logging
 from logging.handlers import RotatingFileHandler
 import base64
 
-# Configure logging directory
-LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
+# Configure logging directory to be in the current working directory
+LOG_DIR = os.path.join(os.getcwd(), "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
 def setup_logger(client_num, team_name, terminal_ui=False):
