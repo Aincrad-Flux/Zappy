@@ -28,6 +28,7 @@ zappy_ai
 .vscode/
 .idea
 /zappy_ref-*
+zappy_ai
 *.sh
 *.spec
 AI/__pycache__/
