@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk, scrolledtext, messagebox
 import subprocess
 import os
 import sys
 import shlex
+import threading
 
 class ZappyLauncher:
     def __init__(self, root):
@@ -15,8 +16,10 @@ class ZappyLauncher:
         # Create tabs
         self.notebook = ttk.Notebook(root)
         self.tab_config = ttk.Frame(self.notebook)
+        self.tab_build = ttk.Frame(self.notebook)
         self.tab_logs = ttk.Frame(self.notebook)
         self.notebook.add(self.tab_config, text="Configuration")
+        self.notebook.add(self.tab_build, text="Build")
         self.notebook.add(self.tab_logs, text="Logs")
         self.notebook.pack(expand=1, fill="both")
 
@@ -45,6 +48,7 @@ class ZappyLauncher:
 
         # UI creation
         self._create_config_tab()
+        self._create_build_tab()
         self._create_logs_tab()
 
     def _create_config_tab(self):
@@ -201,6 +205,165 @@ class ZappyLauncher:
             del self.ai_count_vars[team_name]
             self.teams_listbox.delete(index)
             self._update_ai_config_ui()
+
+    def _create_build_tab(self):
+        build_frame = ttk.Frame(self.tab_build)
+        build_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Title and description
+        ttk.Label(build_frame, text="Build Controls", font=("Arial", 12, "bold")).pack(pady=(0, 10))
+        ttk.Label(build_frame, text="Execute Makefile rules to build and manage the project components").pack(pady=(0, 20))
+
+        # Component build frame
+        comp_frame = ttk.LabelFrame(build_frame, text="Component Build")
+        comp_frame.pack(fill="x", padx=5, pady=10)
+
+        # Create buttons for component builds with better descriptions
+        ttk.Button(comp_frame, text="Build GUI",
+                  command=lambda: self.run_make_command("zappy_gui"),
+                  width=25).pack(side=tk.LEFT, padx=20, pady=10, fill="x", expand=True)
+
+        ttk.Button(comp_frame, text="Build AI",
+                  command=lambda: self.run_make_command("zappy_ai"),
+                  width=25).pack(side=tk.LEFT, padx=20, pady=10, fill="x", expand=True)
+
+        # Standard Makefile rules buttons
+        rules_frame = ttk.LabelFrame(build_frame, text="Standard Build Rules")
+        rules_frame.pack(fill="x", padx=5, pady=10)
+
+        button_frame1 = ttk.Frame(rules_frame)
+        button_frame1.pack(fill="x", padx=5, pady=5)
+
+        ttk.Button(button_frame1, text="Build All",
+                  command=lambda: self.run_make_command("all"),
+                  width=20).pack(side=tk.LEFT, padx=10, pady=5, fill="x", expand=True)
+
+        ttk.Button(button_frame1, text="Clean",
+                  command=lambda: self.run_make_command("clean"),
+                  width=20).pack(side=tk.LEFT, padx=10, pady=5, fill="x", expand=True)
+
+        ttk.Button(button_frame1, text="Full Clean (fclean)",
+                  command=lambda: self.run_make_command("fclean"),
+                  width=20).pack(side=tk.LEFT, padx=10, pady=5, fill="x", expand=True)
+
+        button_frame2 = ttk.Frame(rules_frame)
+        button_frame2.pack(fill="x", padx=5, pady=5)
+
+        ttk.Button(button_frame2, text="Rebuild (re)",
+                  command=lambda: self.run_make_command("re"),
+                  width=20).pack(side=tk.LEFT, padx=10, pady=5, fill="x", expand=True)
+
+        ttk.Button(button_frame2, text="Debug Build",
+                  command=lambda: self.run_make_command("debug"),
+                  width=20).pack(side=tk.LEFT, padx=10, pady=5, fill="x", expand=True)
+
+        ttk.Button(button_frame2, text="Show Build Help",
+                  command=self.show_build_help,
+                  width=20).pack(side=tk.LEFT, padx=10, pady=5, fill="x", expand=True)
+
+        # Custom command entry
+        custom_frame = ttk.LabelFrame(build_frame, text="Custom Make Command")
+        custom_frame.pack(fill="x", padx=5, pady=10)
+
+        custom_cmd_frame = ttk.Frame(custom_frame)
+        custom_cmd_frame.pack(fill="x", padx=5, pady=5)
+
+        ttk.Label(custom_cmd_frame, text="make ").pack(side=tk.LEFT)
+        self.custom_make_command = ttk.Entry(custom_cmd_frame, width=30)
+        self.custom_make_command.pack(side=tk.LEFT, padx=5, fill="x", expand=True)
+
+        ttk.Button(custom_cmd_frame, text="Execute",
+                  command=self.run_custom_make_command).pack(side=tk.LEFT, padx=5)
+
+        # Progress status
+        self.build_status = tk.StringVar(value="Ready")
+        status_frame = ttk.Frame(build_frame)
+        status_frame.pack(fill="x", padx=5, pady=5)
+        ttk.Label(status_frame, text="Status: ").pack(side=tk.LEFT)
+        ttk.Label(status_frame, textvariable=self.build_status).pack(side=tk.LEFT)
+
+    def show_build_help(self):
+        """Show help about available build options"""
+        help_text = """
+        Build Options:
+
+        - Build GUI: Compiles only the GUI component (zappy_gui)
+
+        - Build AI: Compiles only the AI component (zappy_ai)
+
+        - Build All: Compiles all project components (GUI and AI)
+
+        - Clean: Removes all object files but keeps binaries
+
+        - Full Clean (fclean): Removes all generated files including binaries
+
+        - Rebuild (re): Full clean followed by full build
+
+        - Debug Build: Builds with debug flags
+
+        You can also enter custom make commands in the field at the bottom.
+        """
+        messagebox.showinfo("Build Help", help_text)
+
+    def run_make_command(self, rule):
+        """Run a make command with the specified rule"""
+        # Get the project root directory
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        command = ["make", "-C", project_dir, rule]
+
+        self.log(f"Running 'make {rule}'...")
+        self.build_status.set(f"Building: {rule}...")
+
+        # Run the command in a separate thread to avoid blocking the UI
+        threading.Thread(target=self._run_command_thread, args=(command, rule)).start()
+
+    def run_custom_make_command(self):
+        """Run a custom make command"""
+        custom_rule = self.custom_make_command.get().strip()
+        if not custom_rule:
+            self.log("Error: Please enter a make command")
+            return
+
+        # Get the project root directory
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        command = ["make", "-C", project_dir] + shlex.split(custom_rule)
+
+        self.log(f"Running 'make {custom_rule}'...")
+
+        # Run the command in a separate thread to avoid blocking the UI
+        threading.Thread(target=self._run_command_thread, args=(command,)).start()
+
+    def _run_command_thread(self, command, rule=None):
+        """Run a command in a thread and update the logs"""
+        try:
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+
+            # Read and display output line by line as it comes
+            for line in process.stdout:
+                self.log(line.strip())
+
+            process.wait()
+
+            if process.returncode == 0:
+                self.log(f"Command completed successfully (return code: {process.returncode})")
+                if rule:
+                    self.build_status.set(f"{rule} completed successfully")
+                else:
+                    self.build_status.set("Command completed")
+            else:
+                self.log(f"Command failed with return code: {process.returncode}")
+                self.build_status.set(f"Build failed (code: {process.returncode})")
+        except Exception as e:
+            self.log(f"Error executing command: {e}")
+            self.build_status.set("Error executing command")
 
     def _create_logs_tab(self):
         self.log_text = scrolledtext.ScrolledText(self.tab_logs, wrap=tk.WORD)
