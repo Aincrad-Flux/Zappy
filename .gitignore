@@ -29,3 +29,7 @@ zappy_ai
 .idea
 /zappy_ref-*
 *.sh
+*.spec
+AI/__pycache__/
+AI/build/
+AI/dist/
