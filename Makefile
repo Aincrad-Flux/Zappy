@@ -38,12 +38,7 @@ YELLOW = \033[0;33m
 RED = \033[0;31m
 NC = \033[0m
 
-all: $(SERVER_BIN) $(GUI_BIN) $(AI_BIN)
-
-$(SERVER_BIN): $(SERVER_OBJ)
-	@echo "$(YELLOW)Linking $(SERVER_BIN)...$(NC)"
-	@$(CC) $(SERVER_OBJ) -o $(SERVER_BIN) $(LDFLAGS) $(LIBS_SERVER)
-	@echo "$(GREEN)$(SERVER_BIN) compiled successfully!$(NC)"
+all: $(GUI_BIN) $(AI_BIN)
 
 $(GUI_BIN):
 	@echo "$(YELLOW)Building GUI using GUI/Makefile...$(NC)"
@@ -57,10 +52,6 @@ $(AI_BIN):
 	@cp AI/$(AI_BIN) ./$(AI_BIN)
 	@echo "$(GREEN)$(AI_BIN) compiled successfully!$(NC)"
 
-$(OBJ_DIR)/server/%.o: $(SERVER_DIR)/%.c
-	@mkdir -p $(OBJ_DIR)/server
-	@echo "$(YELLOW)Compiling $<...$(NC)"
-	@$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	@echo "$(RED)Cleaning object files...$(NC)"
@@ -70,7 +61,6 @@ clean:
 
 fclean: clean
 	@echo "$(RED)Cleaning binaries...$(NC)"
-	@rm -f $(SERVER_BIN) $(GUI_BIN) $(AI_BIN)
 	@$(MAKE) -C GUI fclean
 	@$(MAKE) -C AI fclean
 
