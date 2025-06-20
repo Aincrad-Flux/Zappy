@@ -23,7 +23,7 @@ class StrategyManager:
 
         # Initialize the inventory
         self.inventory = {
-            ResourceType.FOOD: 10,  # Start with some food
+            ResourceType.FOOD: 5,  # Start with 5 food (changed from 10)
             ResourceType.LINEMATE: 0,
             ResourceType.DERAUMERE: 0,
             ResourceType.SIBUR: 0,
@@ -38,16 +38,19 @@ class StrategyManager:
 
         # Elevation data
         self.elevation_attempt_time = 0
-        self.elevation_timeout = 20  # How long to wait for team members before giving up
+        self.elevation_timeout = 60  # How long to wait for team members before giving up
 
         # Beacon system
         self.is_beacon = False
-        self.beacon_broadcast_interval = 1  # seconds
+        self.beacon_broadcast_interval = 0.5  # seconds (reduced from 1 to broadcast more frequently)
         self.last_beacon_broadcast = 0
         self.current_beacon_id = None
-        self.beacon_follow_timeout = 30  # seconds
+        self.beacon_follow_timeout = 60  # seconds
         self.beacon_follow_start_time = 0
         self.found_beacon_tile = False
+        self.extra_food_for_beacon = 0
+        self.continuous_broadcast = False
+        self.min_food_threshold = 5
 
     def _update_target_resources(self):
         """Update the target resources needed for the next level"""
@@ -73,6 +76,10 @@ class StrategyManager:
         # Update the UI with inventory information
         self.comm_manager.update_inventory(self.inventory)
 
+        # Update elevation status information in the UI
+        elevation_status = self.get_elevation_status()
+        self.comm_manager.update_elevation_status(elevation_status)
+
         # Update the vision level in the UI
         if hasattr(self.comm_manager, 'vision_level'):
             self.comm_manager.vision_level = self.vision_range
@@ -81,6 +88,7 @@ class StrategyManager:
         if self.inventory[ResourceType.FOOD] <= 5:
             self.state = "SEARCHING_FOOD"
             self.logger.info("Food critically low, switching to SEARCHING_FOOD state")
+            self.comm_manager.update_state(self.state)  # Update UI state
             return
 
         # Check if we're already following a beacon
@@ -90,12 +98,14 @@ class StrategyManager:
                 self.logger.info(f"Timed out following beacon {self.current_beacon_id}, returning to resource collection")
                 self.current_beacon_id = None
                 self.state = "COLLECTING_RESOURCES"
+                self.comm_manager.update_state(self.state)  # Update UI state
             else:
                 return  # Continue following beacon
 
         # Check if we are a beacon and update UI
         if self.is_beacon:
             self.state = "ACTING_AS_BEACON"
+            self.comm_manager.update_state(self.state)  # Update UI state
             self.comm_manager.set_beacon_mode(True, self.level)
             return
         else:
@@ -106,6 +116,7 @@ class StrategyManager:
         if active_beacon and active_beacon != self.client_num:
             self.logger.info(f"Found active beacon from player #{active_beacon}, following")
             self.state = "FOLLOWING_BEACON"
+            self.comm_manager.update_state(self.state)  # Update UI state
             self.current_beacon_id = active_beacon
             self.beacon_follow_start_time = time.time()
             return
@@ -117,9 +128,11 @@ class StrategyManager:
                 self.logger.info("All elevation requirements met for level 3+, becoming a beacon")
                 self.is_beacon = True
                 self.state = "ACTING_AS_BEACON"
+                self.comm_manager.update_state(self.state)  # Update UI state
             else:
                 # For levels 1-2, perform regular elevation
                 self.state = "ELEVATION"
+                self.comm_manager.update_state(self.state)  # Update UI state
                 self.logger.info("All elevation requirements met for level 1-2, switching to ELEVATION state")
             return
 
@@ -132,11 +145,13 @@ class StrategyManager:
 
         if missing_resources:
             self.state = "COLLECTING_RESOURCES"
+            self.comm_manager.update_state(self.state)  # Update UI state
             self.logger.info("Missing resources for elevation, switching to COLLECTING_RESOURCES state")
             return
 
         # By default, continue searching for resources
         self.state = "SEARCHING_RESOURCES"
+        self.comm_manager.update_state(self.state)  # Update UI state
         self.logger.info("No specific goal, switching to SEARCHING_RESOURCES state")
 
     def execute_current_state(self):
@@ -266,9 +281,10 @@ class StrategyManager:
 
     def _handle_beacon_mode(self):
         """Act as a beacon for team evolution"""
-        # Broadcast our beacon status periodically
+        # Broadcast our beacon status continuously - reduced interval for more frequent broadcasts
         current_time = time.time()
         if current_time - self.last_beacon_broadcast > self.beacon_broadcast_interval:
+            # Broadcast continuously - don't stop broadcasting until elevation is complete
             self.comm_manager.broadcast_beacon(self.level)
             self.last_beacon_broadcast = current_time
             self.logger.info(f"Broadcasting as beacon for level {self.level}")
@@ -300,17 +316,30 @@ class StrategyManager:
                 self.logger.info(f"Sufficient players on tile ({players_on_tile}/{required_players}), proceeding with elevation")
                 self.is_beacon = False
                 self.state = "ELEVATION"
+                # Continue broadcasting for one more interval to make sure everyone stays
+                self.comm_manager.broadcast_beacon(self.level)
                 return self._handle_elevation()
             elif total_participants >= required_players:
                 # We have enough responses but not everyone is here yet
                 self.logger.info(f"Have {total_participants}/{required_players} participants, but only {players_on_tile} on tile. Continuing to broadcast.")
 
+        # If we're a beacon, don't move at all
         return True
 
     def _handle_follow_beacon(self):
         """Follow a beacon signal to join for evolution"""
         # Get the direction to the beacon
         beacon_direction = self.comm_manager.get_beacon_direction(self.current_beacon_id)
+        raw_message = self.comm_manager.get_last_raw_message()
+        decoded_message = self.comm_manager.get_last_decoded_message()
+
+        # Update UI with broadcast information
+        self.comm_manager.update_broadcast_info(raw_message, decoded_message, beacon_direction)
+
+        # Log broadcast message information for debugging
+        self.logger.info(f"Broadcast detected - Raw: {raw_message}")
+        self.logger.info(f"Broadcast decoded: {decoded_message}")
+        self.logger.info(f"Broadcast direction: {beacon_direction}")
 
         if beacon_direction is None:
             self.logger.warning("Lost signal from beacon, returning to resource collection")
@@ -318,11 +347,16 @@ class StrategyManager:
             self.state = "COLLECTING_RESOURCES"
             return False
 
-        # Log information about the beacon direction
-        direction_labels = ["Behind", "Behind-Right", "Right", "Front-Right", "Front", "Front-Left", "Left", "Behind-Left"]
-        self.logger.info(f"Following beacon #{self.current_beacon_id} - Direction: {direction_labels[beacon_direction]} ({beacon_direction})")
+        # Log information about the beacon direction with correct mapping
+        direction_labels = {
+            1: "Front", 2: "Front-Left", 3: "Left",
+            4: "Back-Left", 5: "Back", 6: "Back-Right",
+            7: "Right", 8: "Front-Right", 0: "Same Tile"
+        }
+        direction_name = direction_labels.get(beacon_direction, f"Unknown({beacon_direction})")
+        self.logger.info(f"Following beacon #{self.current_beacon_id} - Direction: {direction_name} ({beacon_direction})")
 
-        # Send our response to the beacon
+        # Send our response to the beacon much more frequently to ensure coordination
         self.comm_manager.broadcast_beacon_response(self.current_beacon_id, self.level)
 
         # Look around to check if we're on the same tile as the beacon
@@ -331,41 +365,60 @@ class StrategyManager:
             current_tile = self.action_manager.analyze_tile(tiles[0])
 
             # Check if there's a player on our tile who might be the beacon
-            if current_tile["players"] > 0:
+            if current_tile["players"] > 0 or beacon_direction == 0:
                 # We might be on the beacon's tile, send a response and wait
                 self.logger.info("Potentially found beacon's tile, waiting for elevation")
                 self.found_beacon_tile = True
+                # Send another response to confirm we're here
+                self.comm_manager.broadcast_beacon_response(self.current_beacon_id, self.level)
                 return True
 
         # If we think we've found the beacon's tile, don't move anymore
         if self.found_beacon_tile:
+            # Continue sending responses while waiting
+            self.comm_manager.broadcast_beacon_response(self.current_beacon_id, self.level)
             return True
 
-        # Otherwise, move in the direction of the beacon
-        # The beacon_direction is a number 0-7 representing the sound direction
-        # We need to convert this to a movement command
+        # Otherwise, move directly in the direction of the beacon
+        # Correct sound direction mapping:
+        # 1: front
+        # 2: front-left
+        # 3: left
+        # 4: back-left
+        # 5: back
+        # 6: back-right
+        # 7: right
+        # 8: front-right
+        # 0: same tile
 
-        # Sound direction mapping (approximately):
-        # 0: behind
-        # 1: behind-right
-        # 2: right
-        # 3: front-right
-        # 4: front
-        # 5: front-left
-        # 6: left
-        # 7: behind-left
-
-        if beacon_direction == 4:  # Front
+        # Move according to the direction of the beacon
+        if beacon_direction == 1:  # Front
             return self.action_manager.move_forward()
-        elif beacon_direction in [3, 5]:  # Front-right or front-left
-            return self.action_manager.move_forward()
-        elif beacon_direction == 2:  # Right
-            return self.action_manager.turn_right() and self.action_manager.move_forward()
-        elif beacon_direction == 6:  # Left
+        elif beacon_direction == 2:  # Front-left
             return self.action_manager.turn_left() and self.action_manager.move_forward()
-        elif beacon_direction in [0, 1, 7]:  # Behind
-            # Turn around (two right turns) and move
-            return self.action_manager.turn_right() and self.action_manager.turn_right() and self.action_manager.move_forward()
+        elif beacon_direction == 8:  # Front-right
+            return self.action_manager.turn_right() and self.action_manager.move_forward()
+        elif beacon_direction == 3:  # Left
+            return self.action_manager.turn_left() and self.action_manager.move_forward()
+        elif beacon_direction == 7:  # Right
+            return self.action_manager.turn_right() and self.action_manager.move_forward()
+        elif beacon_direction == 4:  # Back-left
+            self.action_manager.turn_left()
+            self.action_manager.turn_left()
+            return self.action_manager.move_forward()
+        elif beacon_direction == 6:  # Back-right
+            self.action_manager.turn_right()
+            self.action_manager.turn_right()
+            return self.action_manager.move_forward()
+        elif beacon_direction == 5:  # Back
+            self.action_manager.turn_right()
+            self.action_manager.turn_right()
+            return self.action_manager.move_forward()
+        elif beacon_direction == 0:  # Same tile
+            # We're on the same tile, just wait
+            self.found_beacon_tile = True
+            self.logger.info("On the same tile as the beacon, waiting for elevation")
+            return True
 
         # If we can't determine direction, move randomly
         return self._perform_random_movement()
@@ -447,28 +500,25 @@ class StrategyManager:
         # Check if we have the required resources in inventory
         required_players, linemate, deraumere, sibur, mendiane, phiras, thystame = ELEVATION_REQUIREMENTS[self.level]
 
-        # Check number of players on the same tile (including self)
-        tiles = self.action_manager.look_around()
-        if not tiles:
-            return False
-
-        current_tile = tiles[0]  # The first tile is where we are standing
-        tile_analysis = self.action_manager.analyze_tile(current_tile)
-
-        # +1 for counting ourselves
-        if tile_analysis["players"] + 1 < required_players:
-            return False
+        # For levels 3+, we need extra food when becoming a beacon
+        extra_food_needed = 0
+        if self.level >= 2:  # When going from level 2 to 3+
+            extra_food_needed = self.extra_food_for_beacon
 
         # Check resources in inventory that we need to place
-        if (self.inventory[ResourceType.LINEMATE] >= linemate and
+        has_resources = (self.inventory[ResourceType.LINEMATE] >= linemate and
             self.inventory[ResourceType.DERAUMERE] >= deraumere and
             self.inventory[ResourceType.SIBUR] >= sibur and
             self.inventory[ResourceType.MENDIANE] >= mendiane and
             self.inventory[ResourceType.PHIRAS] >= phiras and
-            self.inventory[ResourceType.THYSTAME] >= thystame):
-            return True
+            self.inventory[ResourceType.THYSTAME] >= thystame)
 
-        return False
+        # Check if we have enough food (regular + extra if needed)
+        # Pour le niveau 1, on a besoin que de 5 unités de nourriture
+        min_food = 5 if self.level == 1 else 10
+        has_enough_food = self.inventory[ResourceType.FOOD] >= (min_food + extra_food_needed)
+
+        return has_resources and has_enough_food
 
     def _perform_random_movement(self):
         """Perform a random movement to explore the map"""
@@ -524,3 +574,65 @@ class StrategyManager:
             self._update_target_resources()
             return True
         return False
+
+    def get_elevation_status(self):
+        """Get the status of elevation requirements and what's missing"""
+        if self.level >= 8:
+            return {"status": "MAX_LEVEL", "message": "Max level reached (8)"}
+
+        # Get current level requirements
+        required_players, linemate, deraumere, sibur, mendiane, phiras, thystame = ELEVATION_REQUIREMENTS[self.level]
+
+        # For levels 3+, we need extra food when becoming a beacon
+        extra_food_needed = 0
+        if self.level >= 2:  # When going from level 2 to 3+
+            extra_food_needed = self.extra_food_for_beacon
+
+        # Check what's missing
+        missing = []
+
+        # Check resources
+        if self.inventory[ResourceType.LINEMATE] < linemate:
+            missing.append(f"Linemate: {self.inventory[ResourceType.LINEMATE]}/{linemate}")
+        if self.inventory[ResourceType.DERAUMERE] < deraumere:
+            missing.append(f"Deraumere: {self.inventory[ResourceType.DERAUMERE]}/{deraumere}")
+        if self.inventory[ResourceType.SIBUR] < sibur:
+            missing.append(f"Sibur: {self.inventory[ResourceType.SIBUR]}/{sibur}")
+        if self.inventory[ResourceType.MENDIANE] < mendiane:
+            missing.append(f"Mendiane: {self.inventory[ResourceType.MENDIANE]}/{mendiane}")
+        if self.inventory[ResourceType.PHIRAS] < phiras:
+            missing.append(f"Phiras: {self.inventory[ResourceType.PHIRAS]}/{phiras}")
+        if self.inventory[ResourceType.THYSTAME] < thystame:
+            missing.append(f"Thystame: {self.inventory[ResourceType.THYSTAME]}/{thystame}")
+
+        # Check food (only if becoming a beacon for level 3+)
+        min_food_needed = 10 + extra_food_needed
+        if self.inventory[ResourceType.FOOD] < min_food_needed:
+            missing.append(f"Food: {self.inventory[ResourceType.FOOD]}/{min_food_needed}")
+
+        # Check players requirement (when in elevation state)
+        if self.state == "ELEVATION":
+            # Get current players on tile
+            tiles = self.action_manager.look_around()
+            current_players = 1  # Count self
+            if tiles:
+                current_tile = self.action_manager.analyze_tile(tiles[0])
+                current_players += current_tile["players"]
+
+            if current_players < required_players:
+                missing.append(f"Players: {current_players}/{required_players}")
+
+        # Return the status
+        if not missing:
+            if self.state == "ELEVATION":
+                return {"status": "READY", "message": "All requirements met, performing elevation"}
+            elif self.is_beacon:
+                return {"status": "BEACON", "message": "Acting as beacon for level elevation"}
+            else:
+                return {"status": "READY", "message": "All requirements met, ready for elevation"}
+        else:
+            return {
+                "status": "MISSING",
+                "message": f"Level {self.level} elevation missing: {', '.join(missing)}",
+                "missing": missing
+            }

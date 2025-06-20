@@ -39,10 +39,18 @@ class CommunicationManager:
         self.last_broadcast_time = 0
         self.broadcast_cooldown = 2  # Seconds between broadcasts
 
+        # Broadcast message tracking
+        self.last_raw_message = ""
+        self.last_decoded_message = ""
+        self.last_broadcast_direction = None
+        self.last_broadcast_time = time.time()
+
         # Terminal UI state
         self.is_beacon = False
         self.beacon_mode = ""
         self.inventory = {}
+        self.current_state = "COLLECTING_RESOURCES"  # Current AI state
+        self.elevation_status = {"status": "UNKNOWN", "message": "Elevation status unknown"}
         self.override_message = ""
         self.override_beacon_id = None
         self.override_level = None
@@ -359,19 +367,55 @@ class CommunicationManager:
                             # Display direction information if available
                             direction = self.get_beacon_direction(following_beacon_id)
                             if direction is not None:
-                                direction_labels = ["Behind", "Behind-Right", "Right", "Front-Right", "Front", "Front-Left", "Left", "Behind-Left"]
-                                direction_label = direction_labels[direction]
-                                print(f"\n[FOLLOWING BEACON #{following_beacon_id} - Direction: {direction_label} ({direction})]")
+                                direction_labels = {
+                                    1: "Front", 2: "Front-Left", 3: "Left",
+                                    4: "Back-Left", 5: "Back", 6: "Back-Right",
+                                    7: "Right", 8: "Front-Right", 0: "Same Tile"
+                                }
+                                direction_name = direction_labels.get(direction, f"Unknown({direction})")
+                                print(f"\n[FOLLOWING BEACON #{following_beacon_id} - Direction: {direction_name} ({direction})]")
                             else:
                                 print(f"\n[FOLLOWING BEACON #{following_beacon_id}]")
                         else:
-                            print("\n[NORMAL MODE]")
+                            # Display current state instead of just NORMAL MODE
+                            print(f"\n[STATE: {self.current_state}]")
 
                     # Print inventory
                     print("\nINVENTORY:")
                     print("-" * 30)
                     for resource, amount in self.inventory.items():
                         print(f"{resource}: {amount}")
+
+                    # Print elevation status
+                    print("\nELEVATION STATUS:")
+                    print("-" * 30)
+
+                    # Colorize the status message
+                    RESET = "\033[0m"
+                    GREEN = "\033[1;32m"  # Bright Green
+                    YELLOW = "\033[1;33m"  # Bright Yellow
+                    RED = "\033[1;31m"     # Bright Red
+                    CYAN = "\033[1;36m"    # Bright Cyan
+
+                    status = self.elevation_status.get("status", "UNKNOWN")
+                    message = self.elevation_status.get("message", "Elevation status unknown")
+                    missing = self.elevation_status.get("missing", [])
+
+                    if status == "READY":
+                        print(f"{GREEN}✓ {message}{RESET}")
+                    elif status == "BEACON":
+                        print(f"{CYAN}◉ {message}{RESET}")
+                    elif status == "MAX_LEVEL":
+                        print(f"{GREEN}★ {message}{RESET}")
+                    elif status == "MISSING":
+                        print(f"{YELLOW}⚠ {message}{RESET}")
+                        # Print missing items with detailed information
+                        if missing:
+                            print(f"  {RED}Missing requirements:{RESET}")
+                            for item in missing:
+                                print(f"  {YELLOW}• {item}{RESET}")
+                    else:
+                        print(f"{YELLOW}? {message}{RESET}")
 
                     # Print vision cone
                     vision_display = self._generate_vision_display()
@@ -383,12 +427,27 @@ class CommunicationManager:
                         print(self.override_message)
                         print("!" * 60)
 
-                    # Print vision cone
+                    # Print vision cone details if available
                     if self.last_vision_tiles:
-                        print("\nVISION CONE:")
+                        print("\nVISION DETAILS:")
                         print("-" * 30)
-                        for tile in self.last_vision_tiles:
-                            print(f"Tile: {tile}")
+                        for i, tile in enumerate(self.last_vision_tiles):
+                            if i < 5:  # Limit to first 5 tiles to avoid cluttering the UI
+                                print(f"Tile {i}: {tile}")
+                        if len(self.last_vision_tiles) > 5:
+                            print(f"... and {len(self.last_vision_tiles) - 5} more tiles")
+
+                    # Print last broadcast message if available
+                    if self.last_decoded_message:
+                        print(f"\nLAST BROADCAST MESSAGE: {self.last_decoded_message}")
+                        if self.last_broadcast_direction is not None:
+                            direction_labels = {
+                                1: "Front", 2: "Front-Left", 3: "Left",
+                                4: "Back-Left", 5: "Back", 6: "Back-Right",
+                                7: "Right", 8: "Front-Right", 0: "Same Tile"
+                            }
+                            direction_name = direction_labels.get(self.last_broadcast_direction, f"Unknown({self.last_broadcast_direction})")
+                            print(f"DIRECTION: {direction_name} ({self.last_broadcast_direction})")
 
                     sys.stdout.flush()
                     self.last_ui_update = current_time
@@ -446,6 +505,29 @@ class CommunicationManager:
         """Update the vision data for the terminal UI"""
         self.last_vision_tiles = vision_tiles
         self.vision_level = vision_level
+
+    def update_broadcast_info(self, raw_message, decoded_message, direction):
+        """Update broadcast message information for display"""
+        self.last_raw_message = raw_message
+        self.last_decoded_message = decoded_message
+        self.last_broadcast_direction = direction
+        self.last_broadcast_time = time.time()
+
+    def get_last_raw_message(self):
+        """Get the last raw broadcast message received"""
+        return self.last_raw_message
+
+    def get_last_decoded_message(self):
+        """Get the last decoded broadcast message"""
+        return self.last_decoded_message
+
+    def update_state(self, state):
+        """Update the current state of the AI"""
+        self.current_state = state
+
+    def update_elevation_status(self, status):
+        """Update the UI with current elevation status"""
+        self.elevation_status = status
 
     def _generate_vision_display(self):
         """Generate a string representation of the vision cone"""
