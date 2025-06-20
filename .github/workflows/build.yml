@@ -7,7 +7,7 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build-and-test-server:
+  build-server:
     runs-on: ubuntu-latest
     container:
       image: epitechcontent/epitest-docker:latest
@@ -21,6 +21,7 @@ jobs:
           cd server
           make
 
+  build-gui:
       - name: Check if server executable exists
         run: |
           cd server
@@ -53,7 +54,7 @@ jobs:
           make
           make install
           ldconfig
-
+          
       - name: Build GUI
         run: |
           cd GUI
@@ -68,7 +69,7 @@ jobs:
           fi
           echo "GUI executable exists"
 
-  build-and-test-ai:
+build-and-test-ai:
     runs-on: ubuntu-latest
     container:
       image: epitechcontent/epitest-docker:latest
