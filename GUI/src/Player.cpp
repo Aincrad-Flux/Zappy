@@ -12,9 +12,9 @@
 Player::Player(int playerId, const std::string& team, Vector3 pos, Color color)
     : id(playerId), teamName(team), position(pos), team(team), direction(PlayerDirection::NORTH),
       level(1), inventory(10, 0, 0, 0, 0, 0, 0), teamColor(color), isAlive(true),
-      lifeTime(1260.0f), isIncanting(false)
+      lifeTime(1260.0f), isIncanting(false), isBroadcasting(false), broadcastTimer(0.0f)
 {
-    Logger::getInstance().info("Player created: ID " + std::to_string(id) + " from team " + team + 
+    Logger::getInstance().info("Player created: ID " + std::to_string(id) + " from team " + team +
         " at position (" + std::to_string(pos.x) + "," + std::to_string(pos.y) + "," + std::to_string(pos.z) + ")");
 }
 
@@ -31,9 +31,30 @@ void Player::draw(Vector3 worldPos, int tileSize) const
     float height = tileSize * 0.6f;
 
     Color playerColor = teamColor;
+
+    // Effet de pulsation pour l'incantation
     if (isIncanting) {
         float pulse = sinf(GetTime() * 5.0f) * 0.3f + 0.7f;
         playerColor = ColorAlpha(playerColor, pulse);
+    }
+
+    // Effet de clignotement pour le broadcast
+    if (isBroadcasting) {
+        // Clignotement rapide (10 Hz) avec une halo blanc
+        float blink = sinf(GetTime() * 10.0f);
+
+        // Dessiner un halo lumineux autour du joueur
+        float haloRadius = radius * (1.3f + blink * 0.2f);
+        DrawSphere(center, haloRadius, ColorAlpha(WHITE, 0.3f));
+
+        // Dessiner des cercles d'onde qui se propagent
+        for (int i = 1; i <= 3; i++) {
+            float waveRadius = radius * (1.5f + i * 0.5f * broadcastTimer);
+            DrawSphereWires(center, waveRadius, 8, 8, ColorAlpha(WHITE, 0.8f - i * 0.25f));
+        }
+
+        // Rendre le joueur légèrement plus brillant
+        playerColor = ColorBrightness(playerColor, 0.3f + blink * 0.2f);
     }
 
     DrawCylinder(center, radius, radius, height, 8, playerColor);
@@ -83,6 +104,15 @@ void Player::update(float deltaTime)
         isAlive = false;
     }
 
+    // Gestion du timer de broadcast
+    if (isBroadcasting) {
+        broadcastTimer -= deltaTime;
+        if (broadcastTimer <= 0) {
+            isBroadcasting = false;
+            broadcastTimer = 0;
+        }
+    }
+
     static float foodTimer = 0;
     foodTimer += deltaTime;
     if (foodTimer >= 126.0f) {
@@ -90,7 +120,7 @@ void Player::update(float deltaTime)
             inventory.removeFood(1);
             float oldLifeTime = lifeTime;
             lifeTime = std::min(lifeTime + 126.0f, 1260.0f);
-            Logger::getInstance().debug("Player " + std::to_string(id) + " consumed food, life increased from " + 
+            Logger::getInstance().debug("Player " + std::to_string(id) + " consumed food, life increased from " +
                 std::to_string(oldLifeTime) + " to " + std::to_string(lifeTime));
         } else {
             Logger::getInstance().debug("Player " + std::to_string(id) + " has no food to consume");
@@ -101,8 +131,8 @@ void Player::update(float deltaTime)
 
 void Player::move(Vector3 newPos)
 {
-    Logger::getInstance().debug("Player " + std::to_string(id) + " moved from (" + 
-        std::to_string(position.x) + "," + std::to_string(position.y) + "," + std::to_string(position.z) + ") to (" + 
+    Logger::getInstance().debug("Player " + std::to_string(id) + " moved from (" +
+        std::to_string(position.x) + "," + std::to_string(position.y) + "," + std::to_string(position.z) + ") to (" +
         std::to_string(newPos.x) + "," + std::to_string(newPos.y) + "," + std::to_string(newPos.z) + ")");
     position = newPos;
 }
@@ -110,8 +140,8 @@ void Player::move(Vector3 newPos)
 void Player::setPosition(Vector3 newPos)
 {
     if (position.x != newPos.x || position.y != newPos.y || position.z != newPos.z) {
-        Logger::getInstance().debug("Player " + std::to_string(id) + " position set from (" + 
-            std::to_string(position.x) + "," + std::to_string(position.y) + "," + std::to_string(position.z) + ") to (" + 
+        Logger::getInstance().debug("Player " + std::to_string(id) + " position set from (" +
+            std::to_string(position.x) + "," + std::to_string(position.y) + "," + std::to_string(position.z) + ") to (" +
             std::to_string(newPos.x) + "," + std::to_string(newPos.y) + "," + std::to_string(newPos.z) + ")");
     }
     position = newPos;
@@ -130,7 +160,7 @@ void Player::setDirection(PlayerDirection newDir)
 void Player::setLevel(int newLevel)
 {
     if (level != newLevel) {
-        Logger::getInstance().info("Player " + std::to_string(id) + " level changed from " + 
+        Logger::getInstance().info("Player " + std::to_string(id) + " level changed from " +
             std::to_string(level) + " to " + std::to_string(newLevel));
     }
     level = newLevel;
@@ -139,7 +169,7 @@ void Player::setLevel(int newLevel)
 void Player::setTeam(const std::string& newTeam)
 {
     if (team != newTeam) {
-        Logger::getInstance().info("Player " + std::to_string(id) + " team changed from '" + 
+        Logger::getInstance().info("Player " + std::to_string(id) + " team changed from '" +
             team + "' to '" + newTeam + "'");
     }
     teamName = newTeam;
@@ -243,4 +273,16 @@ void Player::addToInventory(int resourceType, int amount)
         case 5: inventory.addPhiras(amount); break;
         case 6: inventory.addThystame(amount); break;
     }
+}
+
+void Player::startBroadcasting()
+{
+    Logger::getInstance().debug("Player " + std::to_string(id) + " started broadcasting a message");
+    isBroadcasting = true;
+    broadcastTimer = 1.0f; // Animation dure 1 seconde
+}
+
+bool Player::getIsBroadcasting() const
+{
+    return isBroadcasting;
 }

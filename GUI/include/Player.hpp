@@ -43,6 +43,8 @@ private:
     bool isAlive;               ///< Whether the player is alive
     float lifeTime;             ///< Remaining lifetime of the player
     bool isIncanting;           ///< Whether the player is performing an incantation
+    bool isBroadcasting;        ///< Whether the player is broadcasting a message
+    float broadcastTimer;       ///< Timer for the broadcast animation
 
 public:
     /**
@@ -149,7 +151,7 @@ public:
      * @return Reference to the player's inventory
      */
     Inventory& getInventory();
-    
+
     /**
      * @brief Gets the player's inventory (const version)
      * @return The player's inventory
@@ -204,4 +206,16 @@ public:
      * @param amount Amount to add
      */
     void addToInventory(int resourceType, int amount);
+
+    /**
+     * @brief Makes the player start broadcasting a message
+     * Duration of the broadcast animation effect is 1 second
+     */
+    void startBroadcasting();
+
+    /**
+     * @brief Checks if the player is currently broadcasting
+     * @return True if broadcasting, false otherwise
+     */
+    bool getIsBroadcasting() const;
 };

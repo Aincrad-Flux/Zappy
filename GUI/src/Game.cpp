@@ -626,6 +626,24 @@ void Game::render2DElements()
             DrawCircleV(center, radius * 1.2f, ColorAlpha(WHITE, 0.3f));
         }
 
+        // Effet de clignotement pour le broadcast en vue 2D
+        if (player.getIsBroadcasting()) {
+            // Dessiner des ondes concentriques qui se propagent
+            float blink = sinf(GetTime() * 10.0f);
+
+            // Effet de halo
+            DrawCircleV(center, radius * (1.2f + blink * 0.2f), ColorAlpha(WHITE, 0.3f));
+
+            // Cercles d'onde qui se propagent
+            for (int i = 1; i <= 3; i++) {
+                float waveRadius = radius * (1.5f + i * 0.4f);
+                DrawCircleLines(center.x, center.y, waveRadius, ColorAlpha(WHITE, 0.8f - i * 0.25f));
+            }
+
+            // Rendre le joueur plus brillant
+            playerColor = ColorBrightness(playerColor, 0.3f + blink * 0.2f);
+        }
+
         DrawCircleV(center, radius, playerColor);
 
         Vector2 dirOffset = {0, 0};
@@ -1514,6 +1532,34 @@ void Game::setupNetworkCallbacks()
             // a bct message with updated tile content anyway
             std::string logMsg = "Player dropped resource (handled by bct update)";
             Logger::getInstance().debug(logMsg);
+        }
+    });
+
+    // Player broadcasts a message (pbc #n M\n)
+    networkManager->registerCallback("pbc", [this](const std::vector<std::string>& args) {
+        if (args.size() >= 2) {
+            std::string playerIdStr = args[0];
+            if (!playerIdStr.empty() && playerIdStr[0] == '#') {
+                playerIdStr = playerIdStr.substr(1);
+            }
+
+            int playerId = std::stoi(playerIdStr);
+            std::string message = args[1];
+            for (size_t i = 2; i < args.size(); ++i) {
+                message += " " + args[i];
+            }
+
+            std::string logMsg = "Player #" + std::to_string(playerId) + " broadcasts: " + message;
+            Logger::getInstance().info(logMsg);
+            std::cout << logMsg << std::endl;
+
+            // Activer l'effet de broadcast pour le joueur
+            for (auto& player : players) {
+                if (player.getId() == playerId) {
+                    player.startBroadcasting();
+                    break;
+                }
+            }
         }
     });
 }
