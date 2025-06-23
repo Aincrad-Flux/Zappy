@@ -585,7 +585,7 @@ class ZappyLauncher:
                             # Form the command to run in terminal - CORRECTED APPROACH
                             command_inside_terminal = f"{ai_path} -p {self.port.get()} -H {self.host.get()} -n {team}"
                             if self.ai_terminal_ui.get():
-                                command_inside_terminal += " --terminal-ui"
+                                command_inside_terminal += " -u"
 
                             # More reliable way to execute commands in different terminal emulators
                             if self.terminal_cmd[0] == "gnome-terminal":
