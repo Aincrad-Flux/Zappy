@@ -4,6 +4,7 @@ import socket
 import os
 from AI.utils import safe_convert
 from AI.ai_core import AICore
+from AI.logger import get_logger
 import logging
 import selectors
 import random
@@ -50,7 +51,13 @@ class NetworkClient():
         self.selector = selectors.DefaultSelector()
         self.init_status = 0
         self.connected = 0
-        self.agent = AICore(self.team)
+
+        # Initialize logger
+        self.logger = get_logger(bot_id=int(bot_id), team_name=team_name)
+        self.logger.info(f"NetworkClient initialized for team '{team_name}' with bot ID {bot_id}")
+
+        # Initialize AI agent
+        self.agent = AICore(self.team, int(bot_id))
         self.agent.bot_id = self.bot_id
         self.counter = 0
 
@@ -64,12 +71,16 @@ class NetworkClient():
             None
         """
         self.socket.setblocking(False)
-        port_num = safe_convert(self.port, int)
+        port_num = safe_convert(self.port, int, logger=self.logger)
         if port_num is None:
             port_num = 4242  # Default port if conversion fails
+            self.logger.warning(f"Invalid port number '{self.port}', using default: {port_num}")
+
+        self.logger.info(f"Connecting to server at {self.hostname}:{port_num}")
         self.socket.connect_ex((self.hostname, port_num))
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
         self.selector.register(self.socket, events)
+        self.logger.debug("Socket registered with selector")
 
     def handle_server_info(self, message, stage):
         """Process and save initialization information received from the server.
@@ -86,20 +97,23 @@ class NetworkClient():
             Other stages: Extracts map width and height and completes initialization
         """
         if stage == 1:
-            slots = safe_convert(message, int)
+            slots = safe_convert(message, int, logger=self.logger)
             self.agent.free_slots = 0 if slots is None else slots
+            self.logger.info(f"Team slots available: {self.agent.free_slots}")
             self.agent.action = ""
             self.init_status = 2
         else:
             message = message.split()
-            width = safe_convert(message[0], int)
-            height = safe_convert(message[1], int)
+            width = safe_convert(message[0], int, logger=self.logger)
+            height = safe_convert(message[1], int, logger=self.logger)
             self.map_width = 0 if width is None else width
             self.map_height = 0 if height is None else height
+            self.logger.info(f"Map dimensions: {self.map_width}x{self.map_height}")
             self.agent.action = ""
             self.init_status = 3
             self.connected = 1
             self.agent.active = 1
+            self.logger.info("Connection established, client ready")
 
 
     def run_client(self):
@@ -128,33 +142,46 @@ class NetworkClient():
                         if data:
                             message += data
                         else:
-                            print("Connection closed by the server")
+                            self.logger.warning("Connection closed by the server")
                             self.selector.unregister(self.socket)
                             self.socket.close()
                             break
                     except Exception as e:
-                        print(f"Error receiving data: {e}")
+                        self.logger.error(f"Error receiving data: {e}")
                         self.selector.unregister(self.socket)
                         self.socket.close()
                         break
                     tmp = message.split("\n")
                     for elem in tmp[:-1]:
                         if "dead" in elem:
-                            print("Bot died, id: ", self.bot_id)
+                            self.logger.critical(f"Bot died, id: {self.bot_id}")
                             exit(0)
                         if "WELCOME" in elem and self.connected == 0:
+                            self.logger.info("Welcome message received, sending team name")
                             self.agent.action = (self.team + '\n')
                         elif self.init_status < 3:
                             if "message" in elem:
                                 continue
+                            self.logger.debug(f"Processing server info (stage {self.init_status}): {elem}")
                             self.handle_server_info(elem, self.init_status)
                         elif  "Elevation underway" in elem:
+                            self.logger.log_ritual_status("Elevation underway")
                             self.agent.state = 8
                         elif "Current level:" in elem:
-                            self.agent.level = int(''.join(filter(str.isdigit, elem)))
-                            if self.agent.level == 8:
-                                exit(0)
-                            print(elem)
+                            old_level = self.agent.level
+                            level_str = ''.join(filter(str.isdigit, elem))
+                            new_level = safe_convert(level_str, int, logger=self.logger)
+
+                            if new_level is None:
+                                self.logger.error(f"Failed to parse level from '{elem}'")
+                            else:
+                                self.agent.level = new_level
+
+                                if self.agent.level == 8:
+                                    self.logger.info("Maximum level reached! Game completed.")
+                                    exit(0)
+
+                                self.logger.log_level_up(old_level, self.agent.level)
                             self.agent.state = 9
                             self.agent.found_new_item = False
                             self.agent.target_resource = ""
@@ -172,32 +199,32 @@ class NetworkClient():
                                 message = message.split("\n")[-1]
                                 continue
 
+                            self.logger.debug(f"Message received: {elem}")
                             self.agent.message_received = [elem]
                             self.agent.handle_message(elem)
                             message = message.split("\n")[-1]
                             continue
                         elif isinstance(self.agent.action, str) and self.agent.action.startswith("Take ") and "food" not in self.agent.action and elem == "ok":
+                            resource = self.agent.action.split(" ")[1].strip()
+                            self.logger.info(f"Successfully took resource: {resource}")
                             self.agent.refresh_team_inventory()
                             self.agent.found_new_item = True
                         elif self.agent.action == "Inventory\n":
                             try:
                                 self.agent.parse_backpack(elem)
                             except ValueError:
-                                print("Error ", elem)
+                                self.logger.error(f"Error parsing inventory: {elem}")
                                 pass
                         elif self.agent.action == "Look\n":
                             self.agent.vision = elem
+                            self.logger.debug("Vision information received")
                         elif self.agent.action == "Connect_nbr\n":
-                            try:
-                                slots = int(elem)
+                            slots = safe_convert(elem, int, logger=self.logger)
+                            if slots is not None:
                                 self.agent.free_slots = slots
-                                if slots > 0 and self.bot_id < 6 and self.agent.reproduction == 1:
-                                    script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "zappy_ai")
-                                    subprocess.Popen(["python3", script_path, "-p", self.port, "-n", self.team, "-i", str(self.bot_id + 1)])
-                                    print("Forking new bot ", self.agent.bot_id)
-                                    self.agent.reproduction = 0
-                            except ValueError:
-                                print("Error parsing Connect_nbr response:", elem)
+                                self.logger.debug(f"Free team slots: {slots}")
+                            else:
+                                self.logger.error(f"Error parsing Connect_nbr response: {elem}")
                                 self.agent.free_slots = 0
                         message = message.split("\n")[-1]
                         self.agent.active = 1
@@ -211,11 +238,12 @@ class NetworkClient():
                             self.init_status = 1
                         try:
                             if isinstance(self.agent.action, str):
+                                self.logger.log_action(self.agent.action)
                                 self.socket.send(self.agent.action.encode())
                             else:
-                                print(f"Warning: agent.action is not a string: {self.agent.action}")
+                                self.logger.warning(f"Invalid action type: agent.action is not a string: {self.agent.action}")
                         except Exception as e:
-                            print(f"Error sending message: {e}")
+                            self.logger.error(f"Error sending message: {e}")
                         self.agent.active = 0
 
     def disconnect(self):
@@ -228,10 +256,11 @@ class NetworkClient():
             None
         """
         try:
+            self.logger.info("Disconnecting from server")
             self.selector.unregister(self.socket)
             self.socket.close()
         except Exception as e:
-            logging.error(f"Error when disconnecting: {e}")
+            self.logger.error(f"Error when disconnecting: {e}")
 
     def check_server_capacity(self):
         """Check if the server has available slots for new clients.
@@ -243,4 +272,4 @@ class NetworkClient():
             None
         """
         if self.bot_id < 0:
-            logging.info("The server does not have available slots")
+            self.logger.warning("The server does not have available slots")

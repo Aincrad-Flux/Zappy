@@ -6,6 +6,7 @@ from itertools import cycle
 import json
 from collections import Counter
 import re
+from AI.logger import get_logger
 
 MATERIALS = ["linemate", "deraumere", "sibur", "mendiane", "phiras", "thystame"]
 
@@ -25,36 +26,13 @@ class AICore:
     inventory tracking, and coordination with other bots. It implements the
     strategies for gathering resources, performing rituals for level upgrades,
     and communicating with team members.
-
-    Attributes:
-        backpack (dict): Current inventory of resources
-        vision (str): Current vision data from the server
-        message_received (list): Messages received from other players
-        action_queue (list): Queue of pending actions
-        state (int): Current AI state machine state
-        action (str): Current action to be executed
-        level (int): Current level of the player
-        active (int): Flag indicating if the AI is active
-        free_slots (int): Available slots for new team members
-        team_backpack (dict): Collected inventory data from team
-        bot_id (int): Unique identifier for this bot
-        team_name (str): Name of the team this bot belongs to
-        found_new_item (bool): Flag indicating if a new item was found
-        target_resource (str): Current resource being targeted
-        ritual_mode (int): Current ritual coordination mode
-        ritual_leader (int): ID of ritual leader (0 = not assigned)
-        players_for_ritual (int): Number of players required for ritual
-        source_direction (int): Direction of resource source
-        ritual_ready (int): Flag indicating if ready for ritual
-        clear_read_flag (int): Flag to clear read buffer
-        clear_message_flag (int): Flag to clear message buffer
-        reproduction (int): Flag indicating if reproduction is allowed
     """
-    def __init__(self, name):
+    def __init__(self, name, bot_id=0):
         """Initialize the AICore with default values.
 
         Args:
             name (str): The name of the team this AI belongs to
+            bot_id (int, optional): The bot ID for logging. Defaults to 0.
 
         Returns:
             None
@@ -69,7 +47,7 @@ class AICore:
         self.active = 1
         self.free_slots = 0
         self.team_backpack = {}
-        self.bot_id = 0
+        self.bot_id = bot_id
         self.team_name = name
         self.found_new_item = False
         self.target_resource = ""
@@ -80,7 +58,8 @@ class AICore:
         self.ritual_ready = 0
         self.clear_read_flag = 0
         self.clear_message_flag = 0
-        self.reproduction = 1
+        self.reproduction = 0
+        self.logger = get_logger(bot_id=bot_id, team_name=name)
 
     def can_perform_ritual(self) -> bool:
         """Check if ritual is possible with the current team resources.
@@ -121,12 +100,22 @@ class AICore:
             items = self.team_backpack["total"].copy()
         else:
             items = {"food": 0, "linemate": 0, "deraumere": 0, "sibur": 0, "mendiane": 0, "phiras": 0, "thystame": 0}
+
+        self.logger.debug(f"Checking needed resources for level {self.level}")
         for k in needed_materials:
-            if k not in items or needed_materials[k] > items[k]:
+            item_count = items.get(k, 0)
+            needed_count = needed_materials[k]
+            if item_count < needed_count:
                 resources_to_find.append(k)
+                self.logger.debug(f"Need more {k}: have {item_count}, need {needed_count}")
+
         if resources_to_find == []:
+            self.logger.info("All ritual resources collected, focusing on food")
             return "food"
-        return random.choice(resources_to_find)
+
+        chosen_resource = random.choice(resources_to_find)
+        self.logger.info(f"Looking for resource: {chosen_resource}")
+        return chosen_resource
 
 
     def xor_encrypt(self, key: str, text: str) -> str:
@@ -153,6 +142,7 @@ class AICore:
         Returns:
             None
         """
+        old_backpack = self.backpack.copy()
         for char in "[]":
             data = data.replace(char, "")
         data = data.split(",")
@@ -161,7 +151,17 @@ class AICore:
         data[len(data) - 1] = data[len(data) - 1][:-1]
         for elem in data:
             if elem:
-                self.backpack[elem.split()[0]] = int(elem.split()[1])
+                resource = elem.split()[0]
+                quantity = int(elem.split()[1])
+                self.backpack[resource] = quantity
+
+        # Log any changes in inventory
+        self.logger.log_inventory(self.backpack)
+        for key in self.backpack:
+            if key in old_backpack and self.backpack[key] > old_backpack[key]:
+                self.logger.info(f"Gained {self.backpack[key] - old_backpack[key]} {key}")
+            elif key in old_backpack and self.backpack[key] < old_backpack[key]:
+                self.logger.info(f"Used/lost {old_backpack[key] - self.backpack[key]} {key}")
 
     def update_team_backpack(self, data):
         """Update team inventory data with broadcast information from other players.
@@ -327,6 +327,7 @@ class AICore:
         """Parse the look command
         Args:
             data (str): the look command
+            resource (str): the resource to look for
         Returns:
             array: the list of object position
         """
@@ -338,14 +339,21 @@ class AICore:
         grid = self.construct_vision_grid(grid, elements)
         location = self.locate_resource(grid, resource)
         actions = []
+
         if not location or len(location) < 2:
+            self.logger.debug(f"{resource} not found in vision, moving randomly")
             actions.append(random.choice(["Forward\n", "Right\n", "Left\n"]))
             actions.append(random.choice(["Forward\n", "Right\n", "Left\n"]))
             actions.append(random.choice(["Forward\n", "Right\n", "Left\n"]))
             return actions
         elif location[0] == 8 and location[1] == 0:
+            self.logger.log_resource_found(resource)
+            self.logger.debug(f"Found {resource} at current position")
             return ["Take " + resource + "\n"]
         else:
+            self.logger.log_resource_found(resource)
+            self.logger.debug(f"Found {resource} at relative position [{location[0]}, {location[1]}]")
+
             for i in range(int(location[0]) - 8):
                 actions.append("Forward\n")
             if location[0] == 8:
@@ -371,27 +379,44 @@ class AICore:
 
     def handle_message(self, message):
         direction = int(message[8])
-        message = self.xor_encrypt(self.team_name, bytes.fromhex(message[11:]).decode("utf-8"))
-        if "inventory" in message:
-            self.update_team_backpack(message[9:])
-        if "incantation" in message:
+        encrypted_message = message[11:]
+        decrypted_message = self.xor_encrypt(self.team_name, bytes.fromhex(encrypted_message).decode("utf-8"))
+
+        self.logger.log_message(decrypted_message, direction)
+
+        if "inventory" in decrypted_message:
+            self.logger.debug("Received inventory update from team member")
+            self.update_team_backpack(decrypted_message[9:])
+
+        if "incantation" in decrypted_message:
             if self.clear_message_flag == 1:
                 self.clear_message_flag = 0
                 return
-            if self.ritual_leader >= 1 and int(message.split(";")[0]) > self.bot_id:
+
+            sender_id = int(decrypted_message.split(";")[0])
+            if self.ritual_leader >= 1 and sender_id > self.bot_id:
+                self.logger.info(f"Canceling ritual leadership: Bot {sender_id} has higher priority")
                 self.ritual_leader = 0
                 self.ritual_mode = 0
                 self.state = 0
                 return
+
             if self.state > -1 and self.state < 4 and self.backpack["food"] > 35:
+                self.logger.info("Switching to ritual mode")
                 self.state = 4
                 self.action_queue = []
+
             if self.ritual_mode == 1:
+                self.logger.info(f"Moving toward ritual source in direction {direction}")
                 self.action_queue = self.move_to_message_source(direction)
-        if "on my way" in message and self.ritual_leader >= 1:
+
+        if "on my way" in decrypted_message and self.ritual_leader >= 1:
             self.players_for_ritual += 1
-        if "ready" in message and self.ritual_leader >= 1:
+            self.logger.info(f"Bot joining ritual, total: {self.players_for_ritual}")
+
+        if "ready" in decrypted_message and self.ritual_leader >= 1:
             self.ritual_leader += 1
+            self.logger.info(f"Bot ready for ritual, ready bots: {self.ritual_leader}")
 
     def move_to_message_source(self, direction: int) -> list:
         if self.ritual_ready == 1 or self.action_queue:
@@ -432,9 +457,11 @@ class AICore:
                 self.action_queue = ["Set " + k + "\n"]
                 self.action_queue.append("Look\n")
                 self.backpack[k] -= 1
+                self.logger.info(f"Placing resource for ritual: {k}")
                 return
         self.state = 7
         self.action = ""
+        self.logger.info("All resources placed for ritual, ready for incantation")
         return
 
     def begin_ritual(self):
@@ -451,27 +478,29 @@ class AICore:
                     needed_materials[k] -= 1
         for k in needed_materials:
             if needed_materials[k] > 0:
+                self.logger.warning(f"Cannot begin ritual: missing {k}")
                 return
+        self.logger.info(f"Beginning incantation ritual for level {self.level}")
         self.action = "Incantation\n"
         self.action_queue = ["Incantation\n"]
         self.state += 1
 
     def decide_action(self):
         if self.state == -2:
+            self.logger.info("Initializing: checking team connections")
             self.action = "Connect_nbr\n"
             self.state += 1
         elif self.state == -1:
-            if self.bot_id < 6 and self.free_slots == 0:
-                self.action = "Fork\n"
-                self.reproduction = 1
-            else:
-                self.action = "Look\n"
+            self.logger.info("Initializing: looking at surroundings")
+            self.action = "Look\n"
             self.state += 1
         elif self.state == 0:
             if self.action_queue:
                 self.action = self.action_queue[0]
                 self.action_queue = self.action_queue[1:]
+                self.logger.debug(f"Executing queued action: {self.action.strip()}")
             else:
+                self.logger.debug("Checking inventory")
                 self.action = "Inventory\n"
                 self.state += 1
         elif self.state == 1:
