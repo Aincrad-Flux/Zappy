@@ -14,6 +14,11 @@
 #include <map>
 #include <raymath.h>
 
+// Définir PI si ce n'est pas déjà fait
+#ifndef PI
+#define PI 3.14159265358979323846f
+#endif
+
 Game::Game(int width, int height, const std::string& hostname, int port, bool use2D)
     : screenWidth(width), screenHeight(height), running(false), lastClickPosition({0, -1, 0}),
       selectedPlayerId(-1), selectedTile({-1, -1}), debugMode(false), use2DMode(use2D), serverHostname(hostname),
@@ -603,6 +608,19 @@ void Game::render2DElements()
 
             resourceIdx++;
         }
+    }    // Créer une carte pour suivre le nombre de joueurs vivants par case
+    std::map<std::pair<int, int>, std::vector<int>> playersPerTile;
+
+    // D'abord, recenser tous les joueurs vivants par tuile pour connaître le total
+    std::map<std::pair<int, int>, int> totalLivingPlayersPerTile;
+    for (const auto& player : players) {
+        if (player.getIsAlive()) {
+            int x = (int)player.getPosition().x;
+            int y = (int)player.getPosition().z;
+            totalLivingPlayersPerTile[{x, y}]++;
+            // Stocker aussi l'ID de chaque joueur par case
+            playersPerTile[{x, y}].push_back(player.getId());
+        }
     }
 
     // Draw players
@@ -616,9 +634,40 @@ void Game::render2DElements()
         int tileW = tileSize * scale;
         int tileH = tileSize * scale;
 
+        // Trouver l'index de ce joueur parmi les joueurs vivants sur cette case
+        auto& playersOnTile = playersPerTile[{x, y}];
+        auto it = std::find(playersOnTile.begin(), playersOnTile.end(), player.getId());
+        int playerIndex = (it != playersOnTile.end()) ? std::distance(playersOnTile.begin(), it) : 0;
+
+        // Utiliser le nombre total de joueurs vivants sur cette case
+        int totalPlayers = totalLivingPlayersPerTile[{x, y}];
+
+        // Calculer le décalage en fonction du nombre total de joueurs et de l'index
+        float offsetX = 0, offsetY = 0;
+        if (totalPlayers > 1) {
+            // Répartition des joueurs en carré ou en cercle autour du centre
+            if (totalPlayers <= 4) {
+                // Répartition en carré pour 2, 3 ou 4 joueurs
+                switch (playerIndex % 4) {
+                    case 0: offsetX = -0.25f; offsetY = -0.25f; break; // haut gauche
+                    case 1: offsetX = 0.25f; offsetY = -0.25f; break;  // haut droite
+                    case 2: offsetX = -0.25f; offsetY = 0.25f; break;  // bas gauche
+                    case 3: offsetX = 0.25f; offsetY = 0.25f; break;   // bas droite
+                }
+            } else {
+                // Répartition en cercle pour 5+ joueurs
+                float angle = (float)playerIndex * (2.0f * PI) / (float)totalPlayers;
+                offsetX = cosf(angle) * 0.25f;
+                offsetY = sinf(angle) * 0.25f;
+            }
+        }
+
         Color playerColor = player.getTeamColor();
-        Vector2 center = {tileX + tileW/2.0f, tileY + tileH/2.0f};
-        float radius = tileW * 0.35f;
+        Vector2 center = {
+            tileX + tileW/2.0f + tileW * offsetX,
+            tileY + tileH/2.0f + tileH * offsetY
+        };
+        float radius = tileW * 0.35f * (totalPlayers > 1 ? 0.8f : 1.0f); // Légèrement plus petit si plusieurs joueurs
 
         if (player.getIsIncanting()) {
             float pulse = sinf(GetTime() * 5.0f) * 0.3f + 0.7f;
@@ -667,6 +716,37 @@ void Game::render2DElements()
         float lifePercent = player.getLifeTime() / 1260.0f;
         Color lifeColor = (lifePercent > 0.5f) ? GREEN : (lifePercent > 0.25f) ? YELLOW : RED;
         DrawRectangle(tileX, tileY + tileH + 2, tileW * lifePercent, 4, lifeColor);
+    }
+
+    // Créer une carte temporaire pour compter les joueurs vivants par case
+    std::map<std::pair<int, int>, int> livingPlayersPerTile;
+
+    // Compter d'abord les joueurs vivants par tuile
+    for (const auto& player : players) {
+        if (player.getIsAlive()) {
+            int x = static_cast<int>(player.getPosition().x);
+            int y = static_cast<int>(player.getPosition().z);
+            livingPlayersPerTile[{x, y}]++;
+        }
+    }
+
+    // Afficher l'indicateur du nombre de joueurs uniquement pour les cases avec plus d'un joueur vivant
+    for (const auto& [pos, count] : livingPlayersPerTile) {
+        if (count > 1) {
+            int x = pos.first;
+            int y = pos.second;
+            int tileX = offsetX + x * tileSize * scale;
+            int tileY = offsetY + y * tileSize * scale;
+            int tileW = tileSize * scale;
+            int tileH = tileSize * scale;
+
+            // Dessiner un badge en haut à gauche de la case avec le nombre de joueurs
+            DrawCircle(tileX + tileW * 0.2f, tileY + tileH * 0.2f, tileW * 0.15f, RED);
+            DrawText(TextFormat("%d", count),
+                     tileX + tileW * 0.2f - 4,
+                     tileY + tileH * 0.2f - 5,
+                     12, WHITE);
+        }
     }
 
     // Draw click indicator
@@ -1177,14 +1257,20 @@ void Game::setupNetworkCallbacks()
                 if (player.getId() == playerId) {
                     found = true;
                     Vector3 oldPos = player.getPosition();
-                    if (gameMap && oldPos.x != x && oldPos.z != y) {
-                        gameMap->setTilePlayer(static_cast<int>(oldPos.x), static_cast<int>(oldPos.z), 0);
-                    }
 
-                    player.setPosition(Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)});
+                    // Ne gérer le compteur que si la position a réellement changé
+                    bool positionChanged = (oldPos.x != x || oldPos.z != y);
 
-                    if (gameMap) {
-                        gameMap->setTilePlayer(x, y, 1);
+                    if (gameMap && positionChanged) {
+                        // Ancienne position - décrémenter
+                        gameMap->getTile(static_cast<int>(oldPos.x), static_cast<int>(oldPos.z)).decrementPlayerCount();
+
+                        // Nouvelle position - incrémenter
+                        player.setPosition(Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)});
+                        gameMap->getTile(x, y).incrementPlayerCount();
+                    } else {
+                        // Simple changement de direction sans changement de position
+                        player.setPosition(Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)});
                     }
 
                     PlayerDirection dir;
@@ -1203,7 +1289,7 @@ void Game::setupNetworkCallbacks()
             if (!found) {
                 Color defaultColor = getTeamColor("Unknown");
                 players.emplace_back(playerId, "Unknown", Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)}, defaultColor);
-                gameMap->setTilePlayer(x, y, 1);
+                gameMap->getTile(x, y).incrementPlayerCount();
             }
         }
     });
@@ -1301,7 +1387,7 @@ void Game::setupNetworkCallbacks()
                 Color teamColor = getTeamColor(teamName);
                 players.emplace_back(playerId, teamName, Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)}, teamColor);
                 players.back().setLevel(level);
-                gameMap->setTilePlayer(x, y, 1);
+                gameMap->getTile(x, y).incrementPlayerCount();
             }
         }
     });
@@ -1323,7 +1409,7 @@ void Game::setupNetworkCallbacks()
                 if (player.getId() == playerId) {
                     player.setIsAlive(false);
                     Vector3 pos = player.getPosition();
-                    gameMap->setTilePlayer(static_cast<int>(pos.x), static_cast<int>(pos.z), 0);
+                    gameMap->getTile(static_cast<int>(pos.x), static_cast<int>(pos.z)).decrementPlayerCount();
                     break;
                 }
             }
