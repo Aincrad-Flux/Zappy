@@ -27,12 +27,13 @@ class AICore:
     strategies for gathering resources, performing rituals for level upgrades,
     and communicating with team members.
     """
-    def __init__(self, name, bot_id=0):
+    def __init__(self, name, bot_id=0, use_ui=False):
         """Initialize the AICore with default values.
 
         Args:
             name (str): The name of the team this AI belongs to
             bot_id (int, optional): The bot ID for logging. Defaults to 0.
+            use_ui (bool, optional): Whether terminal UI is enabled. Defaults to False.
 
         Returns:
             None
@@ -59,7 +60,8 @@ class AICore:
         self.clear_read_flag = 0
         self.clear_message_flag = 0
         self.reproduction = 0
-        self.logger = get_logger(bot_id=bot_id, team_name=name)
+        self.use_ui = use_ui
+        self.logger = get_logger(bot_id=bot_id, team_name=name, log_to_console=not use_ui)
 
     def can_perform_ritual(self) -> bool:
         """Check if ritual is possible with the current team resources.

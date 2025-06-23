@@ -22,7 +22,7 @@ def main():
     parser.add_option("-n", "--name", dest="name", help="is the name of the team")
     parser.add_option("-H", "--hostname", dest="hostname", help="is the name of the machine", default="localhost")
     parser.add_option("-i", "--id", dest="bot_id", help="is the client id", default="1")
-    parser.add_option("-u", "--ui", dest="use_ui", help="enable terminal UI", action="store_true", default=False)
+    parser.add_option("-u", "--ui", "--terminal-ui", dest="use_ui", help="enable terminal UI", action="store_true", default=False)
     (options, _) = parser.parse_args()
     if not options.hostname or not options.portnumber or not options.name:
         parser.error("incorrect number of arguments")
@@ -43,7 +43,9 @@ if __name__ == "__main__":
     and performs proper cleanup at exit.
     """
     hostname, port, name, bot_id, use_ui = main()
-    client = NetworkClient(hostname, port, name, bot_id)
+
+    # Configure network client with UI mode parameter to disable console logging when UI is active
+    client = NetworkClient(hostname, port, name, bot_id, use_ui)
     client.establish_connection()
 
     # Initialize UI if flag is set

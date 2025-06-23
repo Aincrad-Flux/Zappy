@@ -32,7 +32,7 @@ class NetworkClient():
         counter (int): Message counter
     """
 
-    def __init__(self, hostname: str, port: str, team_name: str, bot_id: str):
+    def __init__(self, hostname: str, port: str, team_name: str, bot_id: str, use_ui: bool = False):
         """Initialize the NetworkClient with server connection details.
 
         Args:
@@ -40,6 +40,7 @@ class NetworkClient():
             port (str): Port number of the server
             team_name (str): Name of the team to connect to
             bot_id (str): Unique identifier for this bot instance
+            use_ui (bool, optional): Whether terminal UI is enabled. Defaults to False.
         """
         self.team = team_name
         self.hostname = hostname
@@ -51,13 +52,15 @@ class NetworkClient():
         self.selector = selectors.DefaultSelector()
         self.init_status = 0
         self.connected = 0
+        self.use_ui = use_ui
 
-        # Initialize logger
-        self.logger = get_logger(bot_id=int(bot_id), team_name=team_name)
+        # Initialize logger - disable console logging when UI is enabled
+        # Always log to file for debugging purposes, but only log to console if UI is not active
+        self.logger = get_logger(bot_id=int(bot_id), team_name=team_name, log_to_console=not use_ui)
         self.logger.info(f"NetworkClient initialized for team '{team_name}' with bot ID {bot_id}")
 
         # Initialize AI agent
-        self.agent = AICore(self.team, int(bot_id))
+        self.agent = AICore(self.team, int(bot_id), self.use_ui)
         self.agent.bot_id = self.bot_id
         self.counter = 0
 
