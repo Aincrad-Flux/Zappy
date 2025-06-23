@@ -52,7 +52,6 @@ class ZappyLauncher:
         self.gui_start_btn = None
         self.gui_stop_btn = None
         self.ai_start_btn = None
-        self.ai_stop_btn = None
         self.start_all_btn = None
         self.stop_all_btn = None
 
@@ -225,8 +224,6 @@ class ZappyLauncher:
         ai_frame.pack(side=tk.LEFT, padx=5, fill="y")
         self.ai_start_btn = ttk.Button(ai_frame, text="Start", command=self.start_ai, width=10)
         self.ai_start_btn.pack(side=tk.TOP, padx=5, pady=2)
-        self.ai_stop_btn = ttk.Button(ai_frame, text="Stop", command=self.stop_ai, width=10, state=tk.DISABLED)
-        self.ai_stop_btn.pack(side=tk.TOP, padx=5, pady=2)
 
         # Global controls
         global_frame = ttk.LabelFrame(control_frame, text="All Components")
@@ -655,10 +652,8 @@ class ZappyLauncher:
 
         self.log(f"Started {ai_count} AI clients")
 
-        # Update button states
+        # Update global button states
         if ai_count > 0:
-            self.ai_start_btn.configure(state=tk.DISABLED)
-            self.ai_stop_btn.configure(state=tk.NORMAL)
             self._update_global_button_states()
 
     def stop_all(self):
@@ -688,9 +683,6 @@ class ZappyLauncher:
                 except Exception as e:
                     self.log(f"Error stopping AI process {i+1}: {e}")
             self.ai_processes = []
-            self.log("All AI processes stopped")
-            self.ai_start_btn.configure(state=tk.NORMAL)
-            self.ai_stop_btn.configure(state=tk.DISABLED)
 
         self.log("All processes stopped")
 
@@ -767,10 +759,6 @@ class ZappyLauncher:
 
         self.ai_processes = []
         self.log("All AI processes stopped")
-
-        # Update button states
-        self.ai_start_btn.configure(state=tk.NORMAL)
-        self.ai_stop_btn.configure(state=tk.DISABLED)
         self._update_global_button_states()
 
     def _update_global_button_states(self):
