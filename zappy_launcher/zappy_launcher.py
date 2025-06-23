@@ -562,7 +562,7 @@ class ZappyLauncher:
                 ai_args = [
                     ai_path,
                     "-p", self.port.get(),
-                    "-h", self.host.get(),
+                    "-H", self.host.get(),
                     "-n", team
                 ]
 
@@ -583,7 +583,7 @@ class ZappyLauncher:
                             self.log(f"Using terminal command: {self.terminal_cmd}")
 
                             # Form the command to run in terminal - CORRECTED APPROACH
-                            command_inside_terminal = f"{ai_path} -p {self.port.get()} -h {self.host.get()} -n {team}"
+                            command_inside_terminal = f"{ai_path} -p {self.port.get()} -H {self.host.get()} -n {team}"
                             if self.ai_terminal_ui.get():
                                 command_inside_terminal += " --terminal-ui"
 
