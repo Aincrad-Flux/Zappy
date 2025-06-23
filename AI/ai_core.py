@@ -19,11 +19,45 @@ LEVEL_REQUIREMENTS = {1: {"linemate": 1},
 }
 
 class AICore:
-    """The AICore class encapsulates the intelligence of the player"""
+    """This class encapsulates the intelligence of the AI player.
+
+    The AICore handles all game logic, decision making, resource management,
+    inventory tracking, and coordination with other bots. It implements the
+    strategies for gathering resources, performing rituals for level upgrades,
+    and communicating with team members.
+
+    Attributes:
+        backpack (dict): Current inventory of resources
+        vision (str): Current vision data from the server
+        message_received (list): Messages received from other players
+        action_queue (list): Queue of pending actions
+        state (int): Current AI state machine state
+        action (str): Current action to be executed
+        level (int): Current level of the player
+        active (int): Flag indicating if the AI is active
+        free_slots (int): Available slots for new team members
+        team_backpack (dict): Collected inventory data from team
+        bot_id (int): Unique identifier for this bot
+        team_name (str): Name of the team this bot belongs to
+        found_new_item (bool): Flag indicating if a new item was found
+        target_resource (str): Current resource being targeted
+        ritual_mode (int): Current ritual coordination mode
+        ritual_leader (int): ID of ritual leader (0 = not assigned)
+        players_for_ritual (int): Number of players required for ritual
+        source_direction (int): Direction of resource source
+        ritual_ready (int): Flag indicating if ready for ritual
+        clear_read_flag (int): Flag to clear read buffer
+        clear_message_flag (int): Flag to clear message buffer
+        reproduction (int): Flag indicating if reproduction is allowed
+    """
     def __init__(self, name):
-        """The AICore class encapsulates the intelligence of the player
+        """Initialize the AICore with default values.
+
         Args:
-            client (NetworkClient): the client which helps you to communicate with the server.
+            name (str): The name of the team this AI belongs to
+
+        Returns:
+            None
         """
         self.backpack = {"food": 0, "linemate": 0, "deraumere": 0, "sibur": 0, "mendiane": 0, "phiras": 0, "thystame": 0}
         self.vision = ""
@@ -49,13 +83,14 @@ class AICore:
         self.reproduction = 1
 
     def can_perform_ritual(self) -> bool:
-        """Check if ritual is possible with the new object and the team backpack
+        """Check if ritual is possible with the current team resources.
 
-        Args:
-            object (str): The name of the new objet we got
+        This method determines whether the team has gathered enough resources
+        to perform a ritual for the current level, considering both the team's
+        existing inventory and the target resource.
 
         Returns:
-            bool: Ritual is possible or not
+            bool: True if ritual can be performed, False otherwise
         """
         needed_materials = LEVEL_REQUIREMENTS[self.level].copy()
         if "total" in self.team_backpack:
@@ -70,7 +105,16 @@ class AICore:
             return True
         return False
 
-    def find_needed_resource(self):
+    def find_needed_resource(self) -> str:
+        """Determine which resource the AI should seek next.
+
+        This method compares the team's current inventory with the requirements
+        for the current level and identifies missing resources. If all required
+        resources are available, it defaults to seeking food.
+
+        Returns:
+            str: The name of the resource to look for next
+        """
         needed_materials = LEVEL_REQUIREMENTS[self.level].copy()
         resources_to_find = []
         if "total" in self.team_backpack:
@@ -85,11 +129,30 @@ class AICore:
         return random.choice(resources_to_find)
 
 
-    def xor_encrypt(self, key: str, text: str):
-        """XOR encrypt two strings"""
+    def xor_encrypt(self, key: str, text: str) -> str:
+        """Encrypt a message using XOR with the provided key.
+
+        Args:
+            key (str): The encryption key
+            text (str): The plain text to encrypt
+
+        Returns:
+            str: The encrypted message
+        """
         return ''.join(chr(ord(c)^ord(k)) for c,k in zip(text, cycle(key)))
 
     def parse_backpack(self, data):
+        """Parse the inventory data received from the server.
+
+        This method processes the formatted inventory data string from the server
+        and updates the backpack dictionary with the current inventory quantities.
+
+        Args:
+            data (str): The inventory data string from the server
+
+        Returns:
+            None
+        """
         for char in "[]":
             data = data.replace(char, "")
         data = data.split(",")
@@ -101,11 +164,16 @@ class AICore:
                 self.backpack[elem.split()[0]] = int(elem.split()[1])
 
     def update_team_backpack(self, data):
-        """Update team backpack with broadcast
-                        elif "Take" in self.agent.action and "food" not in self.agent.action:
-                            print("Failed to take ", self.agent.target_resource)
+        """Update team inventory data with broadcast information from other players.
+
+        This method processes inventory broadcasts from team members and maintains
+        a collective inventory of all team resources.
+
         Args:
-            data (str): broadcast from other player
+            data (str): Formatted broadcast data from another player
+
+        Returns:
+            None
         """
         bot_id, _, backpack = data.split(";")
         self.team_backpack[self.bot_id] = self.backpack
@@ -118,7 +186,13 @@ class AICore:
         self.team_backpack['total'] = dict(c)
 
     def refresh_team_inventory(self):
-        """Update team backpack when we took new object
+        """Update the team's collective inventory after acquiring a new object.
+
+        This method updates the team inventory with the AI's current backpack
+        contents and recalculates the total resources available to the team.
+
+        Returns:
+            None
         """
         self.team_backpack[self.bot_id] = self.backpack
         c = Counter()
@@ -130,11 +204,15 @@ class AICore:
 
 
     def get_vision_size(self, grid: list) -> int:
-        """Get the size of the array
+        """Calculate the size of the vision grid.
+
+        This method determines the number of non-empty rows in the vision grid.
+
         Args:
-            grid (list): the array
+            grid (list): The vision grid to analyze
+
         Returns:
-            int: the size of the array
+            int: The number of non-empty rows in the grid
         """
         count = 0
         for elem in grid:
@@ -144,12 +222,17 @@ class AICore:
         return count
 
     def locate_resource(self, grid: list, resource: str) -> list:
-        """Find the resource in the map
+        """Search the vision grid for a specific resource.
+
+        This method systematically scans the vision grid to locate the coordinates
+        of a specified resource, searching in concentric squares outward from the center.
+
         Args:
-            grid (list): the map
-            resource (str): the resource
+            grid (list): The vision grid to search in
+            resource (str): The name of the resource to find
+
         Returns:
-            list: coord x y of the resource
+            list: Coordinates [v, h] of the resource if found, empty list otherwise
         """
 
         v = 8
@@ -173,22 +256,33 @@ class AICore:
         return []  # Return empty list instead of None
 
     def count_vision_lines(self, data: list) -> int:
-        """Get the number of line in the array
+        """Calculate the number of lines in the vision data.
+
+        This method determines the square root of the data length to find
+        the number of lines in the vision field.
+
         Args:
-            data (list): the array
+            data (list): The raw vision data array
+
         Returns:
-            int: the number of line
+            int: The number of lines in the vision field
         """
         data_len = len(data)
         return int(math.sqrt(data_len))
 
     def construct_vision_grid(self, grid: list, data: list) -> list:
-        """Fill the map with the object position
+        """Construct a 2D vision grid from the raw vision data.
+
+        This method transforms the linear vision data into a 2D grid format
+        representing the AI's visual field, with positions of objects mapped
+        according to their relative locations.
+
         Args:
-            grid (list): the map
-            data (list): the array of object position
-        return :
-            array: the map
+            grid (list): The empty grid structure to fill
+            data (list): The raw vision data containing object positions
+
+        Returns:
+            list: The populated 2D vision grid
         """
         count = 1
         v = 8

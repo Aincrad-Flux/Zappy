@@ -10,20 +10,35 @@ import random
 import subprocess
 
 class NetworkClient():
-    """This class implements a client which use asyncio for non-blocking communication
-    We could connect, interact with data, and interact with the server
+    """This class implements a client which uses selectors for non-blocking communication.
 
-    Args:
-        socket (socket.socket): the socket which allows to communicate with the server
+    The NetworkClient handles all communication with the server, including establishing
+    connection, sending commands, receiving responses, and processing server messages.
+    It also manages the AI agent's state based on server responses.
+
+    Attributes:
+        team (str): Name of the team this client belongs to
+        hostname (str): IP address of the server
+        port (str): Port number of the server
+        bot_id (int): Unique identifier for this bot
+        map_width (int): Width of the game map
+        map_height (int): Height of the game map
+        socket (socket.socket): Socket for server communication
+        selector (selectors.DefaultSelector): Selector for non-blocking I/O
+        init_status (int): Status of the initialization process
+        connected (int): Flag indicating connection status
+        agent (AICore): AI agent handling game logic
+        counter (int): Message counter
     """
 
     def __init__(self, hostname: str, port: str, team_name: str, bot_id: str):
-        """NetworkClient constructor
+        """Initialize the NetworkClient with server connection details.
 
         Args:
-            hostname (str): ip address of the server
-            port (str): port of the server
-            team_name (str): name of the team to connect
+            hostname (str): IP address of the server
+            port (str): Port number of the server
+            team_name (str): Name of the team to connect to
+            bot_id (str): Unique identifier for this bot instance
         """
         self.team = team_name
         self.hostname = hostname
@@ -31,7 +46,7 @@ class NetworkClient():
         self.bot_id = int(bot_id)
         self.map_width = 0
         self.map_height = 0
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Initialize socket right away
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.selector = selectors.DefaultSelector()
         self.init_status = 0
         self.connected = 0
@@ -40,10 +55,14 @@ class NetworkClient():
         self.counter = 0
 
     def establish_connection(self):
-        """Initialise a socket which connects to the server
-        We initialize the selectors to and be sure to receive the Welcome message
+        """Initialize the socket connection to the server and register selectors.
+
+        This method sets up the socket for non-blocking operations, establishes
+        connection with the server, and registers read/write events with the selector.
+
+        Returns:
+            None
         """
-        # Socket is already initialized in __init__
         self.socket.setblocking(False)
         port_num = safe_convert(self.port, int)
         if port_num is None:
@@ -53,7 +72,18 @@ class NetworkClient():
         self.selector.register(self.socket, events)
 
     def handle_server_info(self, message, stage):
-        """save start info
+        """Process and save initialization information received from the server.
+
+        Args:
+            message (str): Message received from the server
+            stage (int): Current initialization stage (1: team slots, 2: map dimensions)
+
+        Returns:
+            None
+
+        Note:
+            Stage 1: Extracts free team slots information
+            Other stages: Extracts map width and height and completes initialization
         """
         if stage == 1:
             slots = safe_convert(message, int)
@@ -73,7 +103,20 @@ class NetworkClient():
 
 
     def run_client(self):
-        """Process the init data delivers by the server
+        """Main client loop that handles all communication with the server.
+
+        This method continuously:
+        - Reads data from the server
+        - Processes received messages according to protocol
+        - Updates the AI agent's state based on received information
+        - Sends actions decided by the AI agent to the server
+
+        Returns:
+            None
+
+        Note:
+            This method runs indefinitely until the connection is terminated
+            or an error occurs.
         """
         message = ""
         while True:
@@ -88,12 +131,12 @@ class NetworkClient():
                             print("Connection closed by the server")
                             self.selector.unregister(self.socket)
                             self.socket.close()
-                            break  # Exit the loop
+                            break
                     except Exception as e:
                         print(f"Error receiving data: {e}")
                         self.selector.unregister(self.socket)
                         self.socket.close()
-                        break  # Exit the loop
+                        break
                     tmp = message.split("\n")
                     for elem in tmp[:-1]:
                         if "dead" in elem:
@@ -128,7 +171,7 @@ class NetworkClient():
                                 self.agent.clear_read_flag = 0
                                 message = message.split("\n")[-1]
                                 continue
-                            # Store as single message instead of appending to list
+
                             self.agent.message_received = [elem]
                             self.agent.handle_message(elem)
                             message = message.split("\n")[-1]
@@ -167,7 +210,7 @@ class NetworkClient():
                         if self.agent.action == (self.team + '\n') and self.connected == 0:
                             self.init_status = 1
                         try:
-                            if isinstance(self.agent.action, str):  # Make sure action is a string before encoding
+                            if isinstance(self.agent.action, str):
                                 self.socket.send(self.agent.action.encode())
                             else:
                                 print(f"Warning: agent.action is not a string: {self.agent.action}")
@@ -176,17 +219,28 @@ class NetworkClient():
                         self.agent.active = 0
 
     def disconnect(self):
-        """close the client
+        """Close the client connection and clean up resources.
+
+        This method unregisters the socket from the selector and closes the socket.
+        Any errors during disconnection are logged but do not stop program execution.
+
+        Returns:
+            None
         """
         try:
             self.selector.unregister(self.socket)
             self.socket.close()
         except Exception as e:
-            # Just log and continue if there's an issue closing the connection
             logging.error(f"Error when disconnecting: {e}")
 
     def check_server_capacity(self):
-        """Check if the server have a slot available, else shutdown the client
+        """Check if the server has available slots for new clients.
+
+        This method examines the bot_id to determine if the server has
+        capacity for this bot. Negative bot_id indicates no slots available.
+
+        Returns:
+            None
         """
         if self.bot_id < 0:
             logging.info("The server does not have available slots")
