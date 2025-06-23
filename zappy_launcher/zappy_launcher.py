@@ -570,7 +570,8 @@ class ZappyLauncher:
                     ai_args.append("--terminal-ui")
 
                 cmd_str = " ".join(ai_args)
-                self.log(f"Starting AI #{ai_count+1} for team {team} with command: {cmd_str}")
+                ui_mode = "with terminal UI" if self.ai_terminal_ui.get() else "without UI"
+                self.log(f"Starting AI #{ai_count+1} for team {team} {ui_mode} with command: {cmd_str}")
 
                 try:
                     if open_in_terminal and self.terminal_cmd:
