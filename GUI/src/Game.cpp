@@ -79,8 +79,16 @@ Game::Game(int width, int height, const std::string& hostname, int port, bool us
     }
 }
 
-Game::~Game() {
+Game::~Game()
+{
     Logger::getInstance().info("Game shutting down");
+
+    serverConnected = false;
+
+    {
+        std::unique_ptr<NetworkManager> tempManager;
+        tempManager.swap(networkManager);
+    }
 }
 
 void Game::initializeMockData()
@@ -994,6 +1002,18 @@ void Game::shutdown()
 {
     Logger::getInstance().info("Game shutting down properly");
     running = false;
+    serverConnected = false;
+
+    {
+        std::unique_ptr<NetworkManager> tempManager;
+
+        if (networkManager) {
+            tempManager.swap(networkManager);
+            // networkManager is now null
+            Logger::getInstance().info("Network manager transferred for safe shutdown");
+        }
+    }
+
     CloseWindow();
 }
 
@@ -1585,7 +1605,7 @@ void Game::setupNetworkCallbacks()
                 std::string eggIdStr = args[0];
                 std::string playerIdStr = args[1];
                 std::string xStr = args[2];
-                std::string yStr = args[3];
+                               std::string yStr = args[3];
 
                 if (eggIdStr.length() > 0 && eggIdStr[0] == '#') {
                     eggIdStr = eggIdStr.substr(1);
@@ -1763,7 +1783,19 @@ void Game::updateNetwork()
         serverConnected = false;
         return;
     }
-    networkManager->update();
+
+    try {
+        networkManager->update();
+    } catch (const std::exception& e) {
+        Logger::getInstance().error("Network update error: " + std::string(e.what()));
+    } catch (...) {
+        Logger::getInstance().error("Unknown network update error");
+    }
+
+    if (networkManager && !networkManager->isConnected() && serverConnected) {
+        Logger::getInstance().warning("Lost connection to server");
+        serverConnected = false;
+    }
 }
 
 Color Game::getTeamColor(const std::string& teamName)
