@@ -220,7 +220,6 @@ class NetworkClient():
                             if slots is not None:
                                 self.agent.free_slots = slots
                                 self.logger.debug(f"Free team slots: {slots}")
-                                # Fork using the reference implementation approach
                                 if slots > 0 and self.bot_id < 6 and self.agent.fork == 1:
                                     script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "zappy_ai")
                                     next_bot_id = str(self.bot_id + 1)
