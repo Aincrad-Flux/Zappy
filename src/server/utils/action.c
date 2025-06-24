@@ -11,7 +11,7 @@
 #include "../../../include/server/command/command.h"
 
 static void add_action(Player *player, time_t base_time, Action *new_action,
-    int freq)
+    int freq, const char *command)
 {
     Action *curr;
     int duration_ticks = get_command_duration(command);
@@ -43,7 +43,7 @@ void add_action_to_queue(Player *player, const char *command, int freq)
     base_time = time(NULL);
     strncpy(new_action->command, command, sizeof(new_action->command) - 1);
     new_action->command[sizeof(new_action->command) - 1] = '\0';
-    add_action(player, base_time, new_action, duration_ticks, freq);
+    add_action(player, base_time, new_action, freq, command);
     new_action->duration = duration_ticks;
 }
 

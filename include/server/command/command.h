@@ -37,4 +37,5 @@ void handle_incantation_command(Player *player, Server *server,
 void handle_fork_command(Player *player, Server *server, char *reponse);
 void process_player_command(Player *player, Server *server,
                             const char *command);
+void handle_look_command(Player *player, Server *server, char *reponse);
 #endif

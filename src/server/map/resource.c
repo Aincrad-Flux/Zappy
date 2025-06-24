@@ -10,7 +10,7 @@
 static void add_resource(Tile *tile, ResourceType type)
 {
     if (type >= 0 && type < RESOURCE_COUNT)
-        tile->resources[type]++;
+        tile->resource[type]++;
 }
 
 static void distribute_resource(Map *map, int count, ResourceType type)
@@ -44,7 +44,7 @@ void init_ressources(Map *map)
 void count_tile(Tile *tile, int *counts)
 {
     for (int i = 0; i < RESOURCE_COUNT; i++) {
-        counts[i] += tile->resources[i];
+        counts[i] += tile->resource[i];
     }
 }
 
