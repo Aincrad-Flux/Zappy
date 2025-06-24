@@ -161,6 +161,16 @@ class NetworkClient():
                                 continue
                             self.logger.debug(f"Processing server info (stage {self.init_status}): {elem}")
                             self.handle_server_info(elem, self.init_status)
+                        elif self.agent.action == "Incantation\n":
+                            if "ko" in elem:
+                                self.logger.error(f"Incantation failed: {elem}")
+                                # Réinitialiser l'état pour réessayer
+                                self.agent.state = 6
+                            elif "Elevation underway" in elem:
+                                self.logger.log_ritual_status("Elevation underway")
+                                self.agent.state = 8
+                            else:
+                                self.logger.debug(f"Réponse à l'incantation: {elem}")
                         elif  "Elevation underway" in elem:
                             self.logger.log_ritual_status("Elevation underway")
                             self.agent.state = 8
@@ -179,6 +189,8 @@ class NetworkClient():
                                     exit(0)
 
                                 self.logger.log_level_up(old_level, self.agent.level)
+
+                            # Reset all incantation-related states to ensure fresh start
                             self.agent.state = 9
                             self.agent.found_new_item = False
                             self.agent.target_resource = ""
@@ -189,7 +201,7 @@ class NetworkClient():
                             self.agent.ritual_ready = 0
                             self.agent.clear_read_flag = 0
                             self.agent.clear_message_flag = 0
-                            self.agent.action = 0
+                            self.agent.action = ""
                         elif self.init_status >= 3 and "message" in elem:
                             if self.agent.clear_read_flag == 1:
                                 self.agent.clear_read_flag = 0
