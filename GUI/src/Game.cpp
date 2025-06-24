@@ -693,6 +693,60 @@ void Game::render2DElements()
             playerColor = ColorBrightness(playerColor, 0.3f + blink * 0.2f);
         }
 
+        if (player.getIsLevelingUp()) {
+            // Animation de level-up en 2D
+            float levelUpTimer = 3.0f; // Même durée que dans Player.cpp
+            float animationProgress = 1.0f - (levelUpTimer / 3.0f); // 0.0 (début) à 1.0 (fin)
+            float levelPulse = sinf(GetTime() * 10.0f) * 0.5f + 0.5f;
+
+            // Rayons de lumière partant du joueur
+            int numRays = 12;
+            for (int i = 0; i < numRays; i++) {
+                float angle = (float)i / numRays * 2.0f * PI + GetTime() * 2.0f;
+                float baseRadius = radius * (1.2f + levelPulse * 0.3f);
+                float endRadius = radius * (2.0f + levelPulse * 0.5f);
+
+                Vector2 rayStart = {
+                    center.x + cosf(angle) * baseRadius,
+                    center.y + sinf(angle) * baseRadius
+                };
+                Vector2 rayEnd = {
+                    center.x + cosf(angle) * endRadius,
+                    center.y + sinf(angle) * endRadius
+                };
+
+                DrawLineV(rayStart, rayEnd, ColorAlpha(GOLD, (0.8f - animationProgress * 0.6f)));
+            }
+
+            // Cercles concentriques d'énergie
+            for (int i = 1; i <= 3; i++) {
+                float waveRadius = radius * (1.2f + i * 0.4f + levelPulse * 0.2f);
+                DrawCircleLines(center.x, center.y, waveRadius, ColorAlpha(GOLD, (0.8f - i * 0.2f) * (1.0f - animationProgress)));
+            }
+
+            // Particules dorées autour du joueur
+            for (int i = 0; i < 8; i++) {
+                float angle = (float)i / 8.0f * 2.0f * PI + GetTime() * 3.0f;
+                float distance = radius * (1.0f + sinf(GetTime() * 2.0f + i) * 0.2f);
+
+                Vector2 particlePos = {
+                    center.x + cosf(angle) * distance,
+                    center.y + sinf(angle) * distance
+                };
+
+                float particleSize = tileW * 0.07f * (0.5f + levelPulse * 0.5f);
+                DrawCircleV(particlePos, particleSize, ColorAlpha(GOLD, (1.0f - animationProgress) * 0.9f));
+            }
+
+            // Texte d'indication du nouveau niveau
+            DrawText(TextFormat("LEVEL UP TO %d!", player.getLevel()),
+                     center.x - 60, center.y - radius * 2.0f,
+                     16, GOLD);
+
+            // Faire briller le joueur
+            playerColor = ColorAlpha(ColorBrightness(playerColor, 1.0f + levelPulse * 0.5f), 1.0f);
+        }
+
         DrawCircleV(center, radius, playerColor);
 
         Vector2 dirOffset = {0, 0};
@@ -716,6 +770,59 @@ void Game::render2DElements()
         float lifePercent = player.getLifeTime() / 1260.0f;
         Color lifeColor = (lifePercent > 0.5f) ? GREEN : (lifePercent > 0.25f) ? YELLOW : RED;
         DrawRectangle(tileX, tileY + tileH + 2, tileW * lifePercent, 4, lifeColor);
+
+        if (player.getIsLevelingUp()) {
+            // Animation de level-up en 2D
+            float levelUpAnimationProgress = 1.0f - (player.getLevel() - player.getPreviousLevel()) / 3.0f;
+            float levelPulse = sinf(GetTime() * 10.0f) * 0.5f + 0.5f;
+
+            // Rayons de lumière partant du joueur
+            int numRays = 12;
+            for (int i = 0; i < numRays; i++) {
+                float angle = (float)i / numRays * 2.0f * PI + GetTime() * 2.0f;
+                float baseRadius = radius * (1.2f + levelPulse * 0.3f);
+                float endRadius = radius * (2.0f + levelPulse * 0.5f);
+
+                Vector2 rayStart = {
+                    center.x + cosf(angle) * baseRadius,
+                    center.y + sinf(angle) * baseRadius
+                };
+                Vector2 rayEnd = {
+                    center.x + cosf(angle) * endRadius,
+                    center.y + sinf(angle) * endRadius
+                };
+
+                DrawLineV(rayStart, rayEnd, ColorAlpha(GOLD, (0.8f - levelUpAnimationProgress * 0.6f)));
+            }
+
+            // Cercles concentriques d'énergie
+            for (int i = 1; i <= 3; i++) {
+                float waveRadius = radius * (1.2f + i * 0.4f + levelPulse * 0.2f);
+                DrawCircleLines(center.x, center.y, waveRadius, ColorAlpha(GOLD, (0.8f - i * 0.2f) * (1.0f - levelUpAnimationProgress)));
+            }
+
+            // Particules dorées autour du joueur
+            for (int i = 0; i < 8; i++) {
+                float angle = (float)i / 8.0f * 2.0f * PI + GetTime() * 3.0f;
+                float distance = radius * (1.0f + sinf(GetTime() * 2.0f + i) * 0.2f);
+
+                Vector2 particlePos = {
+                    center.x + cosf(angle) * distance,
+                    center.y + sinf(angle) * distance
+                };
+
+                float particleSize = tileW * 0.07f * (0.5f + levelPulse * 0.5f);
+                DrawCircleV(particlePos, particleSize, ColorAlpha(GOLD, (1.0f - levelUpAnimationProgress) * 0.9f));
+            }
+
+            // Texte d'indication du nouveau niveau
+            DrawText(TextFormat("LEVEL UP TO %d!", player.getLevel()),
+                     center.x - 60, center.y - radius * 2.0f,
+                     16, GOLD);
+
+            // Faire briller le joueur
+            playerColor = ColorAlpha(ColorBrightness(playerColor, 1.0f + levelPulse * 0.5f), 1.0f);
+        }
     }
 
     // Créer une carte temporaire pour compter les joueurs vivants par case

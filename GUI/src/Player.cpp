@@ -12,7 +12,8 @@
 Player::Player(int playerId, const std::string& team, Vector3 pos, Color color)
     : id(playerId), teamName(team), position(pos), team(team), direction(PlayerDirection::NORTH),
       level(1), inventory(10, 0, 0, 0, 0, 0, 0), teamColor(color), isAlive(true),
-      lifeTime(1260.0f), isIncanting(false), isBroadcasting(false), broadcastTimer(0.0f)
+      lifeTime(1260.0f), isIncanting(false), isBroadcasting(false), broadcastTimer(0.0f),
+      isLevelingUp(false), levelUpTimer(0.0f), previousLevel(1)
 {
     Logger::getInstance().info("Player created: ID " + std::to_string(id) + " from team " + team +
         " at position (" + std::to_string(pos.x) + "," + std::to_string(pos.y) + "," + std::to_string(pos.z) + ")");
@@ -36,6 +37,88 @@ void Player::draw(Vector3 worldPos, int tileSize) const
     if (isIncanting) {
         float pulse = sinf(GetTime() * 5.0f) * 0.3f + 0.7f;
         playerColor = ColorAlpha(playerColor, pulse);
+    }
+
+    // Effet d'animation pour le level-up
+    if (isLevelingUp) {
+        // Créer un effet visuel spectaculaire pour le level-up
+        float animationProgress = 1.0f - (levelUpTimer / 3.0f); // 0.0 (début) à 1.0 (fin)
+        float levelPulse = sinf(GetTime() * 10.0f) * 0.5f + 0.5f;
+
+        // Pilier de lumière montant vers le haut
+        float pillarHeight = height * (2.0f + 3.0f * animationProgress);
+        float pillarAlpha = 1.0f - animationProgress;  // Disparaît progressivement
+
+        // Dessiner un pilier de lumière
+        Color pillarColor = ColorAlpha(GOLD, pillarAlpha * (0.7f + levelPulse * 0.3f));
+        DrawCylinder(
+            {center.x, center.y, center.z},                     // base center
+            radius * 0.3f * (1.0f - animationProgress * 0.5f),  // base radius
+            radius * 0.1f,                                      // top radius
+            pillarHeight,                                       // height
+            8,                                                  // sides
+            pillarColor                                         // color
+        );
+
+        // Cercles d'énergie montant le long du pilier
+        for (int i = 0; i < 5; i++) {
+            float circleHeight = center.y + (animationProgress * pillarHeight * 0.8f) +
+                               sinf(GetTime() * 5.0f + i * 0.5f) * pillarHeight * 0.2f;
+            // Dessiner un anneau en 3D (DrawTorus n'est pas disponible dans cette version de Raylib)
+            float innerRadius = radius * (0.5f + levelPulse * 0.2f);
+            float outerRadius = radius * (0.6f + levelPulse * 0.3f);
+            Color ringColor = ColorAlpha(GOLD, (1.0f - animationProgress) * 0.7f);
+
+            // Dessiner plusieurs cercles pour créer l'effet d'un anneau
+            const int segments = 16;
+            for (int j = 0; j < segments; j++) {
+                float angle1 = ((float)j / segments) * 2.0f * PI;
+                float angle2 = ((float)(j+1) / segments) * 2.0f * PI;
+
+                Vector3 p1Inner = {
+                    center.x + innerRadius * cosf(angle1),
+                    circleHeight,
+                    center.z + innerRadius * sinf(angle1)
+                };
+                Vector3 p2Inner = {
+                    center.x + innerRadius * cosf(angle2),
+                    circleHeight,
+                    center.z + innerRadius * sinf(angle2)
+                };
+                Vector3 p1Outer = {
+                    center.x + outerRadius * cosf(angle1),
+                    circleHeight,
+                    center.z + outerRadius * sinf(angle1)
+                };
+                Vector3 p2Outer = {
+                    center.x + outerRadius * cosf(angle2),
+                    circleHeight,
+                    center.z + outerRadius * sinf(angle2)
+                };
+
+                DrawLine3D(p1Inner, p2Inner, ringColor);
+                DrawLine3D(p1Outer, p2Outer, ringColor);
+            }
+        }
+
+        // Faire briller le joueur
+        playerColor = ColorAlpha(ColorBrightness(teamColor, 1.0f + levelPulse * 0.5f), 1.0f);
+
+        // Particules s'élevant autour du joueur
+        for (int i = 0; i < 10; i++) {
+            float angle = (i / 10.0f) * 2.0f * PI + GetTime();
+            float distance = radius * (1.0f + animationProgress * 0.5f + sinf(GetTime() * 2.0f + i) * 0.2f);
+            float particleHeight = center.y + height * (0.3f + animationProgress * 1.5f + sin(GetTime() * 3.0f + i * 0.2f) * 0.3f);
+
+            Vector3 particlePos = {
+                center.x + cosf(angle) * distance,
+                particleHeight,
+                center.z + sinf(angle) * distance
+            };
+
+            float particleSize = tileSize * 0.05f * (1.0f - animationProgress * 0.7f + levelPulse * 0.3f);
+            DrawSphere(particlePos, particleSize, ColorAlpha(GOLD, (1.0f - animationProgress) * 0.9f));
+        }
     }
 
     // Effet de clignotement pour le broadcast
@@ -113,6 +196,15 @@ void Player::update(float deltaTime)
         }
     }
 
+    // Gestion du timer de l'animation de level-up
+    if (isLevelingUp) {
+        levelUpTimer -= deltaTime;
+        if (levelUpTimer <= 0) {
+            isLevelingUp = false;
+            levelUpTimer = 0;
+        }
+    }
+
     static float foodTimer = 0;
     foodTimer += deltaTime;
     if (foodTimer >= 126.0f) {
@@ -162,8 +254,14 @@ void Player::setLevel(int newLevel)
     if (level != newLevel) {
         Logger::getInstance().info("Player " + std::to_string(id) + " level changed from " +
             std::to_string(level) + " to " + std::to_string(newLevel));
+
+        if (newLevel > level) {
+            // Only start animation if leveling up (not down)
+            startLevelUpAnimation(newLevel);
+        } else {
+            level = newLevel;
+        }
     }
-    level = newLevel;
 }
 
 void Player::setTeam(const std::string& newTeam)
@@ -282,7 +380,30 @@ void Player::startBroadcasting()
     broadcastTimer = 1.0f; // Animation dure 1 seconde
 }
 
+void Player::startLevelUpAnimation(int newLevel)
+{
+    if (!isAlive || level == newLevel) return;
+
+    previousLevel = level;
+    level = newLevel;
+    isLevelingUp = true;
+    levelUpTimer = 3.0f; // Animation duration in seconds
+
+    Logger::getInstance().info("Player " + std::to_string(id) + " starting level-up animation from level " +
+                               std::to_string(previousLevel) + " to " + std::to_string(level));
+}
+
 bool Player::getIsBroadcasting() const
 {
     return isBroadcasting;
+}
+
+bool Player::getIsLevelingUp() const
+{
+    return isLevelingUp;
+}
+
+int Player::getPreviousLevel() const
+{
+    return previousLevel;
 }
