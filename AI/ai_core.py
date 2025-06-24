@@ -594,7 +594,10 @@ class AICore:
             self.state += 1
         elif self.state == 6:
             self.clear_message_flag = 0
-            if self.ritual_leader >= 6:
+            # Use level-dependent number of players needed
+            players_needed = self.level + 1
+            self.logger.info(f"Ritual status: {self.ritual_leader} players ready out of {players_needed} needed")
+            if self.ritual_leader >= players_needed:
                 self.begin_ritual()
             if self.state != 7:
                 self.place_resources_for_ritual()
@@ -604,7 +607,9 @@ class AICore:
                 else:
                     self.action = "Inventory\n"
         elif self.state == 7:
-            if self.ritual_leader < 6:
+            # Use level-dependent number of players needed
+            players_needed = self.level + 1
+            if self.ritual_leader < players_needed:
                 self.action = "Connect_nbr\n"
                 return
             if self.action_queue:
