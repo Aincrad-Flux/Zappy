@@ -26,7 +26,6 @@ def safe_convert(val, to_type: type, logger=None):
     Returns:
         The converted value if successful, None if conversion fails
     """
-    # Use provided logger or default to utils_logger
     log = logger or utils_logger
 
     try:
@@ -84,7 +83,6 @@ def get_resource_priority(level):
     Returns:
         list: A list of resources ordered by priority
     """
-    # This could be expanded based on game strategy
     if level == 1:
         return ["linemate", "food"]
     elif level == 2:

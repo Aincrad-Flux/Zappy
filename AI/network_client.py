@@ -68,7 +68,7 @@ class NetworkClient():
         self.socket.setblocking(False)
         port_num = safe_convert(self.port, int, logger=self.logger)
         if port_num is None:
-            port_num = 4242  # Default port if conversion fails
+            port_num = 4242
             self.logger.warning(f"Invalid port number '{self.port}', using default: {port_num}")
 
         self.logger.info(f"Connecting to server at {self.hostname}:{port_num}")
@@ -225,11 +225,10 @@ class NetworkClient():
                                     next_bot_id = str(self.bot_id + 1)
                                     self.logger.info(f"Forking new bot with ID {next_bot_id}")
                                     subprocess.Popen(["python3", script_path, "-p", self.port, "-n", self.team, "-i", next_bot_id])
-                                    self.agent.fork = 0  # Only fork once per AI instance
+                                    self.agent.fork = 0
                             else:
                                 self.logger.error(f"Error parsing Connect_nbr response: {elem}")
                                 self.agent.free_slots = 0
-                        # Handling Fork response is no longer needed as we use the Connect_nbr method
                         message = message.split("\n")[-1]
                         self.agent.active = 1
 

@@ -19,7 +19,6 @@ import sys
 import time
 from datetime import datetime
 
-# ANSI color codes for colored terminal output
 COLORS = {
     "RESET": "\033[0m",
     "DEBUG": "\033[36m",  # Cyan
@@ -36,14 +35,6 @@ class ZappyLogger:
 
     This class provides methods for configuring and using a custom logger
     with different output formats, log levels, and destinations.
-
-    Attributes:
-        logger (logging.Logger): The Python logger instance
-        bot_id (int): The ID of the bot for which logs are being generated
-        team_name (str): The team name of the bot
-        log_to_file (bool): Whether to log to a file or not
-        log_to_console (bool): Whether to log to console or not
-        log_level (int): Minimum log level to record
     """
 
     def __init__(self, bot_id=None, team_name=None, log_to_file=True, log_to_console=True, log_level=logging.INFO):
@@ -105,7 +96,6 @@ class ZappyLogger:
                 if not hasattr(record, key):
                     setattr(record, key, value)
 
-            # Add color based on log level
             levelname = record.levelname
             if levelname in COLORS:
                 record.levelname = f"{COLORS[levelname]}{levelname}{COLORS['RESET']}"

@@ -72,7 +72,7 @@ class AICore:
         self.reproduction = 0
         self.use_ui = use_ui
         self.logger = get_logger(bot_id=bot_id, team_name=name, log_to_console=not use_ui)
-        self.fork = 1  # Flag to enable forking at the beginning of connection
+        self.fork = 1
 
     def can_perform_ritual(self) -> bool:
         """
@@ -172,7 +172,6 @@ class AICore:
                 quantity = int(elem.split()[1])
                 self.backpack[resource] = quantity
 
-        # Log any changes in inventory
         self.logger.log_inventory(self.backpack)
         for key in self.backpack:
             if key in old_backpack and self.backpack[key] > old_backpack[key]:
@@ -274,7 +273,7 @@ class AICore:
                     return [tv, h]
                 tv += 1
             h+=1
-        return []  # Return empty list instead of None
+        return []
 
     def count_vision_lines(self, data: list) -> int:
         """
@@ -311,7 +310,6 @@ class AICore:
         v = 8
         h = 0
         i = 0
-        x = 0
 
         line = self.count_vision_lines(data)
         for j in range(line):
@@ -511,8 +509,6 @@ class AICore:
         self.action_queue = ["Incantation\n"]
         self.state += 1
 
-    # The handle_fork method has been removed as we now use the reference implementation approach
-
     def decide_action(self):
         """
         Determine the next action for the AI to take.
@@ -524,10 +520,6 @@ class AICore:
         Returns:
             None: Updates the action attribute instead of returning a value
         """
-        # No need to check for forking here
-        # The network client will handle it when Connect_nbr is called
-
-        # Regular decision logic flow
         if self.state == -2:
             self.logger.info("Initializing: checking team connections")
             self.action = "Connect_nbr\n"

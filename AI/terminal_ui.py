@@ -73,51 +73,39 @@ class TerminalUI:
             curses.noecho()
             curses.cbreak()
             stdscr.keypad(True)
-            stdscr.nodelay(True)  # Non-blocking input
+            stdscr.nodelay(True)
             stdscr.clear()
 
             while self.running:
-                # Check for resize and get terminal size
                 height, width = stdscr.getmaxyx()
-
-                # Clear screen
                 stdscr.clear()
-
-                # Draw title
                 title = f" ZAPPY AI - Team: {self.agent.team_name} | Bot ID: {self.agent.bot_id} "
                 stdscr.addstr(0, (width - len(title)) // 2, title, curses.A_BOLD)
 
-                # Draw connection info
                 connected_str = "CONNECTED" if self.client.connected else "DISCONNECTED"
                 connected_style = curses.color_pair(1) if self.client.connected else curses.color_pair(2)
                 stdscr.addstr(1, 2, f"Status: ", curses.A_BOLD)
                 stdscr.addstr(connected_str, connected_style | curses.A_BOLD)
 
-                # Draw bot level and players needed for ritual
                 stdscr.addstr(3, 2, "Bot Information", curses.color_pair(4) | curses.A_BOLD)
                 stdscr.addstr(4, 4, f"Level: {self.agent.level}", curses.A_BOLD)
                 stdscr.addstr(5, 4, f"State: {self._get_state_description()}")
                 stdscr.addstr(6, 4, f"Current action: {self.agent.action}")
                 stdscr.addstr(7, 4, f"Players needed for ritual: {self._get_players_needed()}")
 
-                # Draw inventory
                 stdscr.addstr(9, 2, "Inventory", curses.color_pair(4) | curses.A_BOLD)
                 inventory_str = format_inventory(self.agent.backpack)
                 inventory_lines = self._wrap_text(inventory_str, width - 6)
                 for i, line in enumerate(inventory_lines):
                     stdscr.addstr(10 + i, 4, line)
 
-                # Draw elevation requirements
                 next_level_reqs = self._get_level_requirements()
                 stdscr.addstr(13, 2, "Elevation Requirements", curses.color_pair(4) | curses.A_BOLD)
                 stdscr.addstr(14, 4, next_level_reqs)
-
-                # Draw missing resources
                 missing_resources = self._get_missing_resources()
                 stdscr.addstr(16, 2, "Missing Resources", curses.color_pair(4) | curses.A_BOLD)
                 stdscr.addstr(17, 4, missing_resources)
 
-                # Draw team info if available
                 if "total" in self.agent.team_backpack:
                     stdscr.addstr(19, 2, "Team Resources (Total)", curses.color_pair(4) | curses.A_BOLD)
                     team_inv_str = format_inventory(self.agent.team_backpack["total"])
@@ -125,10 +113,8 @@ class TerminalUI:
                     for i, line in enumerate(team_inv_lines):
                         stdscr.addstr(20 + i, 4, line)
 
-                # Footer with instructions
                 stdscr.addstr(height - 2, 2, "Press 'q' to quit UI mode", curses.color_pair(3) | curses.A_BOLD)
 
-                # Check for key presses
                 try:
                     key = stdscr.getch()
                     if key == ord('q'):
