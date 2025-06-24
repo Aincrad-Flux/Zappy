@@ -420,7 +420,6 @@ class AICore:
             sender_id = int(decrypted_message.split(";")[0])
             sender_level = int(decrypted_message.split(";")[2])
 
-            # Only respond to incantation messages from same level bots
             if sender_level != self.level:
                 return
 
@@ -444,14 +443,12 @@ class AICore:
             self.players_for_ritual += 1
             self.logger.info(f"Bot joining ritual, total: {self.players_for_ritual}")
 
-            # Vérifier si nous avons maintenant assez de joueurs pour commencer
             if self.state in [6, 7] and self.check_resources_on_tile():
                 players_needed = self.get_required_players_for_level()
                 available_players = self.get_available_players_count()
 
                 if available_players >= players_needed:
                     self.logger.info(f"New bot joined, now have enough players ({available_players}/{players_needed})")
-                    # Si nous avons déjà placé les ressources, commencer l'incantation
                     if self.state == 7:
                         self.begin_ritual()
 
@@ -459,7 +456,6 @@ class AICore:
             self.ritual_leader += 1
             self.logger.info(f"Bot ready for ritual, ready bots: {self.ritual_leader}")
 
-            # Check if we can now start the ritual
             players_needed = self.get_required_players_for_level()
             if self.ritual_leader >= players_needed and self.state == 6:
                 self.logger.info("Required players reached, can start incantation")
@@ -468,7 +464,7 @@ class AICore:
 
     def move_to_message_source(self, direction: int) -> list:
         if self.ritual_ready == 1 or self.action_queue:
-            return []  # Return empty list instead of None
+            return []
         actions = []
         if (direction == 0):
             message = bytes(self.xor_encrypt(self.team_name, ("ready")), "utf-8").hex()
@@ -495,7 +491,6 @@ class AICore:
         data = data.split(" ")
         needed_materials = LEVEL_REQUIREMENTS[self.level].copy()
 
-        # Debug: afficher ce qui est sur la case
         self.logger.debug(f"Resources on tile: {data}")
 
         for k in needed_materials:
@@ -503,7 +498,6 @@ class AICore:
                 if j == k:
                     needed_materials[k] -= 1
 
-        # Debug: afficher ce qu'il manque
         missing_resources = {k: v for k, v in needed_materials.items() if v > 0}
         if missing_resources:
             self.logger.debug(f"Missing resources for ritual: {missing_resources}")
@@ -518,34 +512,29 @@ class AICore:
                 self.logger.info(f"Placing resource for ritual: {k}")
                 return
 
-        # Tous les matériaux sont prêts
         self.state = 7
         self.action = ""
         self.logger.info("All resources placed for ritual, ready for incantation")
 
-        # Compter les joueurs sur la case
         players_present = self.count_players_on_tile()
         players_needed = self.get_required_players_for_level()
 
-        # Mettre à jour notre connaissance des joueurs disponibles
         self.players_for_ritual = max(self.players_for_ritual, players_present)
 
         self.logger.info(f"Players present for ritual: {players_present}/{players_needed}")
 
-        # If we have enough players, start the incantation immediately
         if players_present >= players_needed:
             self.logger.info("Enough players physically present, starting incantation!")
             self.begin_ritual()
-        # Si nous avons moins de joueurs que nécessaire mais tout de même assez pour une adaptation
         elif players_present >= 1 and self.ritual_leader >= 1:
-            adjusted_needed = self.get_required_players_for_level()  # Récupère le nombre adapté
+            adjusted_needed = self.get_required_players_for_level()
             if players_present >= adjusted_needed:
                 self.logger.info(f"Adapting ritual to available players: {players_present}/{players_needed}")
                 self.begin_ritual()
         return
 
     def begin_ritual(self):
-        # Vérifier une dernière fois si assez de joueurs sont présents
+
         players_present = self.count_players_on_tile()
         players_needed = self.get_required_players_for_level()
 
@@ -553,7 +542,7 @@ class AICore:
             self.logger.warning(f"Cannot begin ritual: not enough players present ({players_present}/{players_needed})")
             return
 
-        # Vérification des matériaux
+
         data = self.vision.split(",")[0]
         while True:
             if len(data) == 0 or data[0].isalpha():
@@ -561,7 +550,7 @@ class AICore:
             data = data[1:]
         data = data.split(" ")
 
-        # Debug: afficher ce qui est sur la case au moment du rituel
+
         self.logger.debug(f"Tile contents before ritual: {data}")
 
         needed_materials = LEVEL_REQUIREMENTS[self.level].copy()
@@ -570,7 +559,7 @@ class AICore:
                 if j == k:
                     needed_materials[k] -= 1
 
-        # Vérifier s'il manque des ressources
+
         missing = {k: v for k, v in needed_materials.items() if v > 0}
         if missing:
             self.logger.warning(f"Cannot begin ritual: missing resources {missing}")
@@ -578,7 +567,7 @@ class AICore:
 
         self.logger.info(f"Beginning incantation ritual for level {self.level} with {players_present} players")
 
-        # Mettre la commande directement dans la file d'actions prioritaires
+
         self.action_queue = ["Incantation\n"]
         self.action = "Incantation\n"
         self.state = 8
@@ -668,32 +657,31 @@ class AICore:
             self.state += 1
         elif self.state == 6:
             self.clear_message_flag = 0
-            # Vérifier les ressources et joueurs réellement présents
-            if self.vision:  # S'assurer que nous avons des données de vision
-                # Use level-dependent number of players needed
+
+            if self.vision:
+
                 players_needed = self.get_required_players_for_level()
                 players_present = self.count_players_on_tile()
                 resources_ready = self.check_resources_on_tile()
 
-                # Mettre à jour notre connaissance des joueurs disponibles
                 self.players_for_ritual = max(self.players_for_ritual, players_present)
 
                 self.logger.info(f"Ritual status: {players_present} players présents sur {players_needed} nécessaires")
                 self.logger.info(f"Ressources pour incantation prêtes: {resources_ready}")
 
-                # Si les conditions sont réunies, lancer l'incantation immédiatement
+
                 if players_present >= players_needed and resources_ready:
                     self.logger.info(f"Toutes les conditions remplies pour l'incantation: {players_present}/{players_needed} joueurs, ressources OK")
                     self.begin_ritual()
                     return
 
-            # Continuer le comportement normal si l'incantation n'est pas encore possible
+
             players_needed = self.get_required_players_for_level()
             available_players = self.get_available_players_count()
 
             self.logger.info(f"Ritual status: {available_players} players available out of {players_needed} needed")
 
-            # Si on est chef et qu'on a assez de joueurs, tenter l'incantation
+
             if self.ritual_leader >= 1 and available_players >= players_needed:
                 self.begin_ritual()
 
@@ -703,32 +691,31 @@ class AICore:
                     self.action = self.action_queue[0]
                     self.action_queue = self.action_queue[1:]
                 else:
-                    self.action = "Look\n"  # Regarder régulièrement pour mettre à jour notre vision
+                    self.action = "Look\n"
         elif self.state == 7:
-            # Vérifier si nous pouvons lancer l'incantation maintenant
+
             if self.vision:
                 players_present = self.count_players_on_tile()
                 resources_ready = self.check_resources_on_tile()
                 players_needed = self.get_required_players_for_level()
 
-                # Mettre à jour notre connaissance des joueurs disponibles
                 self.players_for_ritual = max(self.players_for_ritual, players_present)
 
                 self.logger.info(f"État 7: {players_present} joueurs présents sur {players_needed} nécessaires, ressources prêtes: {resources_ready}")
 
-                # Si toutes les conditions sont remplies, lancer l'incantation immédiatement
+
                 if players_present >= players_needed and resources_ready:
                     self.logger.info("Conditions remplies pour lancer l'incantation!")
                     self.begin_ritual()
                     return
 
-            # Utiliser notre estimation du nombre de joueurs disponibles
+
             players_needed = self.get_required_players_for_level()
             available_players = self.get_available_players_count()
 
-            # Si nous sommes chef et qu'il nous manque trop de joueurs, adapter la stratégie
+
             if self.ritual_leader >= 1 and available_players < players_needed:
-                # Si on peut adapter, on réévalue le nombre requis
+
                 adjusted_needed = self.get_required_players_for_level()
                 if adjusted_needed <= available_players:
                     self.logger.info(f"Adapting ritual to available players: {available_players}/{players_needed}")
@@ -739,13 +726,13 @@ class AICore:
                 self.action = self.action_queue[0]
                 self.action_queue = self.action_queue[1:]
             else:
-                # Regarder régulièrement autour de nous pour vérifier l'état
+
                 self.action = "Look\n"
         elif self.state == 8:
-            # Waiting for incantation result
+
             self.action = ""
         elif self.state == 9:
-            # After level up, update inventory and reset states
+
             self.action = "Inventory\n"
             self.action_queue = []
             self.target_resource = ""
@@ -755,7 +742,7 @@ class AICore:
             self.players_for_ritual = 1
             self.state += 1
         elif self.state == 10:
-            # Broadcast updated inventory after level up
+
             message = bytes(self.xor_encrypt(self.team_name, ("inventory" + str(self.bot_id) + ";" + str(self.level) + ";" + str(json.dumps(self.backpack)))), "utf-8").hex()
             self.action = "Broadcast " + message + "\n"
             self.state = 0
@@ -768,25 +755,25 @@ class AICore:
         Returns:
             int: Number of players needed for the current level
         """
-        # Nombre théorique requis pour ce niveau
+
         theoretical_required = self.level + 1
 
-        # Nombre estimé de joueurs disponibles
+
         available_players = self.get_available_players_count()
 
-        # Si nous avons moins de joueurs que requis théoriquement, adapter
+
         if available_players < theoretical_required:
-            # Pour le niveau 1, on peut monter tout seul si nécessaire
+
             if self.level == 1 and available_players == 1:
                 self.logger.info("Solo elevation attempt for level 1")
                 return 1
 
-            # Pour les autres niveaux, on essaie avec ce qu'on a si au moins 2 joueurs
+
             if available_players >= 2 and self.level < 4:
                 self.logger.info(f"Adapting ritual requirements: using {available_players} players instead of {theoretical_required}")
                 return available_players
 
-        # Sinon, on suit les règles normales
+
         return theoretical_required
 
     def count_players_on_tile(self) -> int:
@@ -801,9 +788,9 @@ class AICore:
 
         try:
             current_tile = self.vision.split(",")[0]
-            # Compter le nombre de "player" sur la case actuelle
+
             player_count = current_tile.count("player")
-            # L'IA elle-même n'est pas incluse dans la vision, donc ajouter 1
+
             total_players = player_count + 1
 
             self.logger.debug(f"Detected {player_count} other players on current tile, total with self: {total_players}")
@@ -811,7 +798,7 @@ class AICore:
             return total_players
         except Exception as e:
             self.logger.error(f"Erreur lors du comptage des joueurs: {e}")
-            return 1  # On compte au moins nous-mêmes
+            return 1
 
     def check_resources_on_tile(self) -> bool:
         """
@@ -827,7 +814,7 @@ class AICore:
             current_tile = self.vision.split(",")[0]
             needed_materials = LEVEL_REQUIREMENTS[self.level].copy()
 
-            # Compter les ressources sur la case
+
             resource_counts = {}
             for k in needed_materials:
                 count = current_tile.count(k)
@@ -850,23 +837,23 @@ class AICore:
         Returns:
             int: Nombre estimé de joueurs disponibles pour l'élévation
         """
-        # Utiliser le compte des joueurs actuellement sur la case
+
         players_on_tile = self.count_players_on_tile()
 
-        # Si nous avons des joueurs sur la case, c'est plus fiable que l'estimation
+
         if players_on_tile > 1:
             return players_on_tile
 
-        # Sinon, utiliser le compteur basé sur les communications
+
         comm_players = max(self.players_for_ritual, self.ritual_leader)
 
-        # Intégrer l'information from Connect_nbr comme limite supérieure
+
         team_slots_used = 6 - self.free_slots
         if team_slots_used > 0:
-            # Utiliser la valeur minimale entre les slots utilisés et les joueurs comptés
+
             result = min(team_slots_used, comm_players)
             self.logger.debug(f"Estimating available players: {result} (from slots: {team_slots_used}, comms: {comm_players})")
             return result
 
-        # Par défaut, retourner le compteur de communication avec un minimum de 1
+
         return max(1, comm_players)
