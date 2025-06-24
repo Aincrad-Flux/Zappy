@@ -1,10 +1,18 @@
+#!/usr/bin/env python3
+##
+## EPITECH PROJECT, 2025
+## Zappy
+## File description:
+## Utility functions for the AI client
+##
+
 from AI.logger import get_logger
 
-# Create a default logger for utilities
 utils_logger = get_logger(bot_id=0, team_name="utils", log_to_file=True, log_to_console=True)
 
 def safe_convert(val, to_type: type, logger=None):
-    """Safely convert a value to a specified type.
+    """
+    Safely convert a value to a specified type.
 
     This utility function attempts to convert a value to the specified type.
     If the conversion fails, it logs a critical error message and returns None
@@ -28,7 +36,8 @@ def safe_convert(val, to_type: type, logger=None):
         return None
 
 def format_inventory(inventory: dict, logger=None) -> str:
-    """Formats an inventory dictionary into a readable string.
+    """
+    Formats an inventory dictionary into a readable string.
 
     Args:
         inventory (dict): A dictionary containing inventory items
@@ -49,7 +58,8 @@ def format_inventory(inventory: dict, logger=None) -> str:
         return str(inventory)
 
 def log_command_result(command, result, success, logger=None):
-    """Logs the result of a server command.
+    """
+    Logs the result of a server command.
 
     Args:
         command (str): The command that was sent
@@ -65,7 +75,8 @@ def log_command_result(command, result, success, logger=None):
         log.warning(f"Command '{command.strip()}' failed with result: {result}")
 
 def get_resource_priority(level):
-    """Returns a priority list of resources needed for the current level.
+    """
+    Returns a priority list of resources needed for the current level.
 
     Args:
         level (int): The current level of the AI

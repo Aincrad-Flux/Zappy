@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+##
+## EPITECH PROJECT, 2025
+## Zappy
+## File description:
+## Core AI logic implementation
+##
+
 from concurrent.futures import process
 import re
 import math
@@ -20,7 +28,8 @@ LEVEL_REQUIREMENTS = {1: {"linemate": 1},
 }
 
 class AICore:
-    """This class encapsulates the intelligence of the AI player.
+    """
+    This class encapsulates the intelligence of the AI player.
 
     The AICore handles all game logic, decision making, resource management,
     inventory tracking, and coordination with other bots. It implements the
@@ -28,7 +37,8 @@ class AICore:
     and communicating with team members.
     """
     def __init__(self, name, bot_id=0, use_ui=False):
-        """Initialize the AICore with default values.
+        """
+        Initialize the AICore with default values.
 
         Args:
             name (str): The name of the team this AI belongs to
@@ -62,9 +72,11 @@ class AICore:
         self.reproduction = 0
         self.use_ui = use_ui
         self.logger = get_logger(bot_id=bot_id, team_name=name, log_to_console=not use_ui)
+        self.fork = 1  # Flag to enable forking at the beginning of connection
 
     def can_perform_ritual(self) -> bool:
-        """Check if ritual is possible with the current team resources.
+        """
+        Check if ritual is possible with the current team resources.
 
         This method determines whether the team has gathered enough resources
         to perform a ritual for the current level, considering both the team's
@@ -87,7 +99,8 @@ class AICore:
         return False
 
     def find_needed_resource(self) -> str:
-        """Determine which resource the AI should seek next.
+        """
+        Determine which resource the AI should seek next.
 
         This method compares the team's current inventory with the requirements
         for the current level and identifies missing resources. If all required
@@ -121,7 +134,8 @@ class AICore:
 
 
     def xor_encrypt(self, key: str, text: str) -> str:
-        """Encrypt a message using XOR with the provided key.
+        """
+        Encrypt a message using XOR with the provided key.
 
         Args:
             key (str): The encryption key
@@ -133,7 +147,8 @@ class AICore:
         return ''.join(chr(ord(c)^ord(k)) for c,k in zip(text, cycle(key)))
 
     def parse_backpack(self, data):
-        """Parse the inventory data received from the server.
+        """
+        Parse the inventory data received from the server.
 
         This method processes the formatted inventory data string from the server
         and updates the backpack dictionary with the current inventory quantities.
@@ -166,7 +181,8 @@ class AICore:
                 self.logger.info(f"Used/lost {old_backpack[key] - self.backpack[key]} {key}")
 
     def update_team_backpack(self, data):
-        """Update team inventory data with broadcast information from other players.
+        """
+        Update team inventory data with broadcast information from other players.
 
         This method processes inventory broadcasts from team members and maintains
         a collective inventory of all team resources.
@@ -188,7 +204,8 @@ class AICore:
         self.team_backpack['total'] = dict(c)
 
     def refresh_team_inventory(self):
-        """Update the team's collective inventory after acquiring a new object.
+        """
+        Update the team's collective inventory after acquiring a new object.
 
         This method updates the team inventory with the AI's current backpack
         contents and recalculates the total resources available to the team.
@@ -206,7 +223,8 @@ class AICore:
 
 
     def get_vision_size(self, grid: list) -> int:
-        """Calculate the size of the vision grid.
+        """
+        Calculate the size of the vision grid.
 
         This method determines the number of non-empty rows in the vision grid.
 
@@ -224,7 +242,8 @@ class AICore:
         return count
 
     def locate_resource(self, grid: list, resource: str) -> list:
-        """Search the vision grid for a specific resource.
+        """
+        Search the vision grid for a specific resource.
 
         This method systematically scans the vision grid to locate the coordinates
         of a specified resource, searching in concentric squares outward from the center.
@@ -258,7 +277,8 @@ class AICore:
         return []  # Return empty list instead of None
 
     def count_vision_lines(self, data: list) -> int:
-        """Calculate the number of lines in the vision data.
+        """
+        Calculate the number of lines in the vision data.
 
         This method determines the square root of the data length to find
         the number of lines in the vision field.
@@ -273,7 +293,8 @@ class AICore:
         return int(math.sqrt(data_len))
 
     def construct_vision_grid(self, grid: list, data: list) -> list:
-        """Construct a 2D vision grid from the raw vision data.
+        """
+        Construct a 2D vision grid from the raw vision data.
 
         This method transforms the linear vision data into a 2D grid format
         representing the AI's visual field, with positions of objects mapped
@@ -304,14 +325,16 @@ class AICore:
         return grid
 
     def create_empty_grid(self) -> list:
-        """Generate an empty map
+        """
+        Generate an empty map
         Returns:
             array: the empty map
         """
         return [[[] for i in range(9)] for j in range(17)]
 
     def split_vision_data(self, data: str) -> list:
-        """Split the look command
+        """
+        Split the look command
         Args:
             data (str): the look command
         Returns:
@@ -326,7 +349,8 @@ class AICore:
         return result_list
 
     def analyze_vision(self, data: str, resource : str) -> list:
-        """Parse the look command
+        """
+        Parse the look command
         Args:
             data (str): the look command
             resource (str): the resource to look for
@@ -487,7 +511,23 @@ class AICore:
         self.action_queue = ["Incantation\n"]
         self.state += 1
 
+    # The handle_fork method has been removed as we now use the reference implementation approach
+
     def decide_action(self):
+        """
+        Determine the next action for the AI to take.
+
+        This method is the main decision-making function that chooses the
+        most appropriate action based on the current game state, resources,
+        inventory, and team needs.
+
+        Returns:
+            None: Updates the action attribute instead of returning a value
+        """
+        # No need to check for forking here
+        # The network client will handle it when Connect_nbr is called
+
+        # Regular decision logic flow
         if self.state == -2:
             self.logger.info("Initializing: checking team connections")
             self.action = "Connect_nbr\n"

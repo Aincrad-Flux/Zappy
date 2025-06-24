@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+##
+## EPITECH PROJECT, 2025
+## Zappy
+## File description:
+## AI module initialization
+##
+
 """
 Zappy AI Module
 

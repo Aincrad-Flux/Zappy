@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+##
+## EPITECH PROJECT, 2025
+## Zappy
+## File description:
+## Terminal user interface for the AI client
+##
 
 import os
 import sys
@@ -10,7 +16,8 @@ from AI.utils import format_inventory
 from AI.logger import get_logger
 
 class TerminalUI:
-    """A simple terminal UI for the Zappy AI client.
+    """
+    A simple terminal UI for the Zappy AI client.
 
     This class implements a basic terminal user interface that displays
     information about the AI's status, inventory, and level requirements.
@@ -18,7 +25,8 @@ class TerminalUI:
     """
 
     def __init__(self, agent, network_client, refresh_rate=1):
-        """Initialize the TerminalUI with references to the AI agent.
+        """
+        Initialize the TerminalUI with references to the AI agent.
 
         Args:
             agent: Reference to the AICore instance
@@ -202,7 +210,6 @@ class TerminalUI:
 
     def _get_players_needed(self):
         """Calculate players needed for ritual at current level."""
-        # Players needed per level: level + 1
         return self.agent.level + 1
 
     def _wrap_text(self, text, width):

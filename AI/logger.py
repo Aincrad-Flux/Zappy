@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+##
+## EPITECH PROJECT, 2025
+## Zappy
+## File description:
+## Logger module for the AI client
+##
+
 """
 Logger module for Zappy AI
 

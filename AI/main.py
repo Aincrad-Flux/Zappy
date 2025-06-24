@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
+##
+## EPITECH PROJECT, 2025
+## Zappy
+## File description:
+## Main entry point for the AI client
+##
 
 from optparse import OptionParser
 from AI.network_client import NetworkClient
+import sys
 
 def main():
-    """Parse command line arguments for the AI client.
+    """
+    Parse command line arguments for the AI client.
 
     This function processes the command-line arguments needed to initialize the
     network client, including server hostname, port number, team name, and bot ID.
@@ -35,7 +43,8 @@ def main():
     return (hostname, port, name, bot_id, use_ui)
 
 if __name__ == "__main__":
-    """Main entry point for the AI client.
+    """
+    Main entry point for the AI client.
 
     This block is executed when the script is run directly (not imported).
     It initializes a NetworkClient with the parsed command-line arguments,

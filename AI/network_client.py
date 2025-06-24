@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+##
+## EPITECH PROJECT, 2025
+## Zappy
+## File description:
+## Network client implementation for the AI
+##
+
 from http import client
 from re import I
 import socket
@@ -11,29 +19,17 @@ import random
 import subprocess
 
 class NetworkClient():
-    """This class implements a client which uses selectors for non-blocking communication.
+    """
+    This class implements a client which uses selectors for non-blocking communication.
 
     The NetworkClient handles all communication with the server, including establishing
     connection, sending commands, receiving responses, and processing server messages.
     It also manages the AI agent's state based on server responses.
-
-    Attributes:
-        team (str): Name of the team this client belongs to
-        hostname (str): IP address of the server
-        port (str): Port number of the server
-        bot_id (int): Unique identifier for this bot
-        map_width (int): Width of the game map
-        map_height (int): Height of the game map
-        socket (socket.socket): Socket for server communication
-        selector (selectors.DefaultSelector): Selector for non-blocking I/O
-        init_status (int): Status of the initialization process
-        connected (int): Flag indicating connection status
-        agent (AICore): AI agent handling game logic
-        counter (int): Message counter
     """
 
     def __init__(self, hostname: str, port: str, team_name: str, bot_id: str, use_ui: bool = False):
-        """Initialize the NetworkClient with server connection details.
+        """
+        Initialize the NetworkClient with server connection details.
 
         Args:
             hostname (str): IP address of the server
@@ -53,19 +49,15 @@ class NetworkClient():
         self.init_status = 0
         self.connected = 0
         self.use_ui = use_ui
-
-        # Initialize logger - disable console logging when UI is enabled
-        # Always log to file for debugging purposes, but only log to console if UI is not active
         self.logger = get_logger(bot_id=int(bot_id), team_name=team_name, log_to_console=not use_ui)
         self.logger.info(f"NetworkClient initialized for team '{team_name}' with bot ID {bot_id}")
-
-        # Initialize AI agent
         self.agent = AICore(self.team, int(bot_id), self.use_ui)
         self.agent.bot_id = self.bot_id
         self.counter = 0
 
     def establish_connection(self):
-        """Initialize the socket connection to the server and register selectors.
+        """
+        Initialize the socket connection to the server and register selectors.
 
         This method sets up the socket for non-blocking operations, establishes
         connection with the server, and registers read/write events with the selector.
@@ -86,7 +78,8 @@ class NetworkClient():
         self.logger.debug("Socket registered with selector")
 
     def handle_server_info(self, message, stage):
-        """Process and save initialization information received from the server.
+        """
+        Process and save initialization information received from the server.
 
         Args:
             message (str): Message received from the server
@@ -120,7 +113,8 @@ class NetworkClient():
 
 
     def run_client(self):
-        """Main client loop that handles all communication with the server.
+        """
+        Main client loop that handles all communication with the server.
 
         This method continuously:
         - Reads data from the server
@@ -226,9 +220,17 @@ class NetworkClient():
                             if slots is not None:
                                 self.agent.free_slots = slots
                                 self.logger.debug(f"Free team slots: {slots}")
+                                # Fork using the reference implementation approach
+                                if slots > 0 and self.bot_id < 6 and self.agent.fork == 1:
+                                    script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "zappy_ai")
+                                    next_bot_id = str(self.bot_id + 1)
+                                    self.logger.info(f"Forking new bot with ID {next_bot_id}")
+                                    subprocess.Popen(["python3", script_path, "-p", self.port, "-n", self.team, "-i", next_bot_id])
+                                    self.agent.fork = 0  # Only fork once per AI instance
                             else:
                                 self.logger.error(f"Error parsing Connect_nbr response: {elem}")
                                 self.agent.free_slots = 0
+                        # Handling Fork response is no longer needed as we use the Connect_nbr method
                         message = message.split("\n")[-1]
                         self.agent.active = 1
 
@@ -250,7 +252,8 @@ class NetworkClient():
                         self.agent.active = 0
 
     def disconnect(self):
-        """Close the client connection and clean up resources.
+        """
+        Close the client connection and clean up resources.
 
         This method unregisters the socket from the selector and closes the socket.
         Any errors during disconnection are logged but do not stop program execution.
@@ -266,7 +269,8 @@ class NetworkClient():
             self.logger.error(f"Error when disconnecting: {e}")
 
     def check_server_capacity(self):
-        """Check if the server has available slots for new clients.
+        """
+        Check if the server has available slots for new clients.
 
         This method examines the bot_id to determine if the server has
         capacity for this bot. Negative bot_id indicates no slots available.
