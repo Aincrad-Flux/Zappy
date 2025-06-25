@@ -10,8 +10,8 @@
 #include "../../../include/server/server.h"
 #include "../../../include/server/command/command.h"
 
-static void add_action(player_t *player, time_t base_time,
-    action_t *new_action, int freq)
+static void add_action(player_t *player, time_t base_time, action_t *new_action,
+    int freq)
 {
     action_t *curr;
     int duration_ticks = get_command_duration(curr->command);

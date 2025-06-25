@@ -36,5 +36,5 @@ void handle_incantation_command(player_t *player, server_t *server,
     char *reponse);
 void handle_fork_command(player_t *player, server_t *server, char *reponse);
 void process_player_command(player_t *player, server_t *server,
-    const char *command);
+                            const char *command);
 #endif
