@@ -16,6 +16,8 @@
 #include <netdb.h>
 #include <fcntl.h>
 #include <string.h>
+#include <future>
+#include <chrono>
 
 NetworkManager::NetworkManager()
     : socketFd(-1), connected(false), running(false)
@@ -24,10 +26,38 @@ NetworkManager::NetworkManager()
     Logger::getInstance().info("NetworkManager initialized");
 }
 
-NetworkManager::~NetworkManager()
+NetworkManager::~NetworkManager() noexcept
 {
-    Logger::getInstance().info("NetworkManager shutting down");
-    disconnect();
+    try {
+        Logger::getInstance().info("NetworkManager shutting down");
+
+        running = false;
+        connected = false;
+
+        if (networkThread.joinable()) {
+            try {
+                networkThread.detach();
+                Logger::getInstance().info("Network thread detached for safe shutdown");
+            } catch (...) {
+                Logger::getInstance().error("Error detaching network thread in destructor");
+            }
+        }
+
+        if (socketFd != -1) {
+            try {
+                shutdown(socketFd, SHUT_RDWR);
+                close(socketFd);
+                Logger::getInstance().info("Socket closed in destructor");
+            } catch (...) {
+                Logger::getInstance().error("Error closing socket in destructor");
+            }
+            socketFd = -1;
+        }
+
+        Logger::getInstance().info("NetworkManager shutdown complete");
+    } catch (...) {
+        Logger::getInstance().error("Unknown error during NetworkManager shutdown");
+    }
 }
 
 bool NetworkManager::connect(const std::string& hostname, int port)
@@ -102,10 +132,32 @@ void NetworkManager::disconnect()
 
     Logger::getInstance().info("Disconnecting from server");
     running = false;
+    connected = false;
+    condition.notify_all();
+
+    if (socketFd != -1) {
+        try {
+            shutdown(socketFd, SHUT_RDWR);
+            close(socketFd);
+            socketFd = -1;
+            Logger::getInstance().info("Socket closed in disconnect");
+        } catch (const std::exception& e) {
+            Logger::getInstance().error("Error closing socket: " + std::string(e.what()));
+        } catch (...) {
+            Logger::getInstance().error("Unknown error closing socket");
+        }
+    }
+
 
     if (networkThread.joinable()) {
-        condition.notify_all();
-        networkThread.join();
+        try {
+            networkThread.detach();
+            Logger::getInstance().info("Network thread detached for clean shutdown");
+        } catch (const std::exception& e) {
+            Logger::getInstance().error("Error while detaching network thread: " + std::string(e.what()));
+        } catch (...) {
+            Logger::getInstance().error("Unknown error while detaching network thread");
+        }
     }
 
     if (socketFd != -1) {
@@ -217,7 +269,21 @@ void NetworkManager::networkLoop()
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
-        int bytesReceived = recv(socketFd, tempBuffer, bufferSize - 1, 0);
+
+        if (socketFd < 0) {
+            Logger::getInstance().error("Invalid socket descriptor in network loop");
+            connected = false;
+            break;
+        }
+
+        int bytesReceived = -1;
+        try {
+            bytesReceived = recv(socketFd, tempBuffer, bufferSize - 1, 0);
+        } catch (const std::exception& e) {
+            Logger::getInstance().error("Exception during socket recv: " + std::string(e.what()));
+            connected = false;
+            break;
+        }
 
         if (bytesReceived > 0) {
             tempBuffer[bytesReceived] = '\0';
@@ -255,16 +321,12 @@ void NetworkManager::networkLoop()
 
 void NetworkManager::processMessage(const std::string& message)
 {
-    // Handle special welcome message
     if (message == "WELCOME") {
         Logger::getInstance().info("Received welcome message from server");
         std::cout << "Received initial welcome from server!" << std::endl;
-
-        // Send GRAPHIC identification
         Logger::getInstance().info("Identifying as graphical client");
         std::cout << "Identifying as graphical client..." << std::endl;
         sendCommand("GRAPHIC\n");
-
         return;
     }
 
@@ -281,8 +343,6 @@ void NetworkManager::processMessage(const std::string& message)
         Logger::getInstance().warning(unhandledMsg);
         std::cout << unhandledMsg << std::endl;
     }
-
-    // Store the message in the response history
     {
         std::lock_guard<std::mutex> lock(responseMutex);
         lastResponses.push_back(message);

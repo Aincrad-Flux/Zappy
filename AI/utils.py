@@ -1,109 +1,101 @@
 #!/usr/bin/env python3
+##
+## EPITECH PROJECT, 2025
+## Zappy
+## File description:
+## Utility functions for the AI client
+##
 
-"""
-Utility functions for the Zappy AI
-"""
+from AI.logger import get_logger
 
-import os
-import datetime
-import logging
-from logging.handlers import RotatingFileHandler
-import base64
+utils_logger = get_logger(bot_id=0, team_name="utils", log_to_file=True, log_to_console=True)
 
-# Configure logging directory
-LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
-os.makedirs(LOG_DIR, exist_ok=True)
+def safe_convert(val, to_type: type, logger=None):
+    """
+    Safely convert a value to a specified type.
 
-def setup_logger(client_num, team_name, terminal_ui=False):
-    """Setup a logger for a specific AI client"""
-    # Create a unique log file for this AI client
-    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    log_filename = f"ai_{team_name}_{client_num}_{timestamp}.log"
-    log_path = os.path.join(LOG_DIR, log_filename)
+    This utility function attempts to convert a value to the specified type.
+    If the conversion fails, it logs a critical error message and returns None
+    without crashing the program.
 
-    # Only print debug info if not in terminal UI mode
-    if not terminal_ui:
-        print(f"Setting up logger for AI client #{client_num}, team {team_name}")
-        print(f"Log file path: {log_path}")
+    Args:
+        val (any): The value to be converted
+        to_type (type): The target type for conversion (e.g., int, str, float)
+        logger (ZappyLogger, optional): A logger instance to use. Defaults to None.
 
-    # Ensure logs directory exists
-    if not os.path.exists(LOG_DIR):
-        if not terminal_ui:
-            print(f"Log directory does not exist, creating: {LOG_DIR}")
-        os.makedirs(LOG_DIR, exist_ok=True)
+    Returns:
+        The converted value if successful, None if conversion fails
+    """
+    log = logger or utils_logger
 
-    # Configure the logger
-    logger = logging.getLogger(f"ai_{client_num}")
-    logger.setLevel(logging.DEBUG)
-
-    # Clear any existing handlers
-    if logger.handlers:
-        for handler in logger.handlers:
-            logger.removeHandler(handler)
-
-    # Create a file handler with rotation (10 MB max size, keep 5 backup files)
     try:
-        handler = RotatingFileHandler(log_path, maxBytes=10*1024*1024, backupCount=5)
-        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
-        handler.setFormatter(formatter)
-        if not terminal_ui:
-            print(f"Successfully created log file handler for {log_path}")
+        return to_type(val)
     except Exception as e:
-        if not terminal_ui:
-            print(f"Error creating log file handler: {e}")
-        # Create a fallback log in the current directory
-        fallback_path = os.path.join(os.getcwd(), log_filename)
-        if not terminal_ui:
-            print(f"Trying fallback log path: {fallback_path}")
-        handler = RotatingFileHandler(fallback_path, maxBytes=10*1024*1024, backupCount=5)
-        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
-        handler.setFormatter(formatter)
+        log.critical(f"Safe convert failed: could not convert '{val}' to {to_type.__name__}: {str(e)}")
+        return None
 
-    # Add the file handler to the logger
-    logger.addHandler(handler)
+def format_inventory(inventory: dict, logger=None) -> str:
+    """
+    Formats an inventory dictionary into a readable string.
 
-    # Add a console handler only if not in terminal UI mode
-    if not terminal_ui:
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
+    Args:
+        inventory (dict): A dictionary containing inventory items
+        logger (ZappyLogger, optional): A logger instance to use. Defaults to None.
 
-    return logger
-
-def encrypt_message(message, key):
-    """Simple encryption using XOR with a team-specific key"""
-    if not message or not key:
-        return message
-
-    # Convert message and key to bytes
-    msg_bytes = message.encode('utf-8')
-    key_bytes = key.encode('utf-8')
-
-    # Extend key to match message length
-    extended_key = (key_bytes * (len(msg_bytes) // len(key_bytes) + 1))[:len(msg_bytes)]
-
-    # XOR operation
-    encrypted = bytes(a ^ b for a, b in zip(msg_bytes, extended_key))
-
-    # Convert to base64 for safe transmission
-    return base64.b64encode(encrypted).decode('utf-8')
-
-def decrypt_message(encrypted_message, key):
-    """Decrypt a message encrypted with the team-specific key"""
-    if not encrypted_message or not key:
-        return encrypted_message
+    Returns:
+        str: A formatted string representation of the inventory
+    """
+    log = logger or utils_logger
 
     try:
-        # Convert from base64
-        encrypted_bytes = base64.b64decode(encrypted_message)
-        key_bytes = key.encode('utf-8')
+        items = []
+        for key, value in inventory.items():
+            items.append(f"{key}: {value}")
+        return ", ".join(items)
+    except Exception as e:
+        log.error(f"Error formatting inventory: {str(e)}")
+        return str(inventory)
 
-        # Extend key to match message length
-        extended_key = (key_bytes * (len(encrypted_bytes) // len(key_bytes) + 1))[:len(encrypted_bytes)]
+def log_command_result(command, result, success, logger=None):
+    """
+    Logs the result of a server command.
 
-        # XOR operation to decrypt
-        decrypted = bytes(a ^ b for a, b in zip(encrypted_bytes, extended_key))
+    Args:
+        command (str): The command that was sent
+        result (str): The response from the server
+        success (bool): Whether the command was successful
+        logger (ZappyLogger, optional): A logger instance to use. Defaults to None.
+    """
+    log = logger or utils_logger
 
-        return decrypted.decode('utf-8')
-    except:
-        return encrypted_message  # Return as-is if decryption fails
+    if success:
+        log.debug(f"Command '{command.strip()}' succeeded with result: {result}")
+    else:
+        log.warning(f"Command '{command.strip()}' failed with result: {result}")
+
+def get_resource_priority(level):
+    """
+    Returns a priority list of resources needed for the current level.
+
+    Args:
+        level (int): The current level of the AI
+
+    Returns:
+        list: A list of resources ordered by priority
+    """
+    if level == 1:
+        return ["linemate", "food"]
+    elif level == 2:
+        return ["linemate", "deraumere", "sibur", "food"]
+    elif level == 3:
+        return ["linemate", "sibur", "phiras", "food"]
+    elif level == 4:
+        return ["linemate", "deraumere", "sibur", "phiras", "food"]
+    elif level == 5:
+        return ["linemate", "deraumere", "sibur", "mendiane", "food"]
+    elif level == 6:
+        return ["linemate", "deraumere", "sibur", "phiras", "food"]
+    elif level == 7:
+        return ["linemate", "deraumere", "sibur", "mendiane", "phiras", "thystame", "food"]
+    else:
+        return ["food"]

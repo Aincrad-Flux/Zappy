@@ -43,6 +43,11 @@ private:
     bool isAlive;               ///< Whether the player is alive
     float lifeTime;             ///< Remaining lifetime of the player
     bool isIncanting;           ///< Whether the player is performing an incantation
+    bool isBroadcasting;        ///< Whether the player is broadcasting a message
+    float broadcastTimer;       ///< Timer for the broadcast animation
+    bool isLevelingUp;          ///< Whether the player is in level-up animation
+    float levelUpTimer;         ///< Timer for the level-up animation
+    int previousLevel;          ///< Previous level before leveling up
 
 public:
     /**
@@ -149,7 +154,7 @@ public:
      * @return Reference to the player's inventory
      */
     Inventory& getInventory();
-    
+
     /**
      * @brief Gets the player's inventory (const version)
      * @return The player's inventory
@@ -204,4 +209,34 @@ public:
      * @param amount Amount to add
      */
     void addToInventory(int resourceType, int amount);
+
+    /**
+     * @brief Makes the player start broadcasting a message
+     * Duration of the broadcast animation effect is 1 second
+     */
+    void startBroadcasting();
+
+    /**
+     * @brief Checks if the player is currently broadcasting
+     * @return True if broadcasting, false otherwise
+     */
+    bool getIsBroadcasting() const;
+
+    /**
+     * @brief Starts the level-up animation
+     * @param newLevel The new level the player is being elevated to
+     */
+    void startLevelUpAnimation(int newLevel);
+
+    /**
+     * @brief Checks if the player is currently in level-up animation
+     * @return True if in level-up animation, false otherwise
+     */
+    bool getIsLevelingUp() const;
+
+    /**
+     * @brief Gets the previous level (before leveling up)
+     * @return The previous level
+     */
+    int getPreviousLevel() const;
 };

@@ -1,32 +1,33 @@
-# Zappy AI Client
+# Zappy Intelligence Module
 
-This is an AI client for the Zappy game. The AI's goal is to survive, collect resources, and level up through the elevation ritual.
+This is an intelligent agent for the Zappy game. The bot's mission is to gather resources, maintain sustenance, and progress through elevation ceremonies.
 
-## Features
+## Core Capabilities
 
-- Automatic food search when hungry
-- Resource collection based on next level requirements
-- Elevation ritual coordination
-- Team communication through broadcasts
-- Automatic player replication through forking
+- Smart food acquisition when resources are low
+- Strategic collection of materials based on level progression needs
+- Coordinated elevation ceremony implementation
+- Encrypted team messaging protocol
+- Self-replicating through bot spawning mechanism
 
-## Requirements
+## System Requirements
 
 - Python 3.6 or higher
 
-## Usage
+## Command Usage
 
 ```bash
-python -m zappy_ai.main -p <port> -n <team_name> [-h <hostname>]
+./zappy_ai -p <port> -n <team_name> [-H <hostname>] [-i <bot_id>]
 ```
 
-### Arguments
+### Command Parameters
 
-- `-p, --port`: Port number (required)
-- `-n, --name`: Name of the team (required)
-- `-h, --host`: Name or IP of the machine; localhost by default
+- `-p, --port`: Server port number (required)
+- `-n, --name`: Team identifier (required)
+- `-H, --hostname`: Server location; defaults to localhost
+- `-i, --id`: Bot identification number; defaults to 1
 
-## AI Strategy
+## Strategic Approach
 
 The AI follows these basic strategies:
 
