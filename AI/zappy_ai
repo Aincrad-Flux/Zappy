@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+##
+## EPITECH PROJECT, 2025
+## Zappy
+## File description:
+## Launcher script for the AI client (Python version)
+##
+
+import sys
+import os
+
+# Add the parent directory to the path so we can import the AI module
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
+
+# Import and run the main function from the AI package
+if __name__ == "__main__":
+    from AI.main import main
+
+    try:
+        # Run the main function from main.py
+        hostname, port, name, bot_id, use_ui = main()
+
+        # Import NetworkClient here to avoid circular imports
+        from AI.network_client import NetworkClient
+
+        # Configure network client with UI mode parameter
+        client = NetworkClient(hostname, port, name, bot_id, use_ui)
+        client.establish_connection()
+
+        # Initialize UI if flag is set
+        ui = None
+        if use_ui:
+            from AI.terminal_ui import TerminalUI
+            ui = TerminalUI(client.agent, client)
+            ui.start()
+
+        try:
+            client.run_client()
+        finally:
+            # Clean up resources
+            client.check_server_capacity()
+            client.disconnect()
+
+            # Stop UI if it was started
+            if ui:
+                ui.stop()
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
