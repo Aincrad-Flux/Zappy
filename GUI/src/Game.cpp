@@ -14,6 +14,11 @@
 #include <map>
 #include <raymath.h>
 
+// Définir PI si ce n'est pas déjà fait
+#ifndef PI
+#define PI 3.14159265358979323846f
+#endif
+
 Game::Game(int width, int height, const std::string& hostname, int port, bool use2D)
     : screenWidth(width), screenHeight(height), running(false), lastClickPosition({0, -1, 0}),
       selectedPlayerId(-1), selectedTile({-1, -1}), debugMode(false), use2DMode(use2D), serverHostname(hostname),
@@ -74,8 +79,16 @@ Game::Game(int width, int height, const std::string& hostname, int port, bool us
     }
 }
 
-Game::~Game() {
+Game::~Game()
+{
     Logger::getInstance().info("Game shutting down");
+
+    serverConnected = false;
+
+    {
+        std::unique_ptr<NetworkManager> tempManager;
+        tempManager.swap(networkManager);
+    }
 }
 
 void Game::initializeMockData()
@@ -603,6 +616,19 @@ void Game::render2DElements()
 
             resourceIdx++;
         }
+    }    // Créer une carte pour suivre le nombre de joueurs vivants par case
+    std::map<std::pair<int, int>, std::vector<int>> playersPerTile;
+
+    // D'abord, recenser tous les joueurs vivants par tuile pour connaître le total
+    std::map<std::pair<int, int>, int> totalLivingPlayersPerTile;
+    for (const auto& player : players) {
+        if (player.getIsAlive()) {
+            int x = (int)player.getPosition().x;
+            int y = (int)player.getPosition().z;
+            totalLivingPlayersPerTile[{x, y}]++;
+            // Stocker aussi l'ID de chaque joueur par case
+            playersPerTile[{x, y}].push_back(player.getId());
+        }
     }
 
     // Draw players
@@ -616,14 +642,117 @@ void Game::render2DElements()
         int tileW = tileSize * scale;
         int tileH = tileSize * scale;
 
+        // Trouver l'index de ce joueur parmi les joueurs vivants sur cette case
+        auto& playersOnTile = playersPerTile[{x, y}];
+        auto it = std::find(playersOnTile.begin(), playersOnTile.end(), player.getId());
+        int playerIndex = (it != playersOnTile.end()) ? std::distance(playersOnTile.begin(), it) : 0;
+
+        // Utiliser le nombre total de joueurs vivants sur cette case
+        int totalPlayers = totalLivingPlayersPerTile[{x, y}];
+
+        // Calculer le décalage en fonction du nombre total de joueurs et de l'index
+        float offsetX = 0, offsetY = 0;
+        if (totalPlayers > 1) {
+            // Répartition des joueurs en carré ou en cercle autour du centre
+            if (totalPlayers <= 4) {
+                // Répartition en carré pour 2, 3 ou 4 joueurs
+                switch (playerIndex % 4) {
+                    case 0: offsetX = -0.25f; offsetY = -0.25f; break; // haut gauche
+                    case 1: offsetX = 0.25f; offsetY = -0.25f; break;  // haut droite
+                    case 2: offsetX = -0.25f; offsetY = 0.25f; break;  // bas gauche
+                    case 3: offsetX = 0.25f; offsetY = 0.25f; break;   // bas droite
+                }
+            } else {
+                // Répartition en cercle pour 5+ joueurs
+                float angle = (float)playerIndex * (2.0f * PI) / (float)totalPlayers;
+                offsetX = cosf(angle) * 0.25f;
+                offsetY = sinf(angle) * 0.25f;
+            }
+        }
+
         Color playerColor = player.getTeamColor();
-        Vector2 center = {tileX + tileW/2.0f, tileY + tileH/2.0f};
-        float radius = tileW * 0.35f;
+        Vector2 center = {
+            tileX + tileW/2.0f + tileW * offsetX,
+            tileY + tileH/2.0f + tileH * offsetY
+        };
+        float radius = tileW * 0.35f * (totalPlayers > 1 ? 0.8f : 1.0f); // Légèrement plus petit si plusieurs joueurs
 
         if (player.getIsIncanting()) {
             float pulse = sinf(GetTime() * 5.0f) * 0.3f + 0.7f;
             playerColor = ColorAlpha(playerColor, pulse);
             DrawCircleV(center, radius * 1.2f, ColorAlpha(WHITE, 0.3f));
+        }
+
+        // Effet de clignotement pour le broadcast en vue 2D
+        if (player.getIsBroadcasting()) {
+            // Dessiner des ondes concentriques qui se propagent
+            float blink = sinf(GetTime() * 10.0f);
+
+            // Effet de halo
+            DrawCircleV(center, radius * (1.2f + blink * 0.2f), ColorAlpha(WHITE, 0.3f));
+
+            // Cercles d'onde qui se propagent
+            for (int i = 1; i <= 3; i++) {
+                float waveRadius = radius * (1.5f + i * 0.4f);
+                DrawCircleLines(center.x, center.y, waveRadius, ColorAlpha(WHITE, 0.8f - i * 0.25f));
+            }
+
+            // Rendre le joueur plus brillant
+            playerColor = ColorBrightness(playerColor, 0.3f + blink * 0.2f);
+        }
+
+        if (player.getIsLevelingUp()) {
+            // Animation de level-up en 2D
+            float levelUpTimer = 3.0f; // Même durée que dans Player.cpp
+            float animationProgress = 1.0f - (levelUpTimer / 3.0f); // 0.0 (début) à 1.0 (fin)
+            float levelPulse = sinf(GetTime() * 10.0f) * 0.5f + 0.5f;
+
+            // Rayons de lumière partant du joueur
+            int numRays = 12;
+            for (int i = 0; i < numRays; i++) {
+                float angle = (float)i / numRays * 2.0f * PI + GetTime() * 2.0f;
+                float baseRadius = radius * (1.2f + levelPulse * 0.3f);
+                float endRadius = radius * (2.0f + levelPulse * 0.5f);
+
+                Vector2 rayStart = {
+                    center.x + cosf(angle) * baseRadius,
+                    center.y + sinf(angle) * baseRadius
+                };
+                Vector2 rayEnd = {
+                    center.x + cosf(angle) * endRadius,
+                    center.y + sinf(angle) * endRadius
+                };
+
+                DrawLineV(rayStart, rayEnd, ColorAlpha(GOLD, (0.8f - animationProgress * 0.6f)));
+            }
+
+            // Cercles concentriques d'énergie
+            for (int i = 1; i <= 3; i++) {
+                float waveRadius = radius * (1.2f + i * 0.4f + levelPulse * 0.2f);
+                DrawCircleLines(center.x, center.y, waveRadius, ColorAlpha(GOLD, (0.8f - i * 0.2f) * (1.0f - animationProgress)));
+            }
+
+            // Particules dorées autour du joueur
+            for (int i = 0; i < 8; i++) {
+                float angle = (float)i / 8.0f * 2.0f * PI + GetTime() * 3.0f;
+                float distance = radius * (1.0f + sinf(GetTime() * 2.0f + i) * 0.2f);
+
+                Vector2 particlePos = {
+                    center.x + cosf(angle) * distance,
+                    center.y + sinf(angle) * distance
+                };
+
+                float particleSize = tileW * 0.07f * (0.5f + levelPulse * 0.5f);
+                DrawCircleV(particlePos, particleSize, ColorAlpha(GOLD, (1.0f - animationProgress) * 0.9f));
+            }
+
+            // Texte d'indication du nouveau niveau
+            DrawText(TextFormat("LEVEL UP TO %d!", player.getLevel()),
+                     center.x - 60, center.y - radius * 2.0f,
+                     16, GOLD);
+
+            // Faire briller le joueur
+            playerColor = ColorAlpha(ColorBrightness(playerColor, 1.0f + levelPulse * 0.5f), 1.0f);
         }
 
         DrawCircleV(center, radius, playerColor);
@@ -649,6 +778,90 @@ void Game::render2DElements()
         float lifePercent = player.getLifeTime() / 1260.0f;
         Color lifeColor = (lifePercent > 0.5f) ? GREEN : (lifePercent > 0.25f) ? YELLOW : RED;
         DrawRectangle(tileX, tileY + tileH + 2, tileW * lifePercent, 4, lifeColor);
+
+        if (player.getIsLevelingUp()) {
+            // Animation de level-up en 2D
+            float levelUpAnimationProgress = 1.0f - (player.getLevel() - player.getPreviousLevel()) / 3.0f;
+            float levelPulse = sinf(GetTime() * 10.0f) * 0.5f + 0.5f;
+
+            // Rayons de lumière partant du joueur
+            int numRays = 12;
+            for (int i = 0; i < numRays; i++) {
+                float angle = (float)i / numRays * 2.0f * PI + GetTime() * 2.0f;
+                float baseRadius = radius * (1.2f + levelPulse * 0.3f);
+                float endRadius = radius * (2.0f + levelPulse * 0.5f);
+
+                Vector2 rayStart = {
+                    center.x + cosf(angle) * baseRadius,
+                    center.y + sinf(angle) * baseRadius
+                };
+                Vector2 rayEnd = {
+                    center.x + cosf(angle) * endRadius,
+                    center.y + sinf(angle) * endRadius
+                };
+
+                DrawLineV(rayStart, rayEnd, ColorAlpha(GOLD, (0.8f - levelUpAnimationProgress * 0.6f)));
+            }
+
+            // Cercles concentriques d'énergie
+            for (int i = 1; i <= 3; i++) {
+                float waveRadius = radius * (1.2f + i * 0.4f + levelPulse * 0.2f);
+                DrawCircleLines(center.x, center.y, waveRadius, ColorAlpha(GOLD, (0.8f - i * 0.2f) * (1.0f - levelUpAnimationProgress)));
+            }
+
+            // Particules dorées autour du joueur
+            for (int i = 0; i < 8; i++) {
+                float angle = (float)i / 8.0f * 2.0f * PI + GetTime() * 3.0f;
+                float distance = radius * (1.0f + sinf(GetTime() * 2.0f + i) * 0.2f);
+
+                Vector2 particlePos = {
+                    center.x + cosf(angle) * distance,
+                    center.y + sinf(angle) * distance
+                };
+
+                float particleSize = tileW * 0.07f * (0.5f + levelPulse * 0.5f);
+                DrawCircleV(particlePos, particleSize, ColorAlpha(GOLD, (1.0f - levelUpAnimationProgress) * 0.9f));
+            }
+
+            // Texte d'indication du nouveau niveau
+            DrawText(TextFormat("LEVEL UP TO %d!", player.getLevel()),
+                     center.x - 60, center.y - radius * 2.0f,
+                     16, GOLD);
+
+            // Faire briller le joueur
+            playerColor = ColorAlpha(ColorBrightness(playerColor, 1.0f + levelPulse * 0.5f), 1.0f);
+        }
+    }
+
+    // Créer une carte temporaire pour compter les joueurs vivants par case
+    std::map<std::pair<int, int>, int> livingPlayersPerTile;
+
+    // Compter d'abord les joueurs vivants par tuile
+    for (const auto& player : players) {
+        if (player.getIsAlive()) {
+            int x = static_cast<int>(player.getPosition().x);
+            int y = static_cast<int>(player.getPosition().z);
+            livingPlayersPerTile[{x, y}]++;
+        }
+    }
+
+    // Afficher l'indicateur du nombre de joueurs uniquement pour les cases avec plus d'un joueur vivant
+    for (const auto& [pos, count] : livingPlayersPerTile) {
+        if (count > 1) {
+            int x = pos.first;
+            int y = pos.second;
+            int tileX = offsetX + x * tileSize * scale;
+            int tileY = offsetY + y * tileSize * scale;
+            int tileW = tileSize * scale;
+            int tileH = tileSize * scale;
+
+            // Dessiner un badge en haut à gauche de la case avec le nombre de joueurs
+            DrawCircle(tileX + tileW * 0.2f, tileY + tileH * 0.2f, tileW * 0.15f, RED);
+            DrawText(TextFormat("%d", count),
+                     tileX + tileW * 0.2f - 4,
+                     tileY + tileH * 0.2f - 5,
+                     12, WHITE);
+        }
     }
 
     // Draw click indicator
@@ -789,6 +1002,18 @@ void Game::shutdown()
 {
     Logger::getInstance().info("Game shutting down properly");
     running = false;
+    serverConnected = false;
+
+    {
+        std::unique_ptr<NetworkManager> tempManager;
+
+        if (networkManager) {
+            tempManager.swap(networkManager);
+            // networkManager is now null
+            Logger::getInstance().info("Network manager transferred for safe shutdown");
+        }
+    }
+
     CloseWindow();
 }
 
@@ -1159,14 +1384,20 @@ void Game::setupNetworkCallbacks()
                 if (player.getId() == playerId) {
                     found = true;
                     Vector3 oldPos = player.getPosition();
-                    if (gameMap && oldPos.x != x && oldPos.z != y) {
-                        gameMap->setTilePlayer(static_cast<int>(oldPos.x), static_cast<int>(oldPos.z), 0);
-                    }
 
-                    player.setPosition(Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)});
+                    // Ne gérer le compteur que si la position a réellement changé
+                    bool positionChanged = (oldPos.x != x || oldPos.z != y);
 
-                    if (gameMap) {
-                        gameMap->setTilePlayer(x, y, 1);
+                    if (gameMap && positionChanged) {
+                        // Ancienne position - décrémenter
+                        gameMap->getTile(static_cast<int>(oldPos.x), static_cast<int>(oldPos.z)).decrementPlayerCount();
+
+                        // Nouvelle position - incrémenter
+                        player.setPosition(Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)});
+                        gameMap->getTile(x, y).incrementPlayerCount();
+                    } else {
+                        // Simple changement de direction sans changement de position
+                        player.setPosition(Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)});
                     }
 
                     PlayerDirection dir;
@@ -1185,7 +1416,7 @@ void Game::setupNetworkCallbacks()
             if (!found) {
                 Color defaultColor = getTeamColor("Unknown");
                 players.emplace_back(playerId, "Unknown", Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)}, defaultColor);
-                gameMap->setTilePlayer(x, y, 1);
+                gameMap->getTile(x, y).incrementPlayerCount();
             }
         }
     });
@@ -1283,7 +1514,7 @@ void Game::setupNetworkCallbacks()
                 Color teamColor = getTeamColor(teamName);
                 players.emplace_back(playerId, teamName, Vector3{static_cast<float>(x), 0.0f, static_cast<float>(y)}, teamColor);
                 players.back().setLevel(level);
-                gameMap->setTilePlayer(x, y, 1);
+                gameMap->getTile(x, y).incrementPlayerCount();
             }
         }
     });
@@ -1305,7 +1536,7 @@ void Game::setupNetworkCallbacks()
                 if (player.getId() == playerId) {
                     player.setIsAlive(false);
                     Vector3 pos = player.getPosition();
-                    gameMap->setTilePlayer(static_cast<int>(pos.x), static_cast<int>(pos.z), 0);
+                    gameMap->getTile(static_cast<int>(pos.x), static_cast<int>(pos.z)).decrementPlayerCount();
                     break;
                 }
             }
@@ -1374,7 +1605,7 @@ void Game::setupNetworkCallbacks()
                 std::string eggIdStr = args[0];
                 std::string playerIdStr = args[1];
                 std::string xStr = args[2];
-                std::string yStr = args[3];
+                               std::string yStr = args[3];
 
                 if (eggIdStr.length() > 0 && eggIdStr[0] == '#') {
                     eggIdStr = eggIdStr.substr(1);
@@ -1516,6 +1747,34 @@ void Game::setupNetworkCallbacks()
             Logger::getInstance().debug(logMsg);
         }
     });
+
+    // Player broadcasts a message (pbc #n M\n)
+    networkManager->registerCallback("pbc", [this](const std::vector<std::string>& args) {
+        if (args.size() >= 2) {
+            std::string playerIdStr = args[0];
+            if (!playerIdStr.empty() && playerIdStr[0] == '#') {
+                playerIdStr = playerIdStr.substr(1);
+            }
+
+            int playerId = std::stoi(playerIdStr);
+            std::string message = args[1];
+            for (size_t i = 2; i < args.size(); ++i) {
+                message += " " + args[i];
+            }
+
+            std::string logMsg = "Player #" + std::to_string(playerId) + " broadcasts: " + message;
+            Logger::getInstance().info(logMsg);
+            std::cout << logMsg << std::endl;
+
+            // Activer l'effet de broadcast pour le joueur
+            for (auto& player : players) {
+                if (player.getId() == playerId) {
+                    player.startBroadcasting();
+                    break;
+                }
+            }
+        }
+    });
 }
 
 void Game::updateNetwork()
@@ -1524,7 +1783,19 @@ void Game::updateNetwork()
         serverConnected = false;
         return;
     }
-    networkManager->update();
+
+    try {
+        networkManager->update();
+    } catch (const std::exception& e) {
+        Logger::getInstance().error("Network update error: " + std::string(e.what()));
+    } catch (...) {
+        Logger::getInstance().error("Unknown network update error");
+    }
+
+    if (networkManager && !networkManager->isConnected() && serverConnected) {
+        Logger::getInstance().warning("Lost connection to server");
+        serverConnected = false;
+    }
 }
 
 Color Game::getTeamColor(const std::string& teamName)

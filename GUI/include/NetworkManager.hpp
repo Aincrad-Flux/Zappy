@@ -32,8 +32,9 @@ public:
 
     /**
      * @brief Destructor for NetworkManager
+     * Marked as noexcept to prevent std::terminate from being called if an exception is thrown
      */
-    ~NetworkManager();
+    ~NetworkManager() noexcept;
 
     /**
      * @brief Connects to the Zappy server
