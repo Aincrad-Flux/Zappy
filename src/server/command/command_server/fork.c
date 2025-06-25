@@ -9,13 +9,17 @@
 #include "../../../../include/server/player.h"
 #include "../../../../include/server/command/gui_commands.h"
 
-void handle_fork_command(Player *player, Server *server, char *response)
+void handle_fork_command(player_t *player, server_t *server, char *response)
 {
-    int player_id = player - server->players;
-    int egg_id = server->next_egg_id++;
+    position_t pos = {player->x, player->y};
+    int player_id = 0;
+    int egg_id = 0;
 
+    player_id = player - server->players;
+    egg_id = server->next_egg_id;
+    server->next_egg_id++;
     strcpy(response, "ok\n");
     server->teams[player->team_id].max_clients++;
     send_gui_pfk(server, player_id);
-    send_gui_enw(server, egg_id, player_id, player->x, player->y);
+    send_gui_enw(server, egg_id, player_id, pos);
 }

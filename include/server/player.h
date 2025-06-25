@@ -1,24 +1,24 @@
 /*
-** EPITECH PROJECT, 2024
-**
+** EPITECH PROJECT, 2025
+** B-YEP-400-LIL-4-1-zappy-thibault.pouch
 ** File description:
-** struct player
+** player
 */
 
 #ifndef PLAYER
     #define PLAYER
 
-#include <string.h>
-#include <stdlib.h>
-#include <time.h>
-#include <string.h>
-#include "command/command.h"
-#include "utils/action.h"
+    #include <string.h>
+    #include <stdlib.h>
+    #include <time.h>
+    #include <string.h>
+    #include "command/command.h"
+    #include "utils/action.h"
 
-#define MAX_TEAM_NAME 50
+    #define MAX_TEAM_NAME 50
 
 
-typedef struct Server Server;
+typedef struct Server server_t;
 
 typedef struct Player {
     int x, y;
@@ -29,14 +29,20 @@ typedef struct Player {
     int socket;
     char team_name[MAX_TEAM_NAME];
     time_t last_action;
-    Action *action_queue;
-} Player;
+    action_t *action_queue;
+} player_t;
 
-void init_player(Player *player, int socket, int team_id, const char *team_name, Server *server);
-void set_player_position(Player *player, Server *server);
-void set_player_resources(Player *player);
-int find_player_by_socket(Server *server, int socket);
-void remove_player(Server *server, int player_index);
-void move_player_forward(Player *player, Server *server);
+typedef struct player_init_s {
+    int socket;
+    int team_id;
+    const char *team_name;
+} player_init_t;
+
+void init_player(player_t *player, player_init_t config, server_t *server);
+void set_player_position(player_t *player, server_t *server);
+void set_player_resources(player_t *player);
+int find_player_by_socket(server_t *server, int socket);
+void remove_player(server_t *server, int player_index);
+void move_player_forward(player_t *player, server_t *server);
 
 #endif

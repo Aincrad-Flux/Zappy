@@ -9,7 +9,7 @@
 #include "../../../../include/server/player.h"
 #include "../../../../include/server/command/gui_commands.h"
 
-void move_player_forward(Player *player, Server *server)
+void move_player_forward(player_t *player, server_t *server)
 {
     int player_id = player - server->players;
 

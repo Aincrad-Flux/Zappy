@@ -10,11 +10,11 @@
 #include "../../../include/server/server.h"
 #include "../../../include/server/command/command.h"
 
-static void add_action(Player *player, time_t base_time, Action *new_action,
-    int freq)
+static void add_action(player_t *player, time_t base_time,
+    action_t *new_action, int freq)
 {
-    Action *curr;
-    int duration_ticks = get_command_duration(command);
+    action_t *curr;
+    int duration_ticks = get_command_duration(curr->command);
 
     if (player->action_queue == NULL) {
         new_action->end_time = base_time +
@@ -32,9 +32,9 @@ static void add_action(Player *player, time_t base_time, Action *new_action,
     }
 }
 
-void add_action_to_queue(Player *player, const char *command, int freq)
+void add_action_to_queue(player_t *player, const char *command, int freq)
 {
-    Action *new_action = malloc(sizeof(Action));
+    action_t *new_action = malloc(sizeof(action_t));
     time_t base_time;
     int duration_ticks = get_command_duration(command);
 
@@ -43,13 +43,13 @@ void add_action_to_queue(Player *player, const char *command, int freq)
     base_time = time(NULL);
     strncpy(new_action->command, command, sizeof(new_action->command) - 1);
     new_action->command[sizeof(new_action->command) - 1] = '\0';
-    add_action(player, base_time, new_action, duration_ticks, freq);
+    add_action(player, base_time, new_action, freq);
     new_action->duration = duration_ticks;
 }
 
-void next_action(Action **action_queue)
+void next_action(action_t **action_queue)
 {
-    Action *to_remove = NULL;
+    action_t *to_remove = NULL;
 
     if (!action_queue || !*action_queue)
         return;
@@ -58,10 +58,10 @@ void next_action(Action **action_queue)
     free(to_remove);
 }
 
-static void handle_action(Server *server, int i)
+static void handle_action(server_t *server, int i)
 {
-    Player *player = &server->players[i];
-    Action *current_action = NULL;
+    player_t *player = &server->players[i];
+    action_t *current_action = NULL;
     time_t now;
 
     if (player->action_queue == NULL)
@@ -74,7 +74,7 @@ static void handle_action(Server *server, int i)
     }
 }
 
-void process_pending_action(Server *server)
+void process_pending_action(server_t *server)
 {
     for (int i = 0; i < server->num_players; i++)
         handle_action(server, i);

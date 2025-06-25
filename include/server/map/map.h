@@ -7,26 +7,26 @@
 
 
 #ifndef MAP
-#define MAP
-#include "../player.h"
+    #define MAP
+    #include "../player.h"
 
-typedef struct List List;
-struct List{
-    Player *player;
-    List *next;
+typedef struct List list_t;
+struct List {
+    player_t *player;
+    list_t *next;
 };
 
 typedef struct {
-    int *resource;
-    List *players_on_tile;
-} Tile;
+    int *resources;
+    list_t *players_on_tile;
+} tile_t;
 
 typedef struct {
     int width;
     int height;
-    Tile **tiles;
-} Map;
+    tile_t **tiles;
+} map_t;
 
-void init_map(Server *server);
+void init_map(server_t *server);
 
 #endif

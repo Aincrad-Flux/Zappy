@@ -10,10 +10,10 @@
 #include "../../../../include/server/player.h"
 #include "../../../../include/server/command/gui_commands.h"
 
-void handle_set_command(Player *player, Server *server, const char *item,
+void handle_set_command(player_t *player, server_t *server, const char *item,
     char *response)
 {
-    Tile *tile = &server->map->tiles[player->y][player->x];
+    tile_t *tile = &server->map->tiles[player->y][player->x];
     int resource_id = get_resource_id(item);
     int player_id = player - server->players;
 
@@ -22,7 +22,7 @@ void handle_set_command(Player *player, Server *server, const char *item,
         return;
     }
     player->inventory[resource_id]--;
-    tile->resource[resource_id]++;
+    tile->resources[resource_id]++;
     strcpy(response, "ok\n");
     send_gui_pdr(server, player_id, resource_id);
 }

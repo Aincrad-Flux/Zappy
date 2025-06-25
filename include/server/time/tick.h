@@ -6,8 +6,8 @@
 */
 
 #ifndef TICK
-#define TICK
+    #define TICK
 
-void update_ticks(Server *server);
+void update_ticks(server_t *server);
 
 #endif

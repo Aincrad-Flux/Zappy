@@ -9,7 +9,7 @@
 #include "../../../../include/server/player.h"
 #include "../../../../include/server/map/resource.h"
 
-void handle_inventory_command(Player *player, char *response)
+void handle_inventory_command(player_t *player, char *response)
 {
     snprintf(response, BUFFER_SIZE,
         "[ food %d, linemate %d, deraumere %d, sibur %d, "

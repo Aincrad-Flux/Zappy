@@ -2,22 +2,22 @@
 ** EPITECH PROJECT, 2025
 ** B-YEP-400-LIL-4-1-zappy-thibault.pouch
 ** File description:
-** resource.c
+** resource
 */
 
 #include "../../../include/server/map/resource.h"
 
-static void add_resource(Tile *tile, ResourceType type)
+static void add_resource(tile_t *tile, resourcetype_t type)
 {
     if (type >= 0 && type < RESOURCE_COUNT)
         tile->resources[type]++;
 }
 
-static void distribute_resource(Map *map, int count, ResourceType type)
+static void distribute_resource(map_t *map, int count, resourcetype_t type)
 {
     int x = 0;
     int y = 0;
-    Tile *tile = NULL;
+    tile_t *tile = NULL;
 
     for (int i = 0; i < count; i++) {
         x = rand() % map->width;
@@ -27,7 +27,7 @@ static void distribute_resource(Map *map, int count, ResourceType type)
     }
 }
 
-void init_ressources(Map *map)
+void init_ressources(map_t *map)
 {
     int num_tiles = map->width * map->height;
 
@@ -41,16 +41,16 @@ void init_ressources(Map *map)
     distribute_resource(map, num_tiles * 0.05, THYSTAME);
 }
 
-void count_tile(Tile *tile, int *counts)
+void count_tile(tile_t *tile, int *counts)
 {
     for (int i = 0; i < RESOURCE_COUNT; i++) {
         counts[i] += tile->resources[i];
     }
 }
 
-void count_resources(Map *map, int *counts)
+void count_resources(map_t *map, int *counts)
 {
-    Tile *tile;
+    tile_t *tile;
 
     for (int y = 0; y < map->height; y++) {
         for (int x = 0; x < map->width; x++) {
@@ -60,7 +60,7 @@ void count_resources(Map *map, int *counts)
     }
 }
 
-void respawn_resource(Map *map)
+void respawn_resource(map_t *map)
 {
     int total_tiles = map->width * map->height;
     int current[7] = {0};

@@ -9,7 +9,7 @@
 #include "../../../../include/server/player.h"
 #include "../../../../include/server/command/gui_commands.h"
 
-static void check_resource(Tile *tile, Player *player, char *response,
+static void check_resource(tile_t *tile, player_t *player, char *response,
     const char *item)
 {
     int id = get_resource_id(item);
@@ -18,18 +18,18 @@ static void check_resource(Tile *tile, Player *player, char *response,
         strcpy(response, "ko\n");
         return;
     }
-    if (tile->resource[id] > 0) {
-        tile->resource[id]--;
+    if (tile->resources[id] > 0) {
+        tile->resources[id]--;
         player->inventory[id]++;
     } else {
         strcpy(response, "ko\n");
     }
 }
 
-void handle_take_command(Player *player, Server *server, const char *item,
+void handle_take_command(player_t *player, server_t *server, const char *item,
     char *response)
 {
-    Tile *tile = &server->map->tiles[player->y][player->x];
+    tile_t *tile = &server->map->tiles[player->y][player->x];
     int resource_id = get_resource_id(item);
     int player_id = player - server->players;
 

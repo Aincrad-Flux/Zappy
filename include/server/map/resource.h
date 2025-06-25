@@ -6,10 +6,10 @@
 */
 
 #ifndef RESOURCE
-#define RESOURCE
-#include "map.h"
+    #define RESOURCE
+    #include "map.h"
 
-#define RESOURCE_COUNT 7
+    #define RESOURCE_COUNT 7
 
 typedef enum {
     FOOD = 0,
@@ -19,9 +19,9 @@ typedef enum {
     MENDIANE,
     PHIRAS,
     THYSTAME
-} ResourceType;
+} resourcetype_t;
 
-void init_ressources(Map *map);
-void respawn_resource(Map *map);
+void init_ressources(map_t *map);
+void respawn_resource(map_t *map);
 
 #endif

@@ -8,7 +8,7 @@
 #include "../../../include/server/server.h"
 #include "../../../include/server/map/resource.h"
 
-void update_ticks(Server *server)
+void update_ticks(server_t *server)
 {
     time_t now = time(NULL);
 

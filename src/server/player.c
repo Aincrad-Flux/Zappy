@@ -5,12 +5,12 @@
 ** player.c
 */
 
-
 #include "../../include/server/player.h"
 #include "../../include/server/server.h"
 #include "../../include/server/map/resource.h"
 
-void set_player_position(Player *player, Server *server) {
+void set_player_position(player_t *player, server_t *server)
+{
     player->x = rand() % server->width;
     player->y = rand() % server->height;
     player->orientation = rand() % 4;
@@ -18,7 +18,11 @@ void set_player_position(Player *player, Server *server) {
     player->action_queue = NULL;
 }
 
-void set_player_resources(Player *player) {
+void set_player_resources(player_t *player)
+{
+    if (!player->inventory) {
+        player->inventory = malloc(sizeof(int) * RESOURCE_COUNT);
+    }
     for (int i = 0; i < RESOURCE_COUNT; i++) {
         player->inventory[i] = 0;
         if (i == 0)
@@ -27,18 +31,18 @@ void set_player_resources(Player *player) {
     player->last_action = time(NULL);
 }
 
-void init_player(Player *player, int socket, int team_id, const char *team_name, Server *server)
+void init_player(player_t *player, player_init_t config, server_t *server)
 {
-    player->socket = socket;
-    player->team_id = team_id;
-    strncpy(player->team_name, team_name, MAX_TEAM_NAME - 1);
+    player->inventory = NULL;
+    player->socket = config.socket;
+    player->team_id = config.team_id;
+    strncpy(player->team_name, config.team_name, MAX_TEAM_NAME - 1);
     player->team_name[MAX_TEAM_NAME - 1] = '\0';
-
     set_player_position(player, server);
     set_player_resources(player);
 }
 
-int find_player_by_socket(Server *server, int socket)
+int find_player_by_socket(server_t *server, int socket)
 {
     for (int i = 0; i < server->num_players; i++) {
         if (server->players[i].socket == socket) {
@@ -48,8 +52,11 @@ int find_player_by_socket(Server *server, int socket)
     return -1;
 }
 
-void remove_player(Server *server, int player_index)
+void remove_player(server_t *server, int player_index)
 {
+    if (server->players[player_index].inventory) {
+        free(server->players[player_index].inventory);
+    }
     server->teams[server->players[player_index].team_id].current_clients--;
     for (int i = player_index; i < server->num_players - 1; i++) {
         server->players[i] = server->players[i + 1];

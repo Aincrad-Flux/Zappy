@@ -1,0 +1,19 @@
+{
+    "files.associations": {
+        "vector": "cpp",
+        "memory": "cpp",
+        "string": "cpp",
+        "iostream": "cpp",
+        "server.h": "c",
+        "gui_commands.h": "c",
+        "system_error": "c",
+        "memory_resource": "c",
+        "resource.h": "c",
+        "tick.h": "c",
+        "team.h": "c",
+        "socket.h": "c",
+        "commands_gui_egg.C": "cpp",
+        "action.h": "c",
+        "map.h": "c"
+    }
+}

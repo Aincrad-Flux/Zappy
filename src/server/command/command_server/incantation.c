@@ -8,7 +8,7 @@
 #include "../../../../include/server/server.h"
 #include "../../../../include/server/player.h"
 
-void handle_incantation_command(Player *player, Server *server,
+void handle_incantation_command(player_t *player, server_t *server,
     char *response)
 {
     (void)player;

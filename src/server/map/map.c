@@ -9,17 +9,33 @@
 #include "../../../include/server/server.h"
 #include "../../../include/server/map/resource.h"
 
-void init_map(Server *server)
+static void init_tile(tile_t *tile)
 {
-    Map *map = malloc(sizeof(Map));
+    memset(tile, 0, sizeof(tile_t));
+    tile->resources = malloc(sizeof(int) * RESOURCE_COUNT);
+    for (int r = 0; r < RESOURCE_COUNT; r++) {
+        tile->resources[r] = 0;
+    }
+    tile->players_on_tile = NULL;
+}
+
+static void init_map_row(tile_t *row, int width)
+{
+    for (int x = 0; x < width; x++) {
+        init_tile(&row[x]);
+    }
+}
+
+void init_map(server_t *server)
+{
+    map_t *map = malloc(sizeof(map_t));
 
     map->width = server->width;
     map->height = server->height;
-    map->tiles = malloc(sizeof(Tile*) * map->height);
+    map->tiles = malloc(sizeof(tile_t *) * map->height);
     for (int y = 0; y < map->height; y++) {
-        map->tiles[y] = malloc(sizeof(Tile) * map->width);
-        for (int x = 0; x < map->width; x++)
-            memset(&map->tiles[y][x], 0, sizeof(Tile));
+        map->tiles[y] = malloc(sizeof(tile_t) * map->width);
+        init_map_row(map->tiles[y], map->width);
     }
     init_ressources(map);
     server->map = map;

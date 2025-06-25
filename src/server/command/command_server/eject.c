@@ -10,7 +10,7 @@
 #include "../../../../include/server/player.h"
 #include "../../../../include/server/command/gui_commands.h"
 
-static void move_player_direction(Player *player, Server *server, int dir)
+static void move_player_direction(player_t *player, server_t *server, int dir)
 {
     switch (dir) {
         case 0:
@@ -28,10 +28,10 @@ static void move_player_direction(Player *player, Server *server, int dir)
     }
 }
 
-void handle_eject_command(Player *player, Server *server, char *response)
+void handle_eject_command(player_t *player, server_t *server, char *response)
 {
-    Tile *tile = &server->map->tiles[player->y][player->x];
-    List *list = tile->players_on_tile;
+    tile_t *tile = &server->map->tiles[player->y][player->x];
+    list_t *list = tile->players_on_tile;
     int player_id = player - server->players;
     int ejected = 0;
     int reverse_dir;

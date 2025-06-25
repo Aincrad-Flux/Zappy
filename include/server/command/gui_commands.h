@@ -6,41 +6,58 @@
 */
 
 #ifndef GUI_COMMANDS_H_
-#define GUI_COMMANDS_H_
+    #define GUI_COMMANDS_H_
 
-#include "../server.h"
+    #include "../server.h"
 
-// GUI Request handlers (Client -> Server)
-void handle_gui_msz(Server *server, int client_socket);
-void handle_gui_bct(Server *server, int client_socket, int x, int y);
-void handle_gui_mct(Server *server, int client_socket);
-void handle_gui_tna(Server *server, int client_socket);
-void handle_gui_ppo(Server *server, int client_socket, int player_id);
-void handle_gui_plv(Server *server, int client_socket, int player_id);
-void handle_gui_pin(Server *server, int client_socket, int player_id);
-void handle_gui_sgt(Server *server, int client_socket);
-void handle_gui_sst(Server *server, int client_socket, int new_freq);
+typedef struct gui_pic_data_s {
+    int x;
+    int y;
+    int level;
+    int *players;
+    int nb_players;
+} gui_pic_data_t;
 
-// GUI Notifications (Server -> All GUI Clients)
-void send_gui_pnw(Server *server, int player_id);
-void send_gui_pex(Server *server, int player_id);
-void send_gui_pbc(Server *server, int player_id, const char *message);
-void send_gui_pic(Server *server, int x, int y, int level, int *players,
-    int nb_players);
-void send_gui_pie(Server *server, int x, int y, int result);
-void send_gui_pfk(Server *server, int player_id);
-void send_gui_pdr(Server *server, int player_id, int resource);
-void send_gui_pgt(Server *server, int player_id, int resource);
-void send_gui_pdi(Server *server, int player_id);
-void send_gui_enw(Server *server, int egg_id, int player_id, int x, int y);
-void send_gui_ebo(Server *server, int egg_id);
-void send_gui_edi(Server *server, int egg_id);
-void send_gui_seg(Server *server, const char *team_name);
-void send_gui_smg(Server *server, const char *message);
-void send_gui_ppo(Server *server, int player_id);
+typedef struct {
+    int x;
+    int y;
+} position_t;
 
-// Utility functions
+// gui_commands.c - Main GUI Commands
+void handle_gui_msz(server_t *server, int client_socket);
+void handle_gui_bct(server_t *server, int client_socket, int x, int y);
+void handle_gui_mct(server_t *server, int client_socket);
+void handle_gui_tna(server_t *server, int client_socket);
+void handle_gui_ppo(server_t *server, int client_socket, int player_id);
+void handle_gui_plv(server_t *server, int client_socket, int player_id);
+void handle_gui_pin(server_t *server, int client_socket, int player_id);
+void handle_gui_sgt(server_t *server, int client_socket);
+
+// gui_commands_extended.c - Extended GUI Commands
+void handle_gui_sst(server_t *server, int client_socket, int new_freq);
+void send_gui_pnw(server_t *server, int player_id);
+void send_gui_pex(server_t *server, int player_id);
+void send_gui_pbc(server_t *server, int player_id, const char *message);
+void send_gui_pic(server_t *server, gui_pic_data_t *data);
+void send_gui_pie(server_t *server, int x, int y, int result);
+void send_gui_pfk(server_t *server, int player_id);
+void send_gui_pdr(server_t *server, int player_id, int resource);
+
+// gui_commands_events.c - GUI Event Commands
+void send_gui_pgt(server_t *server, int player_id, int resource);
+void send_gui_pdi(server_t *server, int player_id);
+void send_gui_enw(server_t *server, int egg_id, int player_id, position_t pos);
+void send_gui_ebo(server_t *server, int egg_id);
+void send_gui_edi(server_t *server, int egg_id);
+void send_gui_seg(server_t *server, const char *team_name);
+void send_gui_smg(server_t *server, const char *message);
+void send_gui_ppo(server_t *server, int player_id);
 int get_resource_id(const char *resource_name);
-void process_gui_command(Server *server, int client_socket, char *command);
+
+// gui_command_processor.c - GUI Command Processing
+void process_gui_command(server_t *server, int client_socket, char *command);
+
+// Helper function (should be implemented elsewhere)
+void broadcast_to_gui_clients(server_t *server, const char *message);
 
 #endif /* !GUI_COMMANDS_H_ */
