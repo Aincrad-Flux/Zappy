@@ -5,33 +5,9 @@
 ## Makefile
 ##
 
-CC = gcc
-CXX = g++
-
-CFLAGS = -Wall -Wextra -std=c99
-CXXFLAGS = -Wall -Wextra -std=c++17
-LDFLAGS =
-
-LIBS_SERVER =
-LIBS_AI =
-
-SRC_DIR = src
-SERVER_DIR = $(SRC_DIR)/server
-AI_DIR = $(SRC_DIR)/ai
-OBJ_DIR = obj
-INCLUDE_DIR = include
-
-SERVER_SRC = $(wildcard $(SERVER_DIR)/*.c)
-AI_SRC = $(wildcard $(AI_DIR)/*.c)
-
-SERVER_OBJ = $(SERVER_SRC:$(SERVER_DIR)/%.c=$(OBJ_DIR)/server/%.o)
-AI_OBJ = $(AI_SRC:$(AI_DIR)/%.c=$(OBJ_DIR)/ai/%.o)
-
 SERVER_BIN = zappy_server
 GUI_BIN = zappy_gui
 AI_BIN = zappy_ai
-PYTHON_IA_ENTRY = ia/src/main.py
-PYTHON_IA_BIN = zappy_ia
 
 GREEN = \033[0;32m
 YELLOW = \033[0;33m
@@ -61,7 +37,6 @@ $(AI_BIN):
 
 clean:
 	@echo "$(RED)Cleaning object files...$(NC)"
-	@rm -rf $(OBJ_DIR)
 	@$(MAKE) -C GUI clean
 	@$(MAKE) -C AI clean
 	@$(MAKE) -C SERVER clean
@@ -75,8 +50,6 @@ fclean: clean
 
 re: fclean all
 
-debug: CFLAGS += -g3 -DDEBUG
-debug: CXXFLAGS += -g3 -DDEBUG
 debug: all
 
 zappy_server: $(SERVER_BIN)

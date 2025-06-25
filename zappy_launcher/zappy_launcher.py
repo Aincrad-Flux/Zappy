@@ -81,14 +81,6 @@ class ZappyLauncher:
             self.log("Warning: Separate terminal windows not supported on this platform")
             return None
 
-    def start_ai(self):
-        """Start AI clients in separate terminal windows or in background"""
-        # Get active teams
-        active_teams = self.get_active_teams()
-        if not active_teams:
-            self.log("Error: At least one team must be enabled")
-            return
-
         # Get path to AI binary
         ai_path = os.path.join(os.getcwd(), "AI", "zappy_ai")
 
@@ -376,6 +368,10 @@ class ZappyLauncher:
         comp_frame.pack(fill="x", padx=5, pady=10)
 
         # Create buttons for component builds with better descriptions
+        ttk.Button(comp_frame, text="Build Server",
+                  command=lambda: self.run_make_command("zappy_server"),
+                  width=25).pack(side=tk.LEFT, padx=20, pady=10, fill="x", expand=True)
+
         ttk.Button(comp_frame, text="Build GUI",
                   command=lambda: self.run_make_command("zappy_gui"),
                   width=25).pack(side=tk.LEFT, padx=20, pady=10, fill="x", expand=True)
@@ -444,11 +440,13 @@ class ZappyLauncher:
         help_text = """
         Build Options:
 
+        - Build Server: Compiles only the Server component (zappy_server)
+
         - Build GUI: Compiles only the GUI component (zappy_gui)
 
         - Build AI: Compiles only the AI component (zappy_ai)
 
-        - Build All: Compiles all project components (GUI and AI)
+        - Build All: Compiles all project components (Server, GUI and AI)
 
         - Clean: Removes all object files but keeps binaries
 
@@ -504,8 +502,9 @@ class ZappyLauncher:
             )
 
             # Read and display output line by line as it comes
-            for line in process.stdout:
-                self.log(line.strip())
+            if process.stdout:
+                for line in process.stdout:
+                    self.log(line.strip())
 
             process.wait()
 
@@ -548,7 +547,12 @@ class ZappyLauncher:
             return
 
         # Build the command
-        server_path = os.path.join(os.getcwd(), "zappy_ref-v3.0.1", "linux", "zappy_server")
+        server_path = os.path.join(os.getcwd(), "zappy_server")
+        if not os.path.isfile(server_path):
+            self.log(f"Error: Server binary not found at {server_path}")
+            self.log("Please build the server first using the 'Build Server' button in the Build tab")
+            return
+
         cmd = [
             server_path,
             "-p", self.port.get(),
