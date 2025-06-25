@@ -3,7 +3,7 @@
 ## EPITECH PROJECT, 2025
 ## Zappy
 ## File description:
-## Launcher script for the AI client (Python version)
+## Launcher script for the AI client (Python version) with enhanced strategy
 ##
 
 import sys
@@ -20,10 +20,9 @@ if __name__ == "__main__":
         hostname, port, name, bot_id, use_ui = main()
 
         from AI.network_client import NetworkClient
-
         client = NetworkClient(hostname, port, name, bot_id, use_ui)
-        client.establish_connection()
 
+        client.establish_connection()
         ui = None
         if use_ui:
             from AI.terminal_ui import TerminalUI

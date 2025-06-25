@@ -10,6 +10,15 @@ This is an intelligent agent for the Zappy game. The bot's mission is to gather 
 - Encrypted team messaging protocol
 - Self-replicating through bot spawning mechanism
 
+## Enhanced Strategy 🚀
+
+A new enhanced strategy has been implemented focusing on:
+- Efficient food gathering to maintain high energy levels
+- Strategic resource collection for rapid progression
+- Goal-oriented approach to reach level 8 in one go
+
+Check out the [Strategy Documentation](STRATEGY.md) for details.
+
 ## System Requirements
 
 - Python 3.6 or higher

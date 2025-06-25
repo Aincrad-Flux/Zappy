@@ -3,7 +3,7 @@
 ## EPITECH PROJECT, 2025
 ## Zappy
 ## File description:
-## Core AI logic implementation
+## Core AI logic implementation with enhanced strategy
 ##
 
 from concurrent.futures import process
@@ -15,6 +15,12 @@ import json
 from collections import Counter
 import re
 from AI.logger import get_logger
+
+# Seuils pour la stratégie améliorée
+FOOD_MIN_THRESHOLD = 30       # Priorité absolue sur la nourriture en dessous de ce seuil
+FOOD_COMFORT_THRESHOLD = 50   # Niveau confortable pour se concentrer sur les ressources
+FOOD_ELEVATION_THRESHOLD = 80 # Réserve nécessaire avant d'envisager l'élévation
+RESOURCE_MULTIPLIER = 1    # Multiplicateur de ressources pour assurer des quantités suffisantes
 
 MATERIALS = ["linemate", "deraumere", "sibur", "mendiane", "phiras", "thystame"]
 
@@ -74,6 +80,85 @@ class AICore:
         self.logger = get_logger(bot_id=bot_id, team_name=name, log_to_console=not use_ui)
         self.fork = 1
 
+        # Attributs pour la nouvelle stratégie
+        self.counter = 0
+        self.food_priority = False
+        self.already_broadcasted_resources = False
+        self.current_phase = "FOOD_GATHERING"  # Phases: FOOD_GATHERING, RESOURCE_GATHERING, ELEVATION_PREPARATION
+        self.resource_targets = self.calculate_total_resources_needed()
+
+        self.logger.info("AI initialized with enhanced strategy: Focus on food and rapid elevation")
+
+    def calculate_total_resources_needed(self):
+        """
+        Calcule les ressources totales nécessaires pour tous les niveaux jusqu'à 8.
+        Applique un multiplicateur pour assurer que nous collectons plus que le minimum requis.
+        """
+        total_resources = {"linemate": 0, "deraumere": 0, "sibur": 0,
+                         "mendiane": 0, "phiras": 0, "thystame": 0}
+
+        for level, requirements in LEVEL_REQUIREMENTS.items():
+            for resource, amount in requirements.items():
+                total_resources[resource] += int(amount * RESOURCE_MULTIPLIER)
+
+        self.logger.info(f"Ressources totales nécessaires pour atteindre le niveau 8: {total_resources}")
+        return total_resources
+
+    def update_phase(self):
+        """Met à jour la phase actuelle de stratégie en fonction de l'inventaire et des conditions."""
+        # Vérifier si nous avons assez de ressources pour l'élévation, c'est la priorité si nous avons aussi assez de nourriture
+        if self.has_sufficient_resources_for_elevation() and self.backpack["food"] >= FOOD_COMFORT_THRESHOLD:
+            if self.current_phase != "ELEVATION_PREPARATION":
+                self.logger.info("Ressources suffisantes pour élévation détectées, passage à la phase ELEVATION_PREPARATION")
+            self.current_phase = "ELEVATION_PREPARATION"
+            return
+
+        # Ensuite, vérifier si nous sommes en situation critique de nourriture
+        if self.backpack["food"] < FOOD_MIN_THRESHOLD:
+            if self.current_phase != "FOOD_GATHERING":
+                self.logger.info(f"Niveau critique de nourriture, passage à la phase FOOD_GATHERING (nourriture: {self.backpack['food']})")
+            self.current_phase = "FOOD_GATHERING"
+            self.food_priority = True
+            return
+
+        # Par défaut, collecte de ressources si nous avons assez de nourriture
+        if self.backpack["food"] >= FOOD_COMFORT_THRESHOLD:
+            if self.current_phase != "RESOURCE_GATHERING":
+                self.logger.info(f"Passage à la phase RESOURCE_GATHERING (nourriture: {self.backpack['food']})")
+            self.current_phase = "RESOURCE_GATHERING"
+            self.food_priority = False
+            return
+
+        # Si nous sommes entre les deux seuils de nourriture, garder la phase actuelle
+        self.logger.debug(f"Maintien de la phase {self.current_phase} (nourriture: {self.backpack['food']})")
+        return
+
+    def has_sufficient_resources_for_elevation(self):
+        """
+        Vérifie si l'équipe a collecté assez de ressources pour l'élévation.
+        """
+        if "total" not in self.team_backpack:
+            return False
+
+        team_inventory = self.team_backpack["total"]
+
+        # Récupère toutes les clés des deux dictionnaires
+        all_resources = set(team_inventory.keys()).union(set(self.resource_targets.keys()))
+
+        for resource in all_resources:
+            # Ignorer la nourriture, on la vérifie séparément
+            if resource == "food":
+                continue
+
+            # Si la ressource est dans nos cibles mais pas dans l'inventaire ou en quantité insuffisante
+            if resource in self.resource_targets:
+                if resource not in team_inventory:
+                    return False
+                if team_inventory[resource] < self.resource_targets[resource]:
+                    return False
+
+        return True
+
     def can_perform_ritual(self) -> bool:
         """
         Check if ritual is possible with the current team resources.
@@ -98,6 +183,39 @@ class AICore:
             return True
         return False
 
+    def find_priority_resource(self):
+        """
+        Détermine quelle ressource prioriser en fonction de l'inventaire de l'équipe
+        et des ressources totales nécessaires pour l'élévation.
+        """
+        if self.food_priority:
+            self.logger.info("Priorité à la nourriture active, recherche de nourriture")
+            return "food"
+
+        # Si nous n'avons pas encore de données d'inventaire d'équipe, utiliser le comportement par défaut
+        if "total" not in self.team_backpack:
+            return self.find_needed_resource()
+
+        team_inventory = self.team_backpack["total"]
+        missing_resources = {}
+
+        for resource, target in self.resource_targets.items():
+            current = team_inventory.get(resource, 0)
+            if current < target:
+                missing_resources[resource] = target - current
+
+        if not missing_resources:
+            self.logger.info("Toutes les ressources pour l'élévation collectées, focus sur la nourriture")
+            return "food"
+
+        # Trier les ressources par le plus grand besoin (plus grand écart entre actuel et cible)
+        sorted_resources = sorted(missing_resources.items(), key=lambda x: x[1], reverse=True)
+        chosen_resource = sorted_resources[0][0]
+
+        self.logger.info(f"Ressource prioritaire: {chosen_resource} "
+                        f"(besoin de {sorted_resources[0][1]} en plus)")
+        return chosen_resource
+
     def find_needed_resource(self) -> str:
         """
         Determine which resource the AI should seek next.
@@ -109,6 +227,11 @@ class AICore:
         Returns:
             str: The name of the resource to look for next
         """
+        # Si la stratégie améliorée est activée, utiliser la méthode de recherche prioritaire
+        if hasattr(self, 'current_phase'):
+            return self.find_priority_resource()
+
+        # Comportement original
         needed_materials = LEVEL_REQUIREMENTS[self.level].copy()
         resources_to_find = []
         if "total" in self.team_backpack:
@@ -355,6 +478,11 @@ class AICore:
         Returns:
             array: the list of object position
         """
+        # Si nous utilisons la stratégie améliorée, diriger vers la fonction améliorée
+        if hasattr(self, 'current_phase'):
+            return self.analyze_vision_enhanced(data, resource)
+
+        # Comportement original
         data1 = data.split(",")
         elements = []
         for i in range(len(data1)):
@@ -399,6 +527,100 @@ class AICore:
                     actions.append("Forward\n")
                 actions.append("Take " + resource + "\n")
                 actions.append("Inventory\n")
+        return actions
+
+    def analyze_vision_enhanced(self, data: str, resource: str) -> list:
+        """
+        Analyse de vision améliorée qui optimise la collecte de ressources en considérant
+        plusieurs ressources à la fois lorsqu'elles sont proches.
+
+        Args:
+            data (str): les données de vision
+            resource (str): la ressource principale à chercher
+
+        Returns:
+            list: liste d'actions à effectuer
+        """
+        data1 = data.split(",")
+        elements = []
+        for i in range(len(data1)):
+            elements.append(' '.join(re.split('[^a-zA-Z0-9]', data1[i])[1:]))
+        grid = self.create_empty_grid()
+        grid = self.construct_vision_grid(grid, elements)
+
+        # D'abord chercher la ressource cible
+        location = self.locate_resource(grid, resource)
+        actions = []
+
+        # Si nous ne trouvons pas la ressource cible, chercher une alternative
+        if not location or len(location) < 2:
+            # Vérifier la nourriture si notre niveau est bas
+            if self.backpack["food"] < FOOD_MIN_THRESHOLD:
+                food_location = self.locate_resource(grid, "food")
+                if food_location and len(food_location) >= 2:
+                    self.logger.debug(f"{resource} non trouvé mais nourriture trouvée, priorisant la nourriture")
+                    return self.movement_actions_to_location(food_location, "food")
+
+            # Chercher n'importe quelle ressource dont on a besoin pour l'élévation
+            for alternative in MATERIALS:
+                if (hasattr(self, 'resource_targets') and
+                    alternative in self.resource_targets and
+                    (alternative not in self.team_backpack.get("total", {}) or
+                     self.team_backpack.get("total", {}).get(alternative, 0) <
+                     self.resource_targets[alternative])):
+                    alt_location = self.locate_resource(grid, alternative)
+                    if alt_location and len(alt_location) >= 2:
+                        self.logger.debug(f"{resource} non trouvé mais trouvé {alternative}, le collecter à la place")
+                        return self.movement_actions_to_location(alt_location, alternative)
+
+            # Si rien n'est trouvé, se déplacer aléatoirement
+            self.logger.debug(f"Aucune ressource utile trouvée dans le champ de vision, déplacement aléatoire")
+            actions.append(random.choice(["Forward\n", "Right\n", "Left\n"]))
+            actions.append(random.choice(["Forward\n", "Right\n", "Left\n"]))
+            actions.append("Look\n")
+            return actions
+        else:
+            # Nous avons trouvé la ressource cible
+            return self.movement_actions_to_location(location, resource)
+
+    def movement_actions_to_location(self, location, resource):
+        """
+        Génère la séquence d'actions de mouvement pour atteindre une position spécifique
+        et collecter la ressource qui s'y trouve.
+        """
+        actions = []
+
+        # La ressource est à la position actuelle
+        if location[0] == 8 and location[1] == 0:
+            self.logger.log_resource_found(resource)
+            self.logger.debug(f"Trouvé {resource} à la position actuelle")
+            return ["Take " + resource + "\n"]
+        else:
+            self.logger.log_resource_found(resource)
+            self.logger.debug(f"Trouvé {resource} à la position relative [{location[0]}, {location[1]}]")
+
+            # Motif de mouvement plus optimal
+            if location[0] == 8:
+                # La ressource est tout droit
+                for i in range(int(location[1])):
+                    actions.append("Forward\n")
+                actions.append("Take " + resource + "\n")
+                actions.append("Inventory\n")
+            elif int(location[0]) < 8:
+                # La ressource est à gauche
+                actions.append("Left\n")
+                for i in range(8 - int(location[0])):
+                    actions.append("Forward\n")
+                actions.append("Take " + resource + "\n")
+                actions.append("Inventory\n")
+            elif int(location[0]) > 8:
+                # La ressource est à droite
+                actions.append("Right\n")
+                for i in range(int(location[0]) - 8):
+                    actions.append("Forward\n")
+                actions.append("Take " + resource + "\n")
+                actions.append("Inventory\n")
+
         return actions
 
     def handle_message(self, message):
@@ -534,15 +756,23 @@ class AICore:
         return
 
     def begin_ritual(self):
-
+        """
+        Lance le rituel d'incantation si les conditions sont réunies.
+        """
         players_present = self.count_players_on_tile()
         players_needed = self.get_required_players_for_level()
 
+        # Adapter le nombre de joueurs requis si nécessaire
+        if players_present < players_needed and players_present > 0:
+            if self.level <= 2:  # Pour les premiers niveaux, on peut être plus flexible
+                self.logger.info(f"Adaptation du rituel: {players_present} joueurs présents sur {players_needed} théoriquement nécessaires")
+                players_needed = players_present
+
         if players_present < players_needed:
-            self.logger.warning(f"Cannot begin ritual: not enough players present ({players_present}/{players_needed})")
+            self.logger.warning(f"Impossible de commencer le rituel: pas assez de joueurs présents ({players_present}/{players_needed})")
             return
 
-
+        # Vérifier les ressources une dernière fois
         data = self.vision.split(",")[0]
         while True:
             if len(data) == 0 or data[0].isalpha():
@@ -550,8 +780,7 @@ class AICore:
             data = data[1:]
         data = data.split(" ")
 
-
-        self.logger.debug(f"Tile contents before ritual: {data}")
+        self.logger.debug(f"Contenu de la case avant le rituel: {data}")
 
         needed_materials = LEVEL_REQUIREMENTS[self.level].copy()
         for k in needed_materials:
@@ -559,17 +788,37 @@ class AICore:
                 if j == k:
                     needed_materials[k] -= 1
 
-
         missing = {k: v for k, v in needed_materials.items() if v > 0}
         if missing:
-            self.logger.warning(f"Cannot begin ritual: missing resources {missing}")
+            self.logger.warning(f"Impossible de commencer le rituel: ressources manquantes {missing}")
+
+            # Si nous sommes le leader du rituel, essayons de placer les ressources manquantes si nous les avons
+            if self.ritual_leader >= 1:
+                has_placed = False
+                for resource, count in missing.items():
+                    if resource in self.backpack and self.backpack[resource] >= count:
+                        self.logger.info(f"Placement de {count} {resource} manquant(s) pour le rituel")
+                        for _ in range(count):
+                            self.action_queue.append(f"Set {resource}\n")
+                        has_placed = True
+
+                if has_placed:
+                    self.action_queue.append("Look\n")
+                    return
+
             return
 
-        self.logger.info(f"Beginning incantation ritual for level {self.level} with {players_present} players")
+        self.logger.info(f"Démarrage du rituel d'incantation pour le niveau {self.level} avec {players_present} joueurs")
 
+        # Envoyer un message final pour coordonner le rituel
+        if self.ritual_leader >= 1:
+            message = bytes(self.xor_encrypt(self.team_name, f"{self.bot_id};starting;{self.level}"), "utf-8").hex()
+            self.action_queue.append("Broadcast " + message + "\n")
 
-        self.action_queue = ["Incantation\n"]
-        self.action = "Incantation\n"
+        # Lancer l'incantation
+        self.action_queue.append("Incantation\n")
+        self.action = self.action_queue[0]
+        self.action_queue = self.action_queue[1:]
         self.state = 8
 
     def decide_action(self):
@@ -602,10 +851,25 @@ class AICore:
                 self.state += 1
         elif self.state == 1:
             if self.found_new_item:
-                if not self.can_perform_ritual():
-                    message = bytes(self.xor_encrypt(self.team_name, ("inventory" + str(self.bot_id) + ";" + str(self.level) + ";" + str(json.dumps(self.backpack)))), "utf-8").hex()
+                # Diffuser l'inventaire dans tous les cas pour la coordination d'équipe
+                message = bytes(self.xor_encrypt(self.team_name, ("inventory" + str(self.bot_id) + ";" + str(self.level) + ";" + str(json.dumps(self.backpack)))), "utf-8").hex()
+                self.action = "Broadcast " + message + "\n"
+
+                # Si nous avons des ressources suffisantes et que nous sommes dans la phase d'élévation
+                # ou si nous avons beaucoup de nourriture et l'équipe a toutes les ressources nécessaires
+                if (hasattr(self, 'current_phase') and
+                    (self.current_phase == "ELEVATION_PREPARATION" or
+                     (self.backpack["food"] >= FOOD_COMFORT_THRESHOLD and self.has_sufficient_resources_for_elevation()))):
+                    self.logger.info("Ressources suffisantes détectées, lancement du rituel d'élévation")
+                    message = bytes(self.xor_encrypt(self.team_name, (str(self.bot_id) + ";incantation;" + str(self.level))), "utf-8").hex()
                     self.action = "Broadcast " + message + "\n"
-                else:
+                    self.ritual_leader = 1
+                    self.state = 4
+                    self.ritual_mode = 1
+                    self.found_new_item = False
+                    return
+                # Comportement original si la stratégie améliorée n'est pas utilisée
+                elif not hasattr(self, 'current_phase') and self.can_perform_ritual():
                     message = bytes(self.xor_encrypt(self.team_name, (str(self.bot_id) + ";incantation;" + str(self.level))), "utf-8").hex()
                     self.action = "Broadcast " + message + "\n"
                     self.ritual_leader = 1
@@ -623,13 +887,66 @@ class AICore:
             self.action = "Look\n"
             self.state += 1
         elif self.state == 3:
-            if "food" in self.backpack and self.backpack["food"] < 45:
-                self.action_queue = self.analyze_vision(self.vision, "food")
-                self.state = 0
+            # Mise à jour du compteur pour les broadcasts périodiques
+            if hasattr(self, 'counter'):
+                self.counter += 1
+
+            # Vérifier si nous pouvons lancer une élévation immédiatement
+            if (hasattr(self, 'current_phase') and
+                self.has_sufficient_resources_for_elevation() and
+                self.backpack["food"] >= FOOD_COMFORT_THRESHOLD):
+                self.logger.info("Ressources suffisantes détectées en état 3, initiation du processus d'élévation")
+                message = bytes(self.xor_encrypt(self.team_name, (str(self.bot_id) + ";incantation;" + str(self.level))), "utf-8").hex()
+                self.action = "Broadcast " + message + "\n"
+                self.ritual_leader = 1
+                self.state = 4
+                self.ritual_mode = 1
+                return
+
+            # Stratégie améliorée: utiliser la phase actuelle pour décider de l'action
+            if hasattr(self, 'current_phase'):
+                self.update_phase()
+
+                if self.current_phase == "FOOD_GATHERING":
+                    self.logger.info("Priorité à la nourriture: recherche de nourriture")
+                    self.action_queue = self.analyze_vision(self.vision, "food")
+                    self.state = 0
+                elif self.current_phase == "ELEVATION_PREPARATION":
+                    # Si nous sommes en préparation d'élévation
+                    if self.ritual_leader >= 1:
+                        self.state = 4
+                        self.ritual_mode = 1
+                        self.decide_action()
+                        return
+                    else:
+                        # Démarrer un nouveau rituel si nous avons toutes les ressources
+                        if self.has_sufficient_resources_for_elevation():
+                            self.logger.info("Initiation du rituel d'élévation (phase ELEVATION_PREPARATION)")
+                            message = bytes(self.xor_encrypt(self.team_name, (str(self.bot_id) + ";incantation;" + str(self.level))), "utf-8").hex()
+                            self.action = "Broadcast " + message + "\n"
+                            self.ritual_leader = 1
+                            self.state = 4
+                            self.ritual_mode = 1
+                            return
+                        else:
+                            # Sinon continuer à collecter les ressources manquantes
+                            self.target_resource = self.find_priority_resource()
+                            self.action_queue = self.analyze_vision(self.vision, self.target_resource)
+                            self.state = 0
+                else:
+                    # Collecte normale de ressources avec priorités
+                    self.target_resource = self.find_priority_resource()
+                    self.action_queue = self.analyze_vision(self.vision, self.target_resource)
+                    self.state = 0
+            # Comportement original si la stratégie améliorée n'est pas utilisée
             else:
-                self.target_resource = self.find_needed_resource()
-                self.action_queue = self.analyze_vision(self.vision, self.target_resource)
-                self.state = 0
+                if "food" in self.backpack and self.backpack["food"] < 45:
+                    self.action_queue = self.analyze_vision(self.vision, "food")
+                    self.state = 0
+                else:
+                    self.target_resource = self.find_needed_resource()
+                    self.action_queue = self.analyze_vision(self.vision, self.target_resource)
+                    self.state = 0
         elif self.state == 4:
             if self.ritual_mode == 0:
                 data = bytes(self.xor_encrypt(self.team_name, str(self.bot_id) + " on my way"), "utf-8").hex()
