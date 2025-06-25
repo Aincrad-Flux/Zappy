@@ -5,9 +5,9 @@
 ** fork.c
 */
 
-#include "../../../../include/server/server.h"
-#include "../../../../include/server/player.h"
-#include "../../../../include/server/command/gui_commands.h"
+#include "server.h"
+#include "player.h"
+#include "command/gui_commands.h"
 
 void handle_fork_command(player_t *player, server_t *server, char *response)
 {

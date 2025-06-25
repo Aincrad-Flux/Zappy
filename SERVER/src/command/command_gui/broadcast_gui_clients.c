@@ -5,7 +5,7 @@
 ** broadcast_to_gui_clients
 */
 
-#include "../../../../include/server/server.h"
+#include "server.h"
 
 static void send_to_gui_client(int socket, const char *message)
 {

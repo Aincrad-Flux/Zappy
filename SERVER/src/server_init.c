@@ -5,8 +5,8 @@
 ** server_init
 */
 
-#include "../../include/server/server.h"
-#include "../../include/server/time/tick.h"
+#include "server.h"
+#include "time/tick.h"
 
 void print_usage(char *program_name)
 {

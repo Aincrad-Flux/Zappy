@@ -5,8 +5,8 @@
 ** commands_gui_egg
 */
 
-#include "../../../../include/server/server.h"
-#include "../../../../include/server/command/gui_commands.h"
+#include "server.h"
+#include "command/gui_commands.h"
 
 void send_gui_enw(server_t *server, int egg_id, int player_id, position_t pos)
 {

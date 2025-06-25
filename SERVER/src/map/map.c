@@ -5,9 +5,9 @@
 ** map.c
 */
 
-#include "../../../include/server/map/map.h"
-#include "../../../include/server/server.h"
-#include "../../../include/server/map/resource.h"
+#include "map/map.h"
+#include "server.h"
+#include "map/resource.h"
 
 static void init_tile(tile_t *tile)
 {

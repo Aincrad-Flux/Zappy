@@ -5,9 +5,9 @@
 ** commands_gui_infos
 */
 
-#include "../../../../include/server/server.h"
-#include "../../../../include/server/command/gui_commands.h"
-#include "../../../../include/server/map/resource.h"
+#include "server.h"
+#include "command/gui_commands.h"
+#include "map/resource.h"
 
 static int validate_player_id(server_t *server, int player_id)
 {

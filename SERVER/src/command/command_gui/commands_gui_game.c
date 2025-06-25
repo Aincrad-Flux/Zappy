@@ -6,8 +6,8 @@
 */
 
 
-#include "../../../../include/server/server.h"
-#include "../../../../include/server/command/gui_commands.h"
+#include "server.h"
+#include "command/gui_commands.h"
 
 void send_gui_seg(server_t *server, const char *team_name)
 {

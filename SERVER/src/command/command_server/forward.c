@@ -5,9 +5,9 @@
 ** forward.c
 */
 
-#include "../../../../include/server/server.h"
-#include "../../../../include/server/player.h"
-#include "../../../../include/server/command/gui_commands.h"
+#include "server.h"
+#include "player.h"
+#include "command/gui_commands.h"
 
 void move_player_forward(player_t *player, server_t *server)
 {

@@ -5,9 +5,9 @@
 ** commands_gui_map
 */
 
-#include "../../../../include/server/server.h"
-#include "../../../../include/server/command/gui_commands.h"
-#include "../../../../include/server/map/resource.h"
+#include "server.h"
+#include "command/gui_commands.h"
+#include "map/resource.h"
 
 void handle_gui_msz(server_t *server, int client_socket)
 {

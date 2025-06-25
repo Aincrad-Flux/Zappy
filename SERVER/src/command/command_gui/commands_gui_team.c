@@ -5,8 +5,8 @@
 ** commands_gui_team
 */
 
-#include "../../../../include/server/server.h"
-#include "../../../../include/server/command/gui_commands.h"
+#include "server.h"
+#include "command/gui_commands.h"
 
 void handle_gui_tna(server_t *server, int client_socket)
 {

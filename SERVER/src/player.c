@@ -5,9 +5,9 @@
 ** player.c
 */
 
-#include "../../include/server/player.h"
-#include "../../include/server/server.h"
-#include "../../include/server/map/resource.h"
+#include "player.h"
+#include "server.h"
+#include "map/resource.h"
 
 void set_player_position(player_t *player, server_t *server)
 {

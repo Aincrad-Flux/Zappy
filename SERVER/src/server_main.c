@@ -5,8 +5,8 @@
 ** server_main.c
 */
 
-#include "../../include/server/server.h"
-#include "../../include/server/time/tick.h"
+#include "server.h"
+#include "time/tick.h"
 
 void init_fd_sets(server_t *server)
 {

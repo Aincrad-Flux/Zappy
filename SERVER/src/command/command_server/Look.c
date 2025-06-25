@@ -5,9 +5,9 @@
 ** Look.c
 */
 
-#include "../../../../include/server/server.h"
-#include "../../../../include/server/map/map.h"
-#include "../../../../include/server/map/resource.h"
+#include "server.h"
+#include "map/map.h"
+#include "map/resource.h"
 
 static void append_tile_content(char *buffer, Tile *tile)
 {

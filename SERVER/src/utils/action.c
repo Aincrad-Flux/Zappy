@@ -5,10 +5,10 @@
 ** action.c
 */
 
-#include "../../../include/server/utils/action.h"
-#include "../../../include/server/player.h"
-#include "../../../include/server/server.h"
-#include "../../../include/server/command/command.h"
+#include "utils/action.h"
+#include "player.h"
+#include "server.h"
+#include "command/command.h"
 
 static void add_action(player_t *player, time_t base_time, action_t *new_action,
     int freq)

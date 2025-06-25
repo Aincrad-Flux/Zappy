@@ -5,9 +5,9 @@
 ** inventory.c
 */
 
-#include "../../../../include/server/server.h"
-#include "../../../../include/server/player.h"
-#include "../../../../include/server/map/resource.h"
+#include "server.h"
+#include "player.h"
+#include "map/resource.h"
 
 void handle_inventory_command(player_t *player, char *response)
 {

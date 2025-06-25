@@ -5,7 +5,7 @@
 ** resource
 */
 
-#include "../../../include/server/map/resource.h"
+#include "map/resource.h"
 
 static void add_resource(tile_t *tile, resourcetype_t type)
 {

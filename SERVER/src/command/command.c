@@ -5,9 +5,9 @@
 ** command.c
 */
 
-#include "../../../include/server/command/command.h"
-#include "../../../include/server/server.h"
-#include "../../../include/server/player.h"
+#include "command/command.h"
+#include "server.h"
+#include "player.h"
 
 
 int get_command_duration(const char *command)

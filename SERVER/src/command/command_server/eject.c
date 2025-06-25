@@ -6,9 +6,9 @@
 */
 
 
-#include "../../../../include/server/server.h"
-#include "../../../../include/server/player.h"
-#include "../../../../include/server/command/gui_commands.h"
+#include "server.h"
+#include "player.h"
+#include "command/gui_commands.h"
 
 static void move_player_direction(player_t *player, server_t *server, int dir)
 {

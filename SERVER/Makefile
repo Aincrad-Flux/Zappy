@@ -6,7 +6,8 @@
 ##
 
 NAME = zappy_server
-CFLAGS = -W -Wall -Wpedantic -lm
+CFLAGS = -W -Wall -Wpedantic
+LDFLAGS = -lm
 INCLUDES = -I./include
 
 SRC = 	src/server_init.c \
@@ -46,7 +47,7 @@ all: $(NAME)
 
 $(NAME): $(OBJ)
 	@echo "Compiling binary..."
-	@gcc $(CFLAGS) $(INCLUDES) $^ -o $@
+	@gcc $(CFLAGS) $(INCLUDES) $^ -o $@ $(LDFLAGS)
 
 obj/%.o: src/%.c
 	@mkdir -p $(dir $@)

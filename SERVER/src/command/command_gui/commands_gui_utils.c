@@ -5,8 +5,8 @@
 ** commands_gui_utils
 */
 
-#include "../../../../include/server/server.h"
-#include "../../../../include/server/command/gui_commands.h"
+#include "server.h"
+#include "command/gui_commands.h"
 
 int get_resource_id(const char *resource_name)
 {

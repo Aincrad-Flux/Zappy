@@ -5,8 +5,8 @@
 ** gui_command_processor.c
 */
 
-#include "../../../../include/server/server.h"
-#include "../../../../include/server/command/gui_commands.h"
+#include "server.h"
+#include "command/gui_commands.h"
 
 static void process_basic_commands(server_t *server, int client_socket,
     char *cmd)

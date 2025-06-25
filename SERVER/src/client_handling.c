@@ -12,8 +12,8 @@
 ** client_handling.c
 */
 
-#include "../../include/server/server.h"
-#include "../../include/server/time/tick.h"
+#include "server.h"
+#include "time/tick.h"
 
 static void add_client_to_fds(server_t *server, int new_socket)
 {

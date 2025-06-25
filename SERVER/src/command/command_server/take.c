@@ -5,9 +5,9 @@
 ** take.c
 */
 
-#include "../../../../include/server/server.h"
-#include "../../../../include/server/player.h"
-#include "../../../../include/server/command/gui_commands.h"
+#include "server.h"
+#include "player.h"
+#include "command/gui_commands.h"
 
 static void check_resource(tile_t *tile, player_t *player, char *response,
     const char *item)

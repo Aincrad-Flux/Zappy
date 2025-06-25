@@ -5,8 +5,8 @@
 ** tick.c
 */
 
-#include "../../../include/server/server.h"
-#include "../../../include/server/map/resource.h"
+#include "server.h"
+#include "map/resource.h"
 
 void update_ticks(server_t *server)
 {

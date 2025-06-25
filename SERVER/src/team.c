@@ -5,8 +5,8 @@
 ** team.c
 */
 
-#include "../../include/server/team.h"
-#include "../../include/server/server.h"
+#include "team.h"
+#include "server.h"
 
 void add_team_name(server_t *server, const char *name)
 {

@@ -5,8 +5,8 @@
 ** incantation.c
 */
 
-#include "../../../../include/server/server.h"
-#include "../../../../include/server/player.h"
+#include "server.h"
+#include "player.h"
 
 void handle_incantation_command(player_t *player, server_t *server,
     char *response)
