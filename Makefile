@@ -38,7 +38,13 @@ YELLOW = \033[0;33m
 RED = \033[0;31m
 NC = \033[0m
 
-all: $(GUI_BIN) $(AI_BIN)
+all: $(SERVER_BIN) $(GUI_BIN) $(AI_BIN)
+
+$(SERVER_BIN):
+	@echo "$(YELLOW)Building SERVER using SERVER/Makefile...$(NC)"
+	@$(MAKE) -C SERVER
+	@cp SERVER/$(SERVER_BIN) ./$(SERVER_BIN)
+	@echo "$(GREEN)$(SERVER_BIN) compiled successfully!$(NC)"
 
 $(GUI_BIN):
 	@echo "$(YELLOW)Building GUI using GUI/Makefile...$(NC)"
@@ -58,16 +64,25 @@ clean:
 	@rm -rf $(OBJ_DIR)
 	@$(MAKE) -C GUI clean
 	@$(MAKE) -C AI clean
+	@$(MAKE) -C SERVER clean
 
 fclean: clean
 	@echo "$(RED)Cleaning binaries...$(NC)"
 	@$(MAKE) -C GUI fclean
 	@$(MAKE) -C AI fclean
+	@$(MAKE) -C SERVER fclean
+	@rm -f $(SERVER_BIN) $(GUI_BIN) $(AI_BIN)
 
 re: fclean all
 
 debug: CFLAGS += -g3 -DDEBUG
 debug: CXXFLAGS += -g3 -DDEBUG
 debug: all
+
+zappy_server: $(SERVER_BIN)
+
+zappy_gui: $(GUI_BIN)
+
+zappy_ai: $(AI_BIN)
 
 .PHONY: all clean fclean re debug install-deps tests_run help init zappy_server zappy_gui zappy_ai zappy_ia
