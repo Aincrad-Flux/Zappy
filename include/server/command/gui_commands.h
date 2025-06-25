@@ -23,7 +23,6 @@ typedef struct {
     int y;
 } position_t;
 
-// gui_commands.c - Main GUI Commands
 void handle_gui_msz(server_t *server, int client_socket);
 void handle_gui_bct(server_t *server, int client_socket, int x, int y);
 void handle_gui_mct(server_t *server, int client_socket);
@@ -33,7 +32,6 @@ void handle_gui_plv(server_t *server, int client_socket, int player_id);
 void handle_gui_pin(server_t *server, int client_socket, int player_id);
 void handle_gui_sgt(server_t *server, int client_socket);
 
-// gui_commands_extended.c - Extended GUI Commands
 void handle_gui_sst(server_t *server, int client_socket, int new_freq);
 void send_gui_pnw(server_t *server, int player_id);
 void send_gui_pex(server_t *server, int player_id);
@@ -43,7 +41,6 @@ void send_gui_pie(server_t *server, int x, int y, int result);
 void send_gui_pfk(server_t *server, int player_id);
 void send_gui_pdr(server_t *server, int player_id, int resource);
 
-// gui_commands_events.c - GUI Event Commands
 void send_gui_pgt(server_t *server, int player_id, int resource);
 void send_gui_pdi(server_t *server, int player_id);
 void send_gui_enw(server_t *server, int egg_id, int player_id, position_t pos);
@@ -54,10 +51,8 @@ void send_gui_smg(server_t *server, const char *message);
 void send_gui_ppo(server_t *server, int player_id);
 int get_resource_id(const char *resource_name);
 
-// gui_command_processor.c - GUI Command Processing
 void process_gui_command(server_t *server, int client_socket, char *command);
 
-// Helper function (should be implemented elsewhere)
 void broadcast_to_gui_clients(server_t *server, const char *message);
 
 #endif /* !GUI_COMMANDS_H_ */

@@ -6,7 +6,7 @@
 ##
 
 NAME = zappy_server
-CFLAGS = -W -Wall -Wpedantic -lm -g
+CFLAGS = -W -Wall -Wpedantic -lm
 
 SRC = 	src/server/server_init.c \
 	src/server/client_handling.c \
