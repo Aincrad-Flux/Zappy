@@ -41,6 +41,7 @@ typedef struct Server {
     int max_fd;
     time_t last_tick;
     int tick_count;
+    int graphic_fd;
     map_t *map;
     int next_egg_id;
 } server_t;

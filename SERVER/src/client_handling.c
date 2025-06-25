@@ -14,7 +14,7 @@
 
 #include "server.h"
 #include "time/tick.h"
-
+#include "command/gui_commands.h"
 static void add_client_to_fds(server_t *server, int new_socket)
 {
     FD_SET(new_socket, &server->master_fds);
@@ -51,6 +51,10 @@ static void handle_client_disconnect(server_t *server, int client_socket)
     if (player_index != -1) {
         remove_player(server, player_index);
     }
+    if (client_socket == server->graphic_fd) {
+        printf("Client GRAPHIC déconnecté\n");
+        server->graphic_fd = -1;
+    }
 }
 
 static void clean_message_buffer(char *buffer, int bytes_received)
@@ -73,6 +77,13 @@ void send_connection_info(server_t *server, int client_socket, int team_id)
     send(client_socket, response, strlen(response), 0);
 }
 
+void send_graphic_init_data(server_t *server, int graphic_fd)
+{
+    char buffer[256];
+    snprintf(buffer, sizeof(buffer), "msz %d %d\n", server->width, server->height);
+    send(graphic_fd, buffer, strlen(buffer), 0);
+}
+
 static void handle_client_message(server_t *server, int client_socket)
 {
     char buffer[1024];
@@ -87,11 +98,20 @@ static void handle_client_message(server_t *server, int client_socket)
     clean_message_buffer(buffer, bytes_received);
     printf("Tentative de connexion avec : '%s'\n", buffer);
     printf("%d\n", player_index);
+    if (client_socket == server->graphic_fd) {
+        process_gui_command(server, client_socket, buffer);
+        return;
+    }
     if (player_index == -1) {
-        handle_team_authentication(server, client_socket, buffer);
+        if (strcmp(buffer, "GRAPHIC") == 0) {
+            printf("Client GRAPHIC connecté\n");
+            server->graphic_fd = client_socket;
+            send_graphic_init_data(server, client_socket);
+        } else {
+            handle_team_authentication(server, client_socket, buffer);
+        }
     } else {
-        add_action_to_queue(&server->players[player_index], buffer,
-                server->freq);
+        add_action_to_queue(&server->players[player_index], buffer, server->freq);
     }
 }
 
