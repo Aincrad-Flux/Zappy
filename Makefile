@@ -1,27 +1,73 @@
 ##
-## EPITECH PROJECT, 2025
-## Makefile
+## EPITECH PROJECT, 2024
+## zappy
 ## File description:
-## Principal Makefile
+## Makefile
 ##
 
-NAME = zappy_server
+CC = gcc
+CXX = g++
 
-all:
-	@echo "Building server..."
-	@$(MAKE) -C SERVER
-	@cp SERVER/$(NAME) ./$(NAME)
+CFLAGS = -Wall -Wextra -std=c99
+CXXFLAGS = -Wall -Wextra -std=c++17
+LDFLAGS =
+
+LIBS_SERVER =
+LIBS_AI =
+
+SRC_DIR = src
+SERVER_DIR = $(SRC_DIR)/server
+AI_DIR = $(SRC_DIR)/ai
+OBJ_DIR = obj
+INCLUDE_DIR = include
+
+SERVER_SRC = $(wildcard $(SERVER_DIR)/*.c)
+AI_SRC = $(wildcard $(AI_DIR)/*.c)
+
+SERVER_OBJ = $(SERVER_SRC:$(SERVER_DIR)/%.c=$(OBJ_DIR)/server/%.o)
+AI_OBJ = $(AI_SRC:$(AI_DIR)/%.c=$(OBJ_DIR)/ai/%.o)
+
+SERVER_BIN = zappy_server
+GUI_BIN = zappy_gui
+AI_BIN = zappy_ai
+PYTHON_IA_ENTRY = ia/src/main.py
+PYTHON_IA_BIN = zappy_ia
+
+GREEN = \033[0;32m
+YELLOW = \033[0;33m
+RED = \033[0;31m
+NC = \033[0m
+
+all: $(GUI_BIN) $(AI_BIN)
+
+$(GUI_BIN):
+	@echo "$(YELLOW)Building GUI using GUI/Makefile...$(NC)"
+	@$(MAKE) -C GUI
+	@cp GUI/$(GUI_BIN) ./$(GUI_BIN)
+	@echo "$(GREEN)$(GUI_BIN) compiled successfully!$(NC)"
+
+$(AI_BIN):
+	@echo "$(YELLOW)Building AI using AI/Makefile...$(NC)"
+	@$(MAKE) -C AI
+	@cp AI/$(AI_BIN) ./$(AI_BIN)
+	@echo "$(GREEN)$(AI_BIN) compiled successfully!$(NC)"
+
 
 clean:
-	@echo "Cleaning server..."
-	@$(MAKE) -C SERVER clean
+	@echo "$(RED)Cleaning object files...$(NC)"
+	@rm -rf $(OBJ_DIR)
+	@$(MAKE) -C GUI clean
+	@$(MAKE) -C AI clean
 
 fclean: clean
-	@echo "Removing binary..."
-	@$(MAKE) -C SERVER fclean
-	@rm -f $(NAME)
+	@echo "$(RED)Cleaning binaries...$(NC)"
+	@$(MAKE) -C GUI fclean
+	@$(MAKE) -C AI fclean
 
 re: fclean all
-	@echo "Recompiling..."
 
-.PHONY: all clean fclean re
+debug: CFLAGS += -g3 -DDEBUG
+debug: CXXFLAGS += -g3 -DDEBUG
+debug: all
+
+.PHONY: all clean fclean re debug install-deps tests_run help init zappy_server zappy_gui zappy_ai zappy_ia
