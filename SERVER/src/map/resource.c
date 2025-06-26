@@ -9,8 +9,9 @@
 
 static void add_resource(tile_t *tile, resourcetype_t type)
 {
-    if (type >= 0 && type < RESOURCE_COUNT)
+    if (type >= 0 && type < RESOURCE_COUNT) {
         tile->resources[type]++;
+    }
 }
 
 static void distribute_resource(map_t *map, int count, resourcetype_t type)
@@ -22,7 +23,7 @@ static void distribute_resource(map_t *map, int count, resourcetype_t type)
     for (int i = 0; i < count; i++) {
         x = rand() % map->width;
         y = rand() % map->height;
-        tile = &map->tiles[x][y];
+        tile = &map->tiles[y][x];
         add_resource(tile, type);
     }
 }
