@@ -26,6 +26,7 @@
     #include <time.h>
     #include "utils/action.h"
     #include "map/map.h"
+    #include "math.h"
 
 typedef struct Server {
     int width, height;

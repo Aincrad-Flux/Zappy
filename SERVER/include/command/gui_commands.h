@@ -54,5 +54,6 @@ int get_resource_id(const char *resource_name);
 void process_gui_command(server_t *server, int client_socket, char *command);
 
 void broadcast_to_gui_clients(server_t *server, const char *message);
+void send_to_gui_client(int socket, const char *message);
 
 #endif /* !GUI_COMMANDS_H_ */

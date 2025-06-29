@@ -10,7 +10,7 @@
 #include "player.h"
 #include "command/gui_commands.h"
 
-static void move_player_direction(player_t *player, server_t *server, int dir)
+void move_player_direction(player_t *player, server_t *server, int dir)
 {
     switch (dir) {
         case 0:
