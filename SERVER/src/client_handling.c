@@ -15,6 +15,7 @@
 #include "server.h"
 #include "time/tick.h"
 #include "command/gui_commands.h"
+#include "map/resource.h"
 static void add_client_to_fds(server_t *server, int new_socket)
 {
     FD_SET(new_socket, &server->master_fds);
@@ -80,7 +81,31 @@ void send_connection_info(server_t *server, int client_socket, int team_id)
 void send_graphic_init_data(server_t *server, int graphic_fd)
 {
     char buffer[256];
+    
     snprintf(buffer, sizeof(buffer), "msz %d %d\n", server->width, server->height);
+    send(graphic_fd, buffer, strlen(buffer), 0);
+    handle_gui_mct(server, graphic_fd);
+    handle_gui_tna(server, graphic_fd);
+    for (int i = 0; i < server->num_players; i++) {
+        player_t *player = &server->players[i];
+        snprintf(buffer, sizeof(buffer), "pnw #%d %d %d %d %d %s\n",
+            i, player->x, player->y, player->orientation + 1,
+            player->level, server->teams[player->team_id].name);
+        send(graphic_fd, buffer, strlen(buffer), 0);
+        snprintf(buffer, sizeof(buffer), "ppo #%d %d %d %d\n",
+            i, player->x, player->y, player->orientation + 1);
+        send(graphic_fd, buffer, strlen(buffer), 0);
+        snprintf(buffer, sizeof(buffer), "plv #%d %d\n", i, player->level);
+        send(graphic_fd, buffer, strlen(buffer), 0);
+        snprintf(buffer, sizeof(buffer), "pin #%d %d %d %d %d %d %d %d %d %d\n",
+            i, player->x, player->y,
+            player->inventory[FOOD], player->inventory[LINEMATE],
+            player->inventory[DERAUMERE], player->inventory[SIBUR],
+            player->inventory[MENDIANE], player->inventory[PHIRAS],
+            player->inventory[THYSTAME]);
+        send(graphic_fd, buffer, strlen(buffer), 0);
+    }
+    snprintf(buffer, sizeof(buffer), "sgt %d\n", server->freq);
     send(graphic_fd, buffer, strlen(buffer), 0);
 }
 
