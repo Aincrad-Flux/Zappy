@@ -64,7 +64,6 @@ int main(int argc, char **argv)
     }
     srand(time(NULL));
     if (init_server(&server) < 0) {
-        printf("ici\n");
         return 1;
     }
     run_server(&server);

@@ -96,8 +96,6 @@ static void handle_client_message(server_t *server, int client_socket)
     }
     buffer[bytes_received] = '\0';
     clean_message_buffer(buffer, bytes_received);
-    printf("Tentative de connexion avec : '%s'\n", buffer);
-    printf("%d\n", player_index);
     if (client_socket == server->graphic_fd) {
         process_gui_command(server, client_socket, buffer);
         return;
@@ -111,6 +109,7 @@ static void handle_client_message(server_t *server, int client_socket)
             handle_team_authentication(server, client_socket, buffer);
         }
     } else {
+        printf("action add %s\n", buffer);
         add_action_to_queue(&server->players[player_index], buffer, server->freq);
     }
 }

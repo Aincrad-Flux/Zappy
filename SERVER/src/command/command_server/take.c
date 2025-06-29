@@ -13,7 +13,8 @@ static void check_resource(tile_t *tile, player_t *player, char *response,
     const char *item)
 {
     int id = get_resource_id(item);
-
+    printf("item %s\n", item);
+    printf("take %d\n",  id);
     if (id == -1) {
         strcpy(response, "ko\n");
         return;

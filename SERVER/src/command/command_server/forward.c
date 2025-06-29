@@ -27,5 +27,6 @@ void move_player_forward(player_t *player, server_t *server)
             player->x = (player->x - 1 + server->width) % server->width;
             break;
     }
+    printf("played id %d x %d y %d", player_id, player->x, player->y);
     send_gui_ppo(server, player_id);
 }

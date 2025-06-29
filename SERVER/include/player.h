@@ -14,7 +14,7 @@
     #include <string.h>
     #include "command/command.h"
     #include "utils/action.h"
-
+    #include <stdbool.h>
     #define MAX_TEAM_NAME 50
 
 
@@ -30,6 +30,8 @@ typedef struct Player {
     char team_name[MAX_TEAM_NAME];
     time_t last_action;
     action_t *action_queue;
+    bool is_incanting;
+    bool is_waiting_level_up;
 } player_t;
 
 typedef struct player_init_s {

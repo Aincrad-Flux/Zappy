@@ -27,7 +27,6 @@
     #include "utils/action.h"
     #include "map/map.h"
 
-
 typedef struct Server {
     int width, height;
     int port;

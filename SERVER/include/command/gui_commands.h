@@ -40,7 +40,7 @@ void send_gui_pic(server_t *server, gui_pic_data_t *data);
 void send_gui_pie(server_t *server, int x, int y, int result);
 void send_gui_pfk(server_t *server, int player_id);
 void send_gui_pdr(server_t *server, int player_id, int resource);
-
+void send_to_gui_client(int socket, const char *message);
 void send_gui_pgt(server_t *server, int player_id, int resource);
 void send_gui_pdi(server_t *server, int player_id);
 void send_gui_enw(server_t *server, int egg_id, int player_id, position_t pos);
