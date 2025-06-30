@@ -73,7 +73,7 @@ class AICore:
         self.use_ui = use_ui
         self.logger = get_logger(bot_id=bot_id, team_name=name, log_to_console=not use_ui)
         self.fork = 1
-        self.ready_bots = 0  # compteur pour les bots prêts
+        self.ready_bots = 0
 
     def can_perform_ritual(self) -> bool:
         """
@@ -134,18 +134,40 @@ class AICore:
         return chosen_resource
 
 
-    def xor_encrypt(self, key: str, text: str) -> str:
+    def simple_team_hash(self, text: str) -> str:
         """
-        Encrypt a message using XOR with the provided key.
+        Hash a message by concatenating the team name and the message, then returning a simple checksum (sum of ASCII codes modulo 256).
 
         Args:
-            key (str): The encryption key
-            text (str): The plain text to encrypt
+            text (str): The plain text to hash
 
         Returns:
-            str: The encrypted message
+            str: The hashed message as a string
         """
-        return ''.join(chr(ord(c)^ord(k)) for c,k in zip(text, cycle(key)))
+        data = (self.team_name + text)
+        checksum = sum(ord(c) for c in data) % 256
+        return f"{checksum}:{text}"
+
+    def simple_team_unhash(self, hashed: str) -> str:
+        """
+        Retrieve the message if the checksum matches, else return an empty string.
+        Handles trailing newlines or spaces.
+        Args:
+            hashed (str): The hashed message
+
+        Returns:
+            str: The original message if valid, else empty string
+        """
+        try:
+            hashed = hashed.strip()
+            checksum, text = hashed.split(":", 1)
+            data = (self.team_name + text)
+            if int(checksum) == sum(ord(c) for c in data) % 256:
+                return text
+            else:
+                return ""
+        except Exception:
+            return ""
 
     def parse_backpack(self, data):
         """
@@ -405,8 +427,7 @@ class AICore:
     def handle_message(self, message):
         direction = int(message[8])
         encrypted_message = message[11:]
-        decrypted_message = self.xor_encrypt(self.team_name, bytes.fromhex(encrypted_message).decode("utf-8"))
-
+        decrypted_message = self.simple_team_unhash(encrypted_message)
         self.logger.log_message(decrypted_message, direction)
 
         if "inventory" in decrypted_message:
@@ -462,7 +483,7 @@ class AICore:
             self.ready_bots += 1
             self.logger.info(f"Bot ready for ritual, ready bots: {self.ready_bots}")
 
-            players_needed = max(5, self.get_required_players_for_level())  # force minimum 5
+            players_needed = max(3, self.get_required_players_for_level())
             if self.ready_bots >= players_needed and self.state == 6:
                 self.logger.info("Required players reached (min 5), can start incantation")
                 if self.check_resources_on_tile():
@@ -473,7 +494,7 @@ class AICore:
             return []
         actions = []
         if (direction == 0):
-            message = bytes(self.xor_encrypt(self.team_name, ("ready")), "utf-8").hex()
+            message = self.simple_team_hash("ready")
             self.action = "Broadcast " + message + "\n"
             self.source_direction = 0
             self.ritual_ready = 1
@@ -487,19 +508,16 @@ class AICore:
         return actions
 
     def place_resources_for_ritual(self):
-        # Seul le leader donne l'ordre de poser, les autres attendent l'ordre
         if self.action_queue:
             return
-        # Si pas leader et pas reçu l'ordre, on ne fait rien
         if self.ritual_leader < 1 and self.ritual_mode != 2:
             self.logger.info("En attente de l'ordre du leader pour poser les ressources...")
             return
-        # Si leader, broadcast l'ordre de pose si pas déjà fait
         if self.ritual_leader >= 1 and self.ritual_mode != 2:
-            message = bytes(self.xor_encrypt(self.team_name, "pose_ressources"), "utf-8").hex()
+            message = self.simple_team_hash("pose_ressources")
             self.action = "Broadcast " + message + "\n"
             self.ritual_mode = 2
-            self.logger.info("Leader : envoi de l'ordre de poser les ressources")
+            self.logger.info("Leader : envoi de l'ordre de poser les ressources (état 6)")
             return
         data = self.vision.split(",")[0]
         while True:
@@ -621,10 +639,10 @@ class AICore:
         elif self.state == 1:
             if self.found_new_item:
                 if not self.can_perform_ritual():
-                    message = bytes(self.xor_encrypt(self.team_name, ("inventory" + str(self.bot_id) + ";" + str(self.level) + ";" + str(json.dumps(self.backpack)))), "utf-8").hex()
+                    message = self.simple_team_hash("inventory" + str(self.bot_id) + ";" + str(self.level) + ";" + str(json.dumps(self.backpack)))
                     self.action = "Broadcast " + message + "\n"
                 else:
-                    message = bytes(self.xor_encrypt(self.team_name, (str(self.bot_id) + ";incantation;" + str(self.level))), "utf-8").hex()
+                    message = self.simple_team_hash(str(self.bot_id) + ";incantation;" + str(self.level))
                     self.action = "Broadcast " + message + "\n"
                     self.ritual_leader = 1
                     self.state = 4
@@ -650,7 +668,7 @@ class AICore:
                 self.state = 0
         elif self.state == 4:
             if self.ritual_mode == 0:
-                data = bytes(self.xor_encrypt(self.team_name, str(self.bot_id) + " on my way"), "utf-8").hex()
+                data = self.simple_team_hash(str(self.bot_id) + " on my way")
                 self.action = "Broadcast " + data + "\n"
                 self.ritual_mode = 1
                 return
@@ -674,11 +692,8 @@ class AICore:
             self.action = "Look\n"
             self.state += 1
         elif self.state == 6:
-            self.clear_message_flag = 0
-
-            # Correction : le leader broadcast l'ordre de poser dès l'entrée en état 6
             if self.ritual_leader >= 1 and self.ritual_mode != 2:
-                message = bytes(self.xor_encrypt(self.team_name, "pose_ressources"), "utf-8").hex()
+                message = self.simple_team_hash("pose_ressources")
                 self.action = "Broadcast " + message + "\n"
                 self.ritual_mode = 2
                 self.logger.info("Leader : envoi de l'ordre de poser les ressources (état 6)")
@@ -694,8 +709,7 @@ class AICore:
                 self.logger.info(f"Ritual status: {players_present} players présents sur {players_needed} nécessaires")
                 self.logger.info(f"Ressources pour incantation prêtes: {resources_ready}")
 
-                # Ajout : si 5 joueurs sur la case, on lance l'incantation (en dur)
-                if players_present >= 5 and resources_ready:
+                if players_present >= 3 and resources_ready:
                     self.logger.info("Force: 5 joueurs présents, lancement de l'incantation !")
                     self.begin_ritual()
                     return
@@ -771,7 +785,7 @@ class AICore:
             self.state += 1
         elif self.state == 10:
 
-            message = bytes(self.xor_encrypt(self.team_name, ("inventory" + str(self.bot_id) + ";" + str(self.level) + ";" + str(json.dumps(self.backpack)))), "utf-8").hex()
+            message = self.simple_team_hash("inventory" + str(self.bot_id) + ";" + str(self.level) + ";" + str(json.dumps(self.backpack)))
             self.action = "Broadcast " + message + "\n"
             self.state = 0
 
