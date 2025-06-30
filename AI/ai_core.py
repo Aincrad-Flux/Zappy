@@ -74,6 +74,9 @@ class AICore:
         self.logger = get_logger(bot_id=bot_id, team_name=name, log_to_console=not use_ui)
         self.fork = 1
         self.ready_bots = 0
+        self.team_size = 1
+        self.alive_bots = set()
+        self.awaiting_alive = False
 
     def can_perform_ritual(self) -> bool:
         """
@@ -430,6 +433,19 @@ class AICore:
         decrypted_message = self.simple_team_unhash(encrypted_message)
         self.logger.log_message(decrypted_message, direction)
 
+        # Gestion du recensement Alive
+        if decrypted_message.startswith("Alive;"):
+            sender_id = int(decrypted_message.split(";")[1])
+            if self.ritual_leader >= 1 and self.awaiting_alive:
+                self.alive_bots.add(sender_id)
+                self.logger.info(f"Alive reçu de {sender_id}, total: {len(self.alive_bots)}")
+            elif self.ritual_leader < 1:
+                # Si non-leader, répondre au leader
+                reply = self.simple_team_hash(f"Alive;{self.bot_id}")
+                self.action = f"Broadcast {reply}\n"
+                self.logger.info(f"Bot {self.bot_id} répond 'Alive' au leader")
+            return
+
         if "inventory" in decrypted_message:
             self.logger.debug("Received inventory update from team member")
             self.update_team_backpack(decrypted_message[9:])
@@ -481,11 +497,16 @@ class AICore:
 
         if "ready" in decrypted_message and self.ritual_leader >= 1:
             self.ready_bots += 1
-            self.logger.info(f"Bot ready for ritual, ready bots: {self.ready_bots}")
+            total_ready = self.ready_bots
+            if self.ritual_leader == self.bot_id or self.ritual_leader >= 1:
+                total_ready += 1
+            self.logger.info(f"Bot ready for ritual, ready bots (including leader): {total_ready}")
 
-            players_needed = max(3, self.get_required_players_for_level())
-            if self.ready_bots >= players_needed and self.state == 6:
-                self.logger.info("Required players reached (min 5), can start incantation")
+            players_needed = self.get_required_players_for_level()
+            self.logger.info(f"Players needed for ritual: {players_needed}")
+            self.logger.info(f"Total ready bots (including leader): {total_ready}")
+            self.logger.info(f"State: {self.state}")
+            if total_ready >= (players_needed - 1) and self.state == 6:
                 if self.check_resources_on_tile():
                     self.begin_ritual()
 
@@ -508,6 +529,8 @@ class AICore:
         return actions
 
     def place_resources_for_ritual(self):
+        self.logger.info("Placing resources for ritual...")
+        self.logger.info(f"Ritual leader: {self.ritual_leader}, Ritual mode: {self.ritual_mode}")
         if self.action_queue:
             return
         if self.ritual_leader < 1 and self.ritual_mode != 2:
@@ -518,6 +541,7 @@ class AICore:
             self.action = "Broadcast " + message + "\n"
             self.ritual_mode = 2
             self.logger.info("Leader : envoi de l'ordre de poser les ressources (état 6)")
+            self.state = 6
             return
         data = self.vision.split(",")[0]
         while True:
@@ -667,6 +691,19 @@ class AICore:
                 self.action_queue = self.analyze_vision(self.vision, self.target_resource)
                 self.state = 0
         elif self.state == 4:
+            if (
+                self.ritual_leader >= 1
+                and self.ritual_mode == 1
+                and self.ready_bots >= self.get_required_players_for_level() - 1
+                and self.count_players_on_tile() >= self.get_required_players_for_level()
+            ):
+                self.logger.info(f"Number alive bots: {self.alive_bots}, ready bots: {self.ready_bots}")
+                self.logger.info("Tous les bots sont prêts ET présents, passage en state 6 pour poser les ressources")
+                self.logger.info(f"Ritual leader: {self.ritual_leader}, Ritual mode: {self.ritual_mode}",
+                                 f"Ready bots: {self.ready_bots}, Required players: {self.get_required_players_for_level()}",
+                                 f"Players on tile: {self.count_players_on_tile()}")
+                self.state = 6
+                return
             if self.ritual_mode == 0:
                 data = self.simple_team_hash(str(self.bot_id) + " on my way")
                 self.action = "Broadcast " + data + "\n"
@@ -697,6 +734,7 @@ class AICore:
                 self.action = "Broadcast " + message + "\n"
                 self.ritual_mode = 2
                 self.logger.info("Leader : envoi de l'ordre de poser les ressources (état 6)")
+                self.state = 6  # Ajout : le leader passe en step 6 après l'ordre
                 return
 
             if self.vision:
@@ -709,7 +747,7 @@ class AICore:
                 self.logger.info(f"Ritual status: {players_present} players présents sur {players_needed} nécessaires")
                 self.logger.info(f"Ressources pour incantation prêtes: {resources_ready}")
 
-                if players_present >= 3 and resources_ready:
+                if players_present >= 5 and resources_ready:
                     self.logger.info("Force: 5 joueurs présents, lancement de l'incantation !")
                     self.begin_ritual()
                     return
@@ -788,6 +826,17 @@ class AICore:
             message = self.simple_team_hash("inventory" + str(self.bot_id) + ";" + str(self.level) + ";" + str(json.dumps(self.backpack)))
             self.action = "Broadcast " + message + "\n"
             self.state = 0
+
+    def count_team_members(self):
+        """
+        Lance un recensement de la team via broadcast 'Alive'.
+        Le leader envoie 'Alive', les autres répondent, et on compte les réponses.
+        """
+        self.alive_bots = set([self.bot_id])  # Le leader s'ajoute lui-même
+        self.awaiting_alive = True
+        message = self.simple_team_hash(f"Alive;{self.bot_id}")
+        self.action = f"Broadcast {message}\n"
+        self.logger.info("Leader: broadcast 'Alive' pour recensement de la team")
 
     def get_required_players_for_level(self) -> int:
         """
