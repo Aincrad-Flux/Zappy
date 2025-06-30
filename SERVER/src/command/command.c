@@ -121,10 +121,12 @@ void handle_movement_command(player_t *player, server_t *server,
     }
     if (strcmp(command, "Right") == 0) {
         player->orientation = (player->orientation + 1) % 4;
+        send_gui_ppo(server, player - server->players);
         strcpy(response, "ok\n");
     }
     if (strcmp(command, "Left") == 0) {
         player->orientation = (player->orientation + 3) % 4;
+        send_gui_ppo(server, player - server->players);
         strcpy(response, "ok\n");
     }
 }
