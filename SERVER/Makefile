@@ -15,6 +15,7 @@ SRC = 	src/server_init.c \
 	src/server_main.c \
 	src/player.c \
 	src/team.c \
+	src/graphic.c \
 	src/command/command.c \
 	src/command/command_server/take.c \
 	src/command/command_server/forward.c \

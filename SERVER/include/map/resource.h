@@ -11,7 +11,12 @@
 
     #define RESOURCE_COUNT 7
 
-enum Orientation { NORTH, EAST, SOUTH, WEST };
+enum Orientation {
+    NORTH,
+    EAST,
+    SOUTH,
+    WEST
+};
 
 typedef enum {
     FOOD = 0,

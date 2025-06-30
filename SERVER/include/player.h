@@ -47,5 +47,5 @@ int find_player_by_socket(server_t *server, int socket);
 void remove_player(server_t *server, int player_index);
 void move_player_forward(player_t *player, server_t *server);
 void move_player_direction(player_t *player, server_t *server, int dir);
-
+void send_player_info(server_t *server, int graphic_fd);
 #endif
