@@ -470,6 +470,7 @@ class AICore:
         if (direction == 0):
             message = bytes(self.xor_encrypt(self.team_name, ("ready")), "utf-8").hex()
             self.action = "Broadcast " + message + "\n"
+            self.logger.info("[SEND] Broadcasting 'ready' for ritual")
             self.source_direction = 0
             self.ritual_ready = 1
             return []
@@ -613,9 +614,11 @@ class AICore:
                 if not self.can_perform_ritual():
                     message = bytes(self.xor_encrypt(self.team_name, ("inventory" + str(self.bot_id) + ";" + str(self.level) + ";" + str(json.dumps(self.backpack)))), "utf-8").hex()
                     self.action = "Broadcast " + message + "\n"
+                    self.logger.info(f"[Send] Broadcasting inventory update: {self.backpack}")
                 else:
                     message = bytes(self.xor_encrypt(self.team_name, (str(self.bot_id) + ";incantation;" + str(self.level))), "utf-8").hex()
                     self.action = "Broadcast " + message + "\n"
+                    self.logger.info(f"[Send] Broadcasting incantation request for level {self.level}")
                     self.ritual_leader = 1
                     self.state = 4
                     self.ritual_mode = 1
@@ -642,6 +645,7 @@ class AICore:
             if self.ritual_mode == 0:
                 data = bytes(self.xor_encrypt(self.team_name, str(self.bot_id) + " on my way"), "utf-8").hex()
                 self.action = "Broadcast " + data + "\n"
+                self.logger.info(f"[Send] Broadcasting 'on my way' message for ritual")
                 self.ritual_mode = 1
                 return
             if self.ritual_leader >= 6:
@@ -740,23 +744,21 @@ class AICore:
 
             self.action = ""
         elif self.state == 9:
-            # Après élévation, attendre un nouveau signal de groupe avant de repartir
             self.action = ""
             self.state = 10
             self.waiting_for_group = True
         elif self.state == 10:
-            # Synchronisation post-élévation : attendre un nouveau broadcast d'incantation
             if self.waiting_for_group:
-                self.action = "Inventory\n"  # On ne fait rien d'autre
+                self.action = "Inventory\n"
                 return
             else:
-                self.state = 0  # On repart dans le cycle normal
+                self.state = 0
                 self.decide_action()
                 return
         elif self.state == 11:
-
             message = bytes(self.xor_encrypt(self.team_name, ("inventory" + str(self.bot_id) + ";" + str(self.level) + ";" + str(json.dumps(self.backpack)))), "utf-8").hex()
             self.action = "Broadcast " + message + "\n"
+            self.logger.info(f"[Send] Broadcasting inventory update after elevation: {self.backpack}")
             self.state = 0
 
     def get_required_players_for_level(self) -> int:
