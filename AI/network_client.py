@@ -191,7 +191,7 @@ class NetworkClient():
                                 self.logger.log_level_up(old_level, self.agent.level)
 
                             # Reset all incantation-related states to ensure fresh start
-                            self.agent.state = 9
+                            self.agent.state = 0  # Revenir à l'état de base pour resynchroniser
                             self.agent.found_new_item = False
                             self.agent.target_resource = ""
                             self.agent.ritual_mode = 0

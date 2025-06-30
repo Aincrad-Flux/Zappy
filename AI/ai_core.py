@@ -73,6 +73,7 @@ class AICore:
         self.use_ui = use_ui
         self.logger = get_logger(bot_id=bot_id, team_name=name, log_to_console=not use_ui)
         self.fork = 1
+        self.waiting_for_group = False
 
     def can_perform_ritual(self) -> bool:
         """
@@ -480,6 +481,14 @@ class AICore:
             actions.append("Left\n")
         return actions
 
+    def all_ready_and_present(self):
+        """
+        Vérifie que tous les joueurs nécessaires sont présents ET ont broadcast 'ready'.
+        """
+        players_needed = self.get_required_players_for_level()
+        players_present = self.count_players_on_tile()
+        return self.ritual_leader >= players_needed and players_present >= players_needed
+
     def place_resources_for_ritual(self):
         if self.action_queue:
             return
@@ -506,12 +515,15 @@ class AICore:
             if needed_materials[k] < 1:
                 continue
             if k in self.backpack and self.backpack[k] != 0:
-                self.action_queue = ["Set " + k + "\n"]
-                self.action_queue.append("Look\n")
-                self.backpack[k] -= 1
-                self.logger.info(f"Placing resource for ritual: {k}")
-                return
-
+                # Déposer toutes les ressources nécessaires d'un coup
+                for _ in range(self.backpack[k]):
+                    self.action_queue.append("Set " + k + "\n")
+                    self.action_queue.append("Look\n")
+                self.logger.info(f"Placing all {k} for ritual: {self.backpack[k]}")
+                self.backpack[k] = 0
+        # Après avoir tout déposé, envoyer le broadcast 'ready'
+        message = bytes(self.xor_encrypt(self.team_name, ("ready")), "utf-8").hex()
+        self.action_queue.append("Broadcast " + message + "\n")
         self.state = 7
         self.action = ""
         self.logger.info("All resources placed for ritual, ready for incantation")
@@ -523,14 +535,10 @@ class AICore:
 
         self.logger.info(f"Players present for ritual: {players_present}/{players_needed}")
 
-        if players_present >= players_needed:
-            self.logger.info("Enough players physically present, starting incantation!")
+        # Synchronisation stricte : on ne lance l'incantation que si tout le monde est prêt ET présent
+        if self.all_ready_and_present():
+            self.logger.info("All bots ready and present, starting incantation!")
             self.begin_ritual()
-        elif players_present >= 1 and self.ritual_leader >= 1:
-            adjusted_needed = self.get_required_players_for_level()
-            if players_present >= adjusted_needed:
-                self.logger.info(f"Adapting ritual to available players: {players_present}/{players_needed}")
-                self.begin_ritual()
         return
 
     def begin_ritual(self):
@@ -732,16 +740,20 @@ class AICore:
 
             self.action = ""
         elif self.state == 9:
-
-            self.action = "Inventory\n"
-            self.action_queue = []
-            self.target_resource = ""
-            self.ritual_mode = 0
-            self.ritual_leader = 0
-            self.ritual_ready = 0
-            self.players_for_ritual = 1
-            self.state += 1
+            # Après élévation, attendre un nouveau signal de groupe avant de repartir
+            self.action = ""
+            self.state = 10
+            self.waiting_for_group = True
         elif self.state == 10:
+            # Synchronisation post-élévation : attendre un nouveau broadcast d'incantation
+            if self.waiting_for_group:
+                self.action = "Inventory\n"  # On ne fait rien d'autre
+                return
+            else:
+                self.state = 0  # On repart dans le cycle normal
+                self.decide_action()
+                return
+        elif self.state == 11:
 
             message = bytes(self.xor_encrypt(self.team_name, ("inventory" + str(self.bot_id) + ";" + str(self.level) + ";" + str(json.dumps(self.backpack)))), "utf-8").hex()
             self.action = "Broadcast " + message + "\n"
