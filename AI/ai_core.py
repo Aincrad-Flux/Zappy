@@ -73,6 +73,7 @@ class AICore:
         self.use_ui = use_ui
         self.logger = get_logger(bot_id=bot_id, team_name=name, log_to_console=not use_ui)
         self.fork = 1
+        self.ready_bots = 0  # compteur pour les bots prêts
 
     def can_perform_ritual(self) -> bool:
         """
@@ -439,6 +440,11 @@ class AICore:
                 self.logger.info(f"Moving toward ritual source in direction {direction}")
                 self.action_queue = self.move_to_message_source(direction)
 
+        if "pose_ressources" in decrypted_message:
+            self.logger.info("Ordre reçu : poser les ressources pour le rituel")
+            self.ritual_mode = 2
+            self.state = 6
+
         if "on my way" in decrypted_message and self.ritual_leader >= 1:
             self.players_for_ritual += 1
             self.logger.info(f"Bot joining ritual, total: {self.players_for_ritual}")
@@ -453,12 +459,12 @@ class AICore:
                         self.begin_ritual()
 
         if "ready" in decrypted_message and self.ritual_leader >= 1:
-            self.ritual_leader += 1
-            self.logger.info(f"Bot ready for ritual, ready bots: {self.ritual_leader}")
+            self.ready_bots += 1
+            self.logger.info(f"Bot ready for ritual, ready bots: {self.ready_bots}")
 
-            players_needed = self.get_required_players_for_level()
-            if self.ritual_leader >= players_needed and self.state == 6:
-                self.logger.info("Required players reached, can start incantation")
+            players_needed = max(5, self.get_required_players_for_level())  # force minimum 5
+            if self.ready_bots >= players_needed and self.state == 6:
+                self.logger.info("Required players reached (min 5), can start incantation")
                 if self.check_resources_on_tile():
                     self.begin_ritual()
 
@@ -481,7 +487,19 @@ class AICore:
         return actions
 
     def place_resources_for_ritual(self):
+        # Seul le leader donne l'ordre de poser, les autres attendent l'ordre
         if self.action_queue:
+            return
+        # Si pas leader et pas reçu l'ordre, on ne fait rien
+        if self.ritual_leader < 1 and self.ritual_mode != 2:
+            self.logger.info("En attente de l'ordre du leader pour poser les ressources...")
+            return
+        # Si leader, broadcast l'ordre de pose si pas déjà fait
+        if self.ritual_leader >= 1 and self.ritual_mode != 2:
+            message = bytes(self.xor_encrypt(self.team_name, "pose_ressources"), "utf-8").hex()
+            self.action = "Broadcast " + message + "\n"
+            self.ritual_mode = 2
+            self.logger.info("Leader : envoi de l'ordre de poser les ressources")
             return
         data = self.vision.split(",")[0]
         while True:
@@ -658,8 +676,15 @@ class AICore:
         elif self.state == 6:
             self.clear_message_flag = 0
 
-            if self.vision:
+            # Correction : le leader broadcast l'ordre de poser dès l'entrée en état 6
+            if self.ritual_leader >= 1 and self.ritual_mode != 2:
+                message = bytes(self.xor_encrypt(self.team_name, "pose_ressources"), "utf-8").hex()
+                self.action = "Broadcast " + message + "\n"
+                self.ritual_mode = 2
+                self.logger.info("Leader : envoi de l'ordre de poser les ressources (état 6)")
+                return
 
+            if self.vision:
                 players_needed = self.get_required_players_for_level()
                 players_present = self.count_players_on_tile()
                 resources_ready = self.check_resources_on_tile()
@@ -669,18 +694,21 @@ class AICore:
                 self.logger.info(f"Ritual status: {players_present} players présents sur {players_needed} nécessaires")
                 self.logger.info(f"Ressources pour incantation prêtes: {resources_ready}")
 
+                # Ajout : si 5 joueurs sur la case, on lance l'incantation (en dur)
+                if players_present >= 5 and resources_ready:
+                    self.logger.info("Force: 5 joueurs présents, lancement de l'incantation !")
+                    self.begin_ritual()
+                    return
 
                 if players_present >= players_needed and resources_ready:
                     self.logger.info(f"Toutes les conditions remplies pour l'incantation: {players_present}/{players_needed} joueurs, ressources OK")
                     self.begin_ritual()
                     return
 
-
             players_needed = self.get_required_players_for_level()
             available_players = self.get_available_players_count()
 
             self.logger.info(f"Ritual status: {available_players} players available out of {players_needed} needed")
-
 
             if self.ritual_leader >= 1 and available_players >= players_needed:
                 self.begin_ritual()
