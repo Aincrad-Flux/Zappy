@@ -25,4 +25,5 @@ void handle_set_command(player_t *player, server_t *server, const char *item,
     tile->resources[resource_id]++;
     strcpy(response, "ok\n");
     send_gui_pdr(server, player_id, resource_id);
+    send_gui_pin(server, player_id);
 }

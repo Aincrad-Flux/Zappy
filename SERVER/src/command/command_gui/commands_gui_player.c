@@ -38,3 +38,21 @@ void send_gui_ppo(server_t *server, int player_id)
         player_id, player->x, player->y, player->orientation + 1);
     send_to_gui_client(server->graphic_fd, buffer);
 }
+
+void send_gui_pin(server_t *server, int player_id)
+{
+    char buffer[256];
+    player_t *player;
+
+    if (player_id < 0 || player_id >= server->num_players) {
+        return;
+    }
+    player = &server->players[player_id];
+    snprintf(buffer, sizeof(buffer), "pin #%d %d %d %d %d %d %d %d %d %d\n",
+        player_id, player->x, player->y,
+        player->inventory[FOOD], player->inventory[LINEMATE],
+        player->inventory[DERAUMERE], player->inventory[SIBUR],
+        player->inventory[MENDIANE], player->inventory[PHIRAS],
+        player->inventory[THYSTAME]);
+    send_to_gui_client(server->graphic_fd, buffer);
+}

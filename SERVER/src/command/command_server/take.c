@@ -40,6 +40,8 @@ void handle_take_command(player_t *player, server_t *server, const char *item,
     }
     strcpy(response, "ok\n");
     check_resource(tile, player, response, item);
-    if (strcmp(response, "ok\n") == 0)
+    if (strcmp(response, "ok\n") == 0) {
         send_gui_pgt(server, player_id, resource_id);
+        send_gui_pin(server, player_id);
+    }
 }
