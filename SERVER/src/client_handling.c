@@ -16,6 +16,7 @@
 #include "time/tick.h"
 #include "command/gui_commands.h"
 #include "map/resource.h"
+
 static void add_client_to_fds(server_t *server, int new_socket)
 {
     FD_SET(new_socket, &server->master_fds);
@@ -38,6 +39,7 @@ static void handle_new_connection(server_t *server)
     printf("New connection from %s:%d\n", inet_ntoa(client_addr.sin_addr),
         ntohs(client_addr.sin_port));
     snprintf(buffer, 1024, "WELCOME\n");
+    send_gui_pnw(server, new_socket);
     send(new_socket, buffer, strlen(buffer), 0);
     add_client_to_fds(server, new_socket);
 }
