@@ -54,7 +54,7 @@ static void handle_special_commands(player_t *player, server_t *server,
         return;
     }
     if (strcmp(command, "Incantation") == 0) {
-        handle_incantation_command(player, server, response);
+        prepare_incantation(player, server, response);
         return;
     }
     strcpy(response, "ko\n");
@@ -74,7 +74,7 @@ static void handle_info_command(player_t *player, server_t *server, const char
     *command, char *response)
 {
     if (strcmp(command, "Look") == 0) {
-        strcpy(response, "[ player ]\n");
+        handle_look_command(player, server, response);
         return;
     }
     if (strcmp(command, "Inventory") == 0) {
@@ -115,5 +115,6 @@ void process_player_command(player_t *player, server_t *server,
         handle_info_command(player, server, command, response);
     if (response[0] == '\0')
         handle_action_command(player, server, command, response);
+    printf("response %s\n", response);
     send(player->socket, response, strlen(response), 0);
 }

@@ -233,10 +233,10 @@ class NetworkClient():
                                 self.agent.free_slots = slots
                                 self.logger.debug(f"Free team slots: {slots}")
                                 if slots > 0 and self.bot_id < 6 and self.agent.fork == 1:
-                                    script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "zappy_ai")
+                                    binary_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "zappy_ai")
                                     next_bot_id = str(self.bot_id + 1)
-                                    self.logger.info(f"Forking new bot with ID {next_bot_id}")
-                                    subprocess.Popen(["python3", script_path, "-p", self.port, "-n", self.team, "-i", next_bot_id])
+                                    self.logger.info(f"Forking new bot with ID {next_bot_id} using binary {binary_path}")
+                                    subprocess.Popen([binary_path, "-p", self.port, "-n", self.team, "-i", next_bot_id])
                                     self.agent.fork = 0
                             else:
                                 self.logger.error(f"Error parsing Connect_nbr response: {elem}")

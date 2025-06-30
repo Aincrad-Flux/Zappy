@@ -40,6 +40,7 @@ clean:
 	@$(MAKE) -C GUI clean
 	@$(MAKE) -C AI clean
 	@$(MAKE) -C SERVER clean
+	@rm -f *.log
 
 fclean: clean
 	@echo "$(RED)Cleaning binaries...$(NC)"

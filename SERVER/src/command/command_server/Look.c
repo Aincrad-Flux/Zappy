@@ -9,36 +9,38 @@
 #include "map/map.h"
 #include "map/resource.h"
 
-static void append_tile_content(char *buffer, Tile *tile)
+static void append_tile_content(char *buffer, tile_t *tile)
 {
     int first = 1;
     static const char *RESOURCE_NAMES[] = {
             "food", "linemate", "deraumere", "sibur", "mendiane", "phiras",
             "thystame" };
 
-    for (List *node = tile->players_on_tile; node != NULL; node = node->next) {
+    for (list_t *node = tile->players_on_tile; node != NULL; node =
+            node->next) {
         strcat(buffer, first ? "player" : " player");
         first = 0;
     }
 
     for (int i = 0; i < RESOURCE_COUNT; i++) {
-        for (int j = 0; j < tile->resource[i]; j++) {
-            strcat(buffer, first ? RESOURCE_NAMES[i] : " ");
+        for (int j = 0; j < tile->resources[i]; j++) {
+            if (!first)
+                strcat(buffer, " ");
             strcat(buffer, RESOURCE_NAMES[i]);
             first = 0;
         }
     }
 }
 
-Tile *get_tile(Map *map, int x, int y)
+static tile_t *get_tile(map_t *map, int x, int y)
 {
     x = (x + map->width) % map->width;
     y = (y + map->height) % map->height;
     return &map->tiles[y][x];
 }
 
-static Tile *tile_orientation(Player *player , Server *server, int depth, int
-    offset)
+static tile_t *tile_orientation(player_t *player , server_t *server, int depth,
+    int offset)
 {
     int px = player->x;
     int py = player->y;
@@ -51,11 +53,10 @@ static Tile *tile_orientation(Player *player , Server *server, int depth, int
         case EAST:  tx = px + depth; ty = py + offset; break;
         case WEST:  tx = px - depth; ty = py - offset; break;
     }
-
     return get_tile(server->map, tx, ty);
 }
 
-void handle_look_command(Player *player, Server *server, char *response)
+void handle_look_command(player_t *player, server_t *server, char *response)
 {
     char buffer[BUFFER_SIZE] = {0};
     int level = player->level;
@@ -73,6 +74,8 @@ void handle_look_command(Player *player, Server *server, char *response)
     if (len > 1 && buffer[len - 1] == ',')
         buffer[len - 1] = '\0';
     strcat(buffer, "]\n");
+    printf("player x %d y %d\n", player->x, player->y);
+    printf("look: %s\n", buffer);
     strcpy(response, buffer);
 }
 

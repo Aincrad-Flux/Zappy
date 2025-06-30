@@ -14,7 +14,7 @@ static void add_action(player_t *player, time_t base_time, action_t *new_action,
     int freq)
 {
     action_t *curr;
-    int duration_ticks = get_command_duration(curr->command);
+    int duration_ticks = get_command_duration(new_action->command);
 
     if (player->action_queue == NULL) {
         new_action->end_time = base_time +
@@ -69,7 +69,12 @@ static void handle_action(server_t *server, int i)
     current_action = player->action_queue;
     now = time(NULL);
     if (now >= current_action->end_time) {
-        process_player_command(player, server, current_action->command);
+        printf("handle action\n");
+        if (strcmp(current_action->command, "Incantation") == 0) {
+            finish_incantation(player, server);
+        } else {
+            process_player_command(player, server, current_action->command);
+        }
         next_action(&player->action_queue);
     }
 }

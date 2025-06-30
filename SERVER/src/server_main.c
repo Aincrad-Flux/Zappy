@@ -58,11 +58,14 @@ int main(int argc, char **argv)
         return 0;
     }
     parse_result = parse_arguments(argc, argv, &server);
-    if (parse_result <= 0)
+    if (parse_result <= 0) {
+        printf("ici\n");
         return parse_result == 0 ? 0 : 1;
+    }
     srand(time(NULL));
-    if (init_server(&server) < 0)
+    if (init_server(&server) < 0) {
         return 1;
+    }
     run_server(&server);
     cleanup_server(&server);
     return 0;
