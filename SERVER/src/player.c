@@ -63,3 +63,28 @@ void remove_player(server_t *server, int player_index)
     }
     server->num_players--;
 }
+
+void send_player_info(server_t *server, int graphic_fd)
+{
+    player_t *player;
+    char buffer[256];
+
+    for (int i = 0; i < server->num_players; i++) {
+        player = &server->players[i];
+        snprintf(buffer, sizeof(buffer), "pnw #%d %d %d %d %d %s\n",
+                i, player->x, player->y, player->orientation + 1,
+                player->level, server->teams[player->team_id].name);
+        send(graphic_fd, buffer, strlen(buffer), 0);
+        snprintf(buffer, sizeof(buffer), "ppo #%d %d %d %d\n",
+                i, player->x, player->y, player->orientation + 1);
+        send(graphic_fd, buffer, strlen(buffer), 0);
+        snprintf(buffer, sizeof(buffer), "plv #%d %d\n", i, player->level);
+        send(graphic_fd, buffer, strlen(buffer), 0);
+        snprintf(buffer, sizeof(buffer), "pin #%d %d %d %d %d %d %d %d "
+                "%d %d\n", i, player->x, player->y, player->inventory[FOOD],
+                player->inventory[LINEMATE], player->inventory[DERAUMERE],
+                player->inventory[SIBUR], player->inventory[MENDIANE],
+                player->inventory[PHIRAS], player->inventory[THYSTAME]);
+        send(graphic_fd, buffer, strlen(buffer), 0);
+    }
+}

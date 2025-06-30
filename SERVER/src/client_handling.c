@@ -12,10 +12,13 @@
 ** client_handling.c
 */
 
+#include "graphic.h"
 #include "server.h"
 #include "time/tick.h"
 #include "command/gui_commands.h"
 #include "map/resource.h"
+#include "player.h"
+
 static void add_client_to_fds(server_t *server, int new_socket)
 {
     FD_SET(new_socket, &server->master_fds);
@@ -78,37 +81,6 @@ void send_connection_info(server_t *server, int client_socket, int team_id)
     send(client_socket, response, strlen(response), 0);
 }
 
-void send_graphic_init_data(server_t *server, int graphic_fd)
-{
-    char buffer[256];
-    
-    snprintf(buffer, sizeof(buffer), "msz %d %d\n", server->width, server->height);
-    send(graphic_fd, buffer, strlen(buffer), 0);
-    handle_gui_mct(server, graphic_fd);
-    handle_gui_tna(server, graphic_fd);
-    for (int i = 0; i < server->num_players; i++) {
-        player_t *player = &server->players[i];
-        snprintf(buffer, sizeof(buffer), "pnw #%d %d %d %d %d %s\n",
-            i, player->x, player->y, player->orientation + 1,
-            player->level, server->teams[player->team_id].name);
-        send(graphic_fd, buffer, strlen(buffer), 0);
-        snprintf(buffer, sizeof(buffer), "ppo #%d %d %d %d\n",
-            i, player->x, player->y, player->orientation + 1);
-        send(graphic_fd, buffer, strlen(buffer), 0);
-        snprintf(buffer, sizeof(buffer), "plv #%d %d\n", i, player->level);
-        send(graphic_fd, buffer, strlen(buffer), 0);
-        snprintf(buffer, sizeof(buffer), "pin #%d %d %d %d %d %d %d %d %d %d\n",
-            i, player->x, player->y,
-            player->inventory[FOOD], player->inventory[LINEMATE],
-            player->inventory[DERAUMERE], player->inventory[SIBUR],
-            player->inventory[MENDIANE], player->inventory[PHIRAS],
-            player->inventory[THYSTAME]);
-        send(graphic_fd, buffer, strlen(buffer), 0);
-    }
-    snprintf(buffer, sizeof(buffer), "sgt %d\n", server->freq);
-    send(graphic_fd, buffer, strlen(buffer), 0);
-}
-
 static void handle_client_message(server_t *server, int client_socket)
 {
     char buffer[1024];
@@ -126,17 +98,10 @@ static void handle_client_message(server_t *server, int client_socket)
         return;
     }
     if (player_index == -1) {
-        if (strcmp(buffer, "GRAPHIC") == 0) {
-            printf("Client GRAPHIC connecté\n");
-            server->graphic_fd = client_socket;
-            send_graphic_init_data(server, client_socket);
-        } else {
-            handle_team_authentication(server, client_socket, buffer);
-        }
-    } else {
-        printf("action add %s\n", buffer);
-        add_action_to_queue(&server->players[player_index], buffer, server->freq);
-    }
+        verif_graphic_connexion(server, client_socket, buffer);
+    } else
+        add_action_to_queue(&server->players[player_index], buffer,
+                            server->freq);
 }
 
 void check_new_connections(server_t *server, fd_set *read_fds)
