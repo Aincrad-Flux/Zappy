@@ -6,9 +6,9 @@
 */
 
 #include "command/command.h"
+#include "command/gui_commands.h"
 #include "server.h"
 #include "player.h"
-
 
 int get_command_duration(const char *command)
 {
@@ -42,6 +42,26 @@ static void handle_take_set_commands(player_t *player, server_t *server,
     strcpy(response, "ko\n");
 }
 
+void handle_broadcast_command(player_t *player, server_t *server,
+    const char *command, char *response)
+{
+    const char *text;
+    int player_id;
+
+    if (strncmp(command, "Broadcast ", 10) != 0) {
+        strcpy(response, "ko\n");
+        return;
+    }
+    text = command + 10;
+    if (strlen(text) == 0) {
+        strcpy(response, "ko\n");
+        return;
+    }
+    player_id = player - server->players;
+    handle_player_broadcast(server, player_id, text);
+    strcpy(response, "ok\n");
+}
+
 static void handle_special_commands(player_t *player, server_t *server,
     const char *command, char *response)
 {
@@ -55,6 +75,10 @@ static void handle_special_commands(player_t *player, server_t *server,
     }
     if (strcmp(command, "Incantation") == 0) {
         prepare_incantation(player, server, response);
+        return;
+    }
+    if (strncmp(command, "Broadcast ", 10) == 0) {
+        handle_broadcast_command(player, server, command, response);
         return;
     }
     strcpy(response, "ko\n");

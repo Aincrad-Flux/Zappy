@@ -55,5 +55,7 @@ void process_gui_command(server_t *server, int client_socket, char *command);
 
 void broadcast_to_gui_clients(server_t *server, const char *message);
 void send_to_gui_client(int socket, const char *message);
+void handle_player_broadcast(server_t *server, int sender_id,
+    const char *text);
 
 #endif /* !GUI_COMMANDS_H_ */
