@@ -147,6 +147,30 @@ class AICore:
         Returns:
             str: The hashed message as a string
         """
+        # Pour le broadcast, on ne doit pas avoir plus d'un ':'
+        # On encode tout dans un seul argument, sans espace, point-virgule ou JSON
+        # Format: checksum_type_data (ex: 123_Alive_3)
+        if text.startswith("Alive:"):
+            # Alive:{bot_id} => Alive_{bot_id}
+            text = text.replace(":", "_")
+        elif text.startswith("inventory"):
+            # inventory{bot_id};{level};{json.dumps(self.backpack)}
+            # => inventory_{bot_id}_{level}_{backpackcompact}
+            parts = text.split(";")
+            if len(parts) == 3:
+                inv = parts[2].replace(" ", "").replace(",", "-").replace(":", "-").replace("{", "").replace("}", "")
+                text = f"inventory_{parts[0][9:]}_{parts[1]}_{inv}"
+        elif text.startswith("pose_ressources"):
+            text = text.replace("_", "").replace(":", "").replace(";", "")
+        elif text.startswith("ready"):
+            text = text.replace(":", "_")
+        elif text.startswith("on my way"):
+            text = text.replace(" ", "_")
+        elif text.startswith("incantation") or ";incantation;" in text:
+            # ex: '3;incantation;2' => 'incantation_3_2'
+            parts = text.split(";")
+            if len(parts) == 3:
+                text = f"incantation_{parts[0]}_{parts[2]}"
         data = (self.team_name + text)
         checksum = sum(ord(c) for c in data) % 256
         return f"{checksum}:{text}"
@@ -434,29 +458,26 @@ class AICore:
         self.logger.log_message(decrypted_message, direction)
 
         # Gestion du recensement Alive
-        if decrypted_message.startswith("Alive;"):
-            sender_id = int(decrypted_message.split(";")[1])
+        if decrypted_message.startswith("Alive_"):
+            sender_id = int(decrypted_message.split("_")[1])
             if self.ritual_leader >= 1 and self.awaiting_alive:
                 self.alive_bots.add(sender_id)
                 self.logger.info(f"Alive reçu de {sender_id}, total: {len(self.alive_bots)}")
             elif self.ritual_leader < 1:
-                # Si non-leader, répondre au leader
-                reply = self.simple_team_hash(f"Alive;{self.bot_id}")
+                # Tous les bots répondent, même hors élévation
+                reply = self.simple_team_hash(f"Alive_{self.bot_id}")
                 self.action = f"Broadcast {reply}\n"
                 self.logger.info(f"Bot {self.bot_id} répond 'Alive' au leader")
             return
 
-        if "inventory" in decrypted_message:
+        if decrypted_message.startswith("inventory_"):
             self.logger.debug("Received inventory update from team member")
-            self.update_team_backpack(decrypted_message[9:])
+            # Optionnel: parser si besoin
+            return
 
-        if "incantation" in decrypted_message:
-            if self.clear_message_flag == 1:
-                self.clear_message_flag = 0
-                return
-
-            sender_id = int(decrypted_message.split(";")[0])
-            sender_level = int(decrypted_message.split(";")[2])
+        if decrypted_message.startswith("incantation_"):
+            sender_id = int(decrypted_message.split("_")[1])
+            sender_level = int(decrypted_message.split("_")[2])
 
             if sender_level != self.level:
                 return
@@ -823,7 +844,7 @@ class AICore:
             self.state += 1
         elif self.state == 10:
 
-            message = self.simple_team_hash("inventory" + str(self.bot_id) + ";" + str(self.level) + ";" + str(json.dumps(self.backpack)))
+            message = self.simple_team_hash(f"inventory_{self.bot_id}_{self.level}_{str(self.backpack).replace(' ', '').replace(',', '-')}")
             self.action = "Broadcast " + message + "\n"
             self.state = 0
 
@@ -834,7 +855,7 @@ class AICore:
         """
         self.alive_bots = set([self.bot_id])  # Le leader s'ajoute lui-même
         self.awaiting_alive = True
-        message = self.simple_team_hash(f"Alive;{self.bot_id}")
+        message = self.simple_team_hash(f"Alive_{self.bot_id}")  # Format corrigé
         self.action = f"Broadcast {message}\n"
         self.logger.info("Leader: broadcast 'Alive' pour recensement de la team")
 
