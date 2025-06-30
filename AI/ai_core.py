@@ -695,12 +695,12 @@ class AICore:
                 self.ritual_leader >= 1
                 and self.ritual_mode == 1
                 and self.ready_bots >= self.get_required_players_for_level() - 1
-                and self.count_players_on_tile() >= self.get_required_players_for_level()
+                and self.count_players_on_tile() >= len(self.alive_bots)
             ):
                 self.logger.info(f"Number alive bots: {self.alive_bots}, ready bots: {self.ready_bots}")
-                self.logger.info("Tous les bots sont prêts ET présents, passage en state 6 pour poser les ressources")
+                self.logger.info("Tous les bots vivants sont prêts ET présents, passage en state 6 pour poser les ressources")
                 self.logger.info(f"Ritual leader: {self.ritual_leader}, Ritual mode: {self.ritual_mode}",
-                                 f"Ready bots: {self.ready_bots}, Required players: {self.get_required_players_for_level()}",
+                                 f"Ready bots: {self.ready_bots}, Alive bots: {len(self.alive_bots)}",
                                  f"Players on tile: {self.count_players_on_tile()}")
                 self.state = 6
                 return
