@@ -147,15 +147,9 @@ class AICore:
         Returns:
             str: The hashed message as a string
         """
-        # Pour le broadcast, on ne doit pas avoir plus d'un ':'
-        # On encode tout dans un seul argument, sans espace, point-virgule ou JSON
-        # Format: checksum_type_data (ex: 123_Alive_3)
         if text.startswith("Alive:"):
-            # Alive:{bot_id} => Alive_{bot_id}
             text = text.replace(":", "_")
         elif text.startswith("inventory"):
-            # inventory{bot_id};{level};{json.dumps(self.backpack)}
-            # => inventory_{bot_id}_{level}_{backpackcompact}
             parts = text.split(";")
             if len(parts) == 3:
                 inv = parts[2].replace(" ", "").replace(",", "-").replace(":", "-").replace("{", "").replace("}", "")
@@ -167,7 +161,6 @@ class AICore:
         elif text.startswith("on my way"):
             text = text.replace(" ", "_")
         elif text.startswith("incantation") or ";incantation;" in text:
-            # ex: '3;incantation;2' => 'incantation_3_2'
             parts = text.split(";")
             if len(parts) == 3:
                 text = f"incantation_{parts[0]}_{parts[2]}"
@@ -457,14 +450,12 @@ class AICore:
         decrypted_message = self.simple_team_unhash(encrypted_message)
         self.logger.log_message(decrypted_message, direction)
 
-        # Gestion du recensement Alive
         if decrypted_message.startswith("Alive_"):
             sender_id = int(decrypted_message.split("_")[1])
             if self.ritual_leader >= 1 and self.awaiting_alive:
                 self.alive_bots.add(sender_id)
                 self.logger.info(f"Alive reçu de {sender_id}, total: {len(self.alive_bots)}")
             elif self.ritual_leader < 1:
-                # Tous les bots répondent, même hors élévation
                 reply = self.simple_team_hash(f"Alive_{self.bot_id}")
                 self.action = f"Broadcast {reply}\n"
                 self.logger.info(f"Bot {self.bot_id} répond 'Alive' au leader")
@@ -472,7 +463,6 @@ class AICore:
 
         if decrypted_message.startswith("inventory_"):
             self.logger.debug("Received inventory update from team member")
-            # Optionnel: parser si besoin
             return
 
         if decrypted_message.startswith("incantation_"):
@@ -755,7 +745,7 @@ class AICore:
                 self.action = "Broadcast " + message + "\n"
                 self.ritual_mode = 2
                 self.logger.info("Leader : envoi de l'ordre de poser les ressources (état 6)")
-                self.state = 6  # Ajout : le leader passe en step 6 après l'ordre
+                self.state = 6
                 return
 
             if self.vision:
@@ -853,9 +843,9 @@ class AICore:
         Lance un recensement de la team via broadcast 'Alive'.
         Le leader envoie 'Alive', les autres répondent, et on compte les réponses.
         """
-        self.alive_bots = set([self.bot_id])  # Le leader s'ajoute lui-même
+        self.alive_bots = set([self.bot_id])
         self.awaiting_alive = True
-        message = self.simple_team_hash(f"Alive_{self.bot_id}")  # Format corrigé
+        message = self.simple_team_hash(f"Alive_{self.bot_id}")
         self.action = f"Broadcast {message}\n"
         self.logger.info("Leader: broadcast 'Alive' pour recensement de la team")
 
