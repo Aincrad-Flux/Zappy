@@ -90,6 +90,125 @@ class ZappyLauncher:
             self.log("Warning: Separate terminal windows not supported on this platform")
             return None
 
+        # Get path to AI binary
+        ai_path = os.path.join(os.getcwd(), "AI", "zappy_ai")
+
+        # Vérifier que le fichier existe
+        if not os.path.isfile(ai_path):
+            ai_path = os.path.join(os.getcwd(), "zappy_ai")
+            if not os.path.isfile(ai_path):
+                self.log(f"Error: AI binary not found at {ai_path}")
+                return
+
+        # Make sure the AI binary is executable
+        try:
+            os.chmod(ai_path, os.stat(ai_path).st_mode | 0o111)
+        except Exception as e:
+            self.log(f"Warning: Could not set executable permission on AI binary: {e}")
+
+        # Counter for AI instances
+        ai_count = 0
+
+        # Option to open in separate terminals
+        open_in_terminal = True  # Added this option, could be made configurable
+
+        for team in active_teams:
+            instances = self.ai_count_vars[team].get()
+            for i in range(instances):
+                # Build the command
+                ai_args = [
+                    ai_path,
+                    "-p", self.port.get(),
+                    "-h", self.host.get(),
+                    "-n", team
+                ]
+
+                if self.ai_terminal_ui.get():
+                    ai_args.append("--terminal-ui")
+
+                cmd_str = " ".join(ai_args)
+                self.log(f"Starting AI #{ai_count+1} for team {team} with command: {cmd_str}")
+
+                try:
+                    if open_in_terminal and self.terminal_cmd:
+                        # For terminal execution, we need to handle differently
+                        if sys.platform.startswith('linux'):
+                            # Get current directory for correct path resolution
+                            cwd = os.getcwd()
+
+                            # DEBUG: Print terminal detection info
+                            self.log(f"Using terminal command: {self.terminal_cmd}")
+
+                            # Form the command to run in terminal - CORRECTED APPROACH
+                            command_inside_terminal = f"{ai_path} -p {self.port.get()} -h {self.host.get()} -n {team}"
+                            if self.ai_terminal_ui.get():
+                                command_inside_terminal += " --terminal-ui"
+
+                            # More reliable way to execute commands in different terminal emulators
+                            if self.terminal_cmd[0] == "gnome-terminal":
+                                # For gnome-terminal, needs special handling
+                                terminal_full_cmd = [
+                                    "gnome-terminal",
+                                    "--working-directory=" + cwd,
+                                    "--", "bash", "-c",
+                                    f"{command_inside_terminal}; echo 'AI process terminated. Press Enter to close.'; read"
+                                ]
+                            elif self.terminal_cmd[0] == "konsole":
+                                # For KDE Konsole
+                                terminal_full_cmd = [
+                                    "konsole",
+                                    "--workdir", cwd,
+                                    "-e", "bash", "-c",
+                                    f"{command_inside_terminal}; echo 'AI process terminated. Press Enter to close.'; read"
+                                ]
+                            else:
+                                # For xterm, terminator, xfce4-terminal and others
+                                terminal_full_cmd = [
+                                    self.terminal_cmd[0],
+                                    "-e", f"cd {cwd} && {command_inside_terminal}; echo 'AI process terminated. Press Enter to close.'; read"
+                                ]
+
+                            # Log the full command for debugging
+                            self.log(f"Full terminal command: {terminal_full_cmd}")
+
+                            # Start detached process without capturing output
+                            subprocess.Popen(
+                                terminal_full_cmd,
+                                stdout=subprocess.PIPE,  # Changed from DEVNULL to capture potential errors
+                                stderr=subprocess.PIPE,
+                                start_new_session=True
+                            )
+
+                        elif sys.platform == 'darwin':  # macOS
+                            # For macOS, it's a bit different with osascript
+                            command_inside_terminal = f"cd {os.getcwd()} && {cmd_str}"
+                            terminal_full_cmd = [
+                                "osascript",
+                                "-e",
+                                f'tell app "Terminal" to do script "{command_inside_terminal}; echo \'AI process terminated. Press Enter to close.\'; read"'
+                            ]
+                            subprocess.Popen(terminal_full_cmd)
+
+                        self.log(f"AI #{ai_count+1} for team {team} started in a new terminal window")
+                    else:
+                        # Original method - run in background
+                        ai_process = subprocess.Popen(
+                            ai_args,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            text=True
+                        )
+                        self.ai_processes.append(ai_process)
+                        self.log(f"AI #{ai_count+1} for team {team} started in background")
+
+                    ai_count += 1
+                except Exception as e:
+                    self.log(f"Error starting AI for team {team}: {e}")
+                    import traceback
+                    self.log(traceback.format_exc())
+
+        self.log(f"Started {ai_count} AI clients")
+
     def _create_config_tab(self):
         # Create a frame with scrollbar for the config tab
         config_frame = ttk.Frame(self.tab_config)
@@ -282,6 +401,10 @@ class ZappyLauncher:
         comp_frame.pack(fill="x", padx=5, pady=10)
 
         # Create buttons for component builds with better descriptions
+        ttk.Button(comp_frame, text="Build Server",
+                  command=lambda: self.run_make_command("zappy_server"),
+                  width=25).pack(side=tk.LEFT, padx=20, pady=10, fill="x", expand=True)
+
         ttk.Button(comp_frame, text="Build GUI",
                   command=lambda: self.run_make_command("zappy_gui"),
                   width=25).pack(side=tk.LEFT, padx=20, pady=10, fill="x", expand=True)
@@ -350,11 +473,13 @@ class ZappyLauncher:
         help_text = """
         Build Options:
 
+        - Build Server: Compiles only the Server component (zappy_server)
+
         - Build GUI: Compiles only the GUI component (zappy_gui)
 
         - Build AI: Compiles only the AI component (zappy_ai)
 
-        - Build All: Compiles all project components (GUI and AI)
+        - Build All: Compiles all project components (Server, GUI and AI)
 
         - Clean: Removes all object files but keeps binaries
 
@@ -414,6 +539,9 @@ class ZappyLauncher:
             if process.stdout:
                 for line in process.stdout:
                     self.log(line.strip())
+            if process.stdout:
+                for line in process.stdout:
+                    self.log(line.strip())
 
             process.wait()
 
@@ -456,7 +584,12 @@ class ZappyLauncher:
             return
 
         # Build the command
-        server_path = os.path.join(os.getcwd(), "zappy_ref-v3.0.1", "linux", "zappy_server")
+        server_path = os.path.join(os.getcwd(), "zappy_server")
+        if not os.path.isfile(server_path):
+            self.log(f"Error: Server binary not found at {server_path}")
+            self.log("Please build the server first using the 'Build Server' button in the Build tab")
+            return
+
         cmd = [
             server_path,
             "-p", self.port.get(),

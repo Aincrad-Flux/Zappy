@@ -1,0 +1,27 @@
+name: Mirror to GitLab
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set Git config
+        run: |
+          git config --global user.name "GitHub Mirror Bot"
+          git config --global user.email "bot@example.com"
+
+      - name: Add GitLab remote with HTTPS and token
+        run: |
+          git remote add gitlab https://oauth2:glpat-QYSUL1UU6ANZrcoxqbzQ@gitlab.devgoblin.me/heathcliff/zappy.git
+
+      - name: Push to GitLab
+        run: git push --mirror gitlab

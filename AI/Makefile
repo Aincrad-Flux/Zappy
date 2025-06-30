@@ -6,15 +6,15 @@
 ##
 
 NAME = zappy_ai
-MAIN_FILE = zappy_ai
+MAIN_FILE = entrypoint.py
 PYTHON = python3
 
 all: $(NAME)
 
 $(NAME):
 	@echo "Building $(NAME)..."
+	@cp $(MAIN_FILE) ./$(NAME)
 	@chmod +x $(NAME)
-	@cp $(NAME) ../$(NAME)
 	@echo "Done! The AI client is ready to use."
 
 clean:
@@ -26,7 +26,7 @@ clean:
 fclean: clean
 	@echo "Full clean: removing logs and executable..."
 	@rm -rf logs/*.log
-	@rm -f ../$(NAME)
+	@rm -f ./$(NAME)
 	@echo "Done with full clean."
 
 re: fclean all
