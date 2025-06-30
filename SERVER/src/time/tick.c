@@ -17,5 +17,12 @@ void update_ticks(server_t *server)
         server->tick_count += 1;
         if (server->tick_count % 20 == 0)
             respawn_resource(server->map);
+        if (server->tick_count % 126 == 0) {
+            for (int i = 0; i < server->num_players; i++) {
+                server->players[i].inventory[0] -= 1;
+                if (server->players[i].inventory[0] < 0)
+                    kill_player(server, i);
+            }
+        }
     }
 }
