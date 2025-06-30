@@ -164,7 +164,6 @@ class NetworkClient():
                         elif self.agent.action == "Incantation\n":
                             if "ko" in elem:
                                 self.logger.error(f"Incantation failed: {elem}")
-                                # Réinitialiser l'état pour réessayer
                                 self.agent.state = 6
                             elif "Elevation underway" in elem:
                                 self.logger.log_ritual_status("Elevation underway")
@@ -190,7 +189,6 @@ class NetworkClient():
 
                                 self.logger.log_level_up(old_level, self.agent.level)
 
-                            # Reset all incantation-related states to ensure fresh start
                             self.agent.state = 9
                             self.agent.found_new_item = False
                             self.agent.target_resource = ""
