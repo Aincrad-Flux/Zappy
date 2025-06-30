@@ -80,7 +80,7 @@ void send_player_info(server_t *serv, int graphic_fd)
                 player->x, player->y, player->orientation + 1, player->level,
                 serv->teams[player->team_id].name);
         send(graphic_fd, buffer, strlen(buffer), 0);
-        send_gui_ppo(server, player->socket);
+        send_gui_ppo(serv, player->socket);
         snprintf(buffer, sizeof(buffer), "plv #%d %d\n", i, player->level);
         send(graphic_fd, buffer, strlen(buffer), 0);
         snprintf(buffer, sizeof(buffer), "pin #%d %d %d %d %d %d %d %d "

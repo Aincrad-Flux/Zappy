@@ -36,7 +36,7 @@ void handle_gui_sst(server_t *server, int client_socket, int new_freq);
 void send_gui_pnw(server_t *server, int player_id);
 void send_gui_pex(server_t *server, int player_id);
 void send_gui_pbc(server_t *server, int player_id, const char *message);
-void send_gui_pic(server_t *server, gui_pic_data_t *data);
+void send_gui_pic(server_t *server, player_t *player);
 void send_gui_pie(server_t *server, int x, int y, int result);
 void send_gui_pfk(server_t *server, int player_id);
 void send_gui_pdr(server_t *server, int player_id, int resource);
