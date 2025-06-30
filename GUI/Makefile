@@ -20,7 +20,8 @@ ifeq ($(UNAME_S),Linux)
     endif
 endif
 ifeq ($(UNAME_S),Darwin)
-    LDFLAGS = -lraylib -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
+    LDFLAGS = -lraylib -framework OpenGL -framework Cocoa \
+              -framework IOKit -framework CoreVideo
 endif
 
 SRC_DIR = src
@@ -29,12 +30,15 @@ OBJ_DIR = obj
 CONSOLE_OBJ_DIR = obj/console
 
 # GUI Sources
-SOURCES = $(filter-out $(SRC_DIR)/zappy_console.cpp, $(wildcard $(SRC_DIR)/*.cpp))
+SOURCES = $(filter-out $(SRC_DIR)/zappy_console.cpp, \
+          $(wildcard $(SRC_DIR)/*.cpp))
 OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SOURCES))
 
 # Console Sources
-CONSOLE_SOURCES = $(SRC_DIR)/zappy_console.cpp $(SRC_DIR)/NetworkManager.cpp $(SRC_DIR)/Logger.cpp
-CONSOLE_OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(CONSOLE_OBJ_DIR)/%.o,$(CONSOLE_SOURCES))
+CONSOLE_SOURCES = $(SRC_DIR)/zappy_console.cpp \
+                  $(SRC_DIR)/NetworkManager.cpp $(SRC_DIR)/Logger.cpp
+CONSOLE_OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(CONSOLE_OBJ_DIR)/%.o, \
+                  $(CONSOLE_SOURCES))
 
 TARGET = zappy_gui
 CONSOLE_TARGET = zappy_console
@@ -69,4 +73,5 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: all clean fclean re install-raylib install-raylib-mac setup-raylib console
+.PHONY: all clean fclean re install-raylib install-raylib-mac \
+        setup-raylib console

@@ -65,7 +65,7 @@ void prepare_incantation(player_t *player, server_t *server, char *response)
     start_level_up(tile, level);
     add_action_to_queue(player, "Incantation", server->freq);
     strcpy(response, "Elevation underway\n");
-    //send_gui_pic(server, player->x, player->y, 1);
+    send_gui_pic(server, player);
 }
 
 static void cancel_incantation(tile_t *tile, int level)

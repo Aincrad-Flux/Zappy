@@ -49,22 +49,26 @@ void send_gui_pbc(server_t *server, int player_id, const char *message)
     broadcast_to_gui_clients(server, buffer);
 }
 
-static void build_pic_buffer(char *buffer, gui_pic_data_t *data)
+static void build_pic_buffer(char *buffer, player_t *player,
+    list_t *players_on_tile)
 {
     char temp[32];
+    list_t *current = players_on_tile;
 
-    snprintf(buffer, 512, "pic %d %d %d", data->x, data->y, data->level);
-    for (int i = 0; i < data->nb_players; i++) {
-        snprintf(temp, sizeof(temp), " #%d", data->players[i]);
+    snprintf(buffer, 512, "pic %d %d %d", player->x, player->y, player->level);
+    while (current != NULL) {
+        snprintf(temp, sizeof(temp), " #%d", current->player->team_id);
         strcat(buffer, temp);
+        current = current->next;
     }
     strcat(buffer, "\n");
 }
 
-void send_gui_pic(server_t *server, gui_pic_data_t *data)
+void send_gui_pic(server_t *server, player_t *player)
 {
     char buffer[512];
+    tile_t *tile = &server->map->tiles[player->y][player->x];
 
-    build_pic_buffer(buffer, data);
+    build_pic_buffer(buffer, player, tile->players_on_tile);
     broadcast_to_gui_clients(server, buffer);
 }
