@@ -139,6 +139,5 @@ void process_player_command(player_t *player, server_t *server,
         handle_info_command(player, server, command, response);
     if (response[0] == '\0')
         handle_action_command(player, server, command, response);
-    printf("response %s\n", response);
     send(player->socket, response, strlen(response), 0);
 }

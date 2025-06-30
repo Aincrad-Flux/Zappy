@@ -8,6 +8,7 @@
 #include "server.h"
 #include "player.h"
 #include "map/resource.h"
+#include "command/gui_commands.h"
 
 static tile_t *get_tile(map_t *map, int x, int y)
 {
@@ -16,19 +17,9 @@ static tile_t *get_tile(map_t *map, int x, int y)
     return &map->tiles[y][x];
 }
 
-bool has_required_resources(tile_t *tile, int level)
+bool has_required_resources(tile_t *tile, int level, const int
+    elevation_requirements[][8])
 {
-    const int elevation_requirements[8][RESOURCE_COUNT + 1] = {
-            {0, 0, 0, 0, 0, 0, 0, 1},
-            {1, 0, 0, 0, 0, 0, 0, 1},
-            {1, 1, 1, 0, 0, 0, 0, 2},
-            {2, 0, 1, 0, 2, 0, 0, 2},
-            {1, 1, 2, 0, 1, 0, 0, 4},
-            {1, 2, 1, 3, 0, 0, 0, 4},
-            {1, 2, 3, 0, 1, 0, 0, 6},
-            {2, 2, 2, 2, 2, 1, 0, 6}
-    };
-
     for (int i = 0; i < RESOURCE_COUNT; i++) {
         if (tile->resources[i] < elevation_requirements[level][i])
             return false;
@@ -47,68 +38,60 @@ int count_same_level_players(tile_t *tile, int level)
     return count;
 }
 
-void prepare_incantation(player_t *player, server_t *server, char *response)
+static void start_level_up(tile_t *tile, int level)
 {
-    tile_t *tile = get_tile(server->map, player->x, player->y);
-    int level = player->level;
-    const int elevation_requirements[8][RESOURCE_COUNT + 1] = {
-            {0, 0, 0, 0, 0, 0, 0, 1},
-            {1, 0, 0, 0, 0, 0, 0, 1},
-            {1, 1, 1, 0, 0, 0, 0, 2},
-            {2, 0, 1, 0, 2, 0, 0, 2},
-            {1, 1, 2, 0, 1, 0, 0, 4},
-            {1, 2, 1, 3, 0, 0, 0, 4},
-            {1, 2, 3, 0, 1, 0, 0, 6},
-            {2, 2, 2, 2, 2, 1, 0, 6}
-    };
-    int required_players = elevation_requirements[level][RESOURCE_COUNT];
-
-    if (level >= 8 || !has_required_resources(tile, level) ||
-        count_same_level_players(tile, level) < required_players) {
-        strcpy(response, "ko\n");
-        return;
-    }
-
     for (list_t *node = tile->players_on_tile; node; node = node->next) {
         if (node->player && node->player->level == level) {
             node->player->is_incanting = true;
             node->player->is_waiting_level_up = true;
         }
     }
-    add_action_to_queue(player, "Incantation", server->freq);
-    strcpy(response, "Elevation underway\n");
 }
 
-void finish_incantation(player_t *player, server_t *server)
+void prepare_incantation(player_t *player, server_t *server, char *response)
 {
-    int level = player->level;
     tile_t *tile = get_tile(server->map, player->x, player->y);
+    int level = player->level;
     const int elevation_requirements[8][RESOURCE_COUNT + 1] = {
-            {0, 0, 0, 0, 0, 0, 0, 1},
-            {1, 0, 0, 0, 0, 0, 0, 1},
-            {1, 1, 1, 0, 0, 0, 0, 2},
-            {2, 0, 1, 0, 2, 0, 0, 2},
-            {1, 1, 2, 0, 1, 0, 0, 4},
-            {1, 2, 1, 3, 0, 0, 0, 4},
-            {1, 2, 3, 0, 1, 0, 0, 6},
-            {2, 2, 2, 2, 2, 1, 0, 6}
+            {0, 0, 0, 0, 0, 0, 0, 1}, {1, 0, 0, 0, 0, 0, 0, 1},
+            {1, 1, 1, 0, 0, 0, 0, 2}, {2, 0, 1, 0, 2, 0, 0, 2},
+            {1, 1, 2, 0, 1, 0, 0, 4}, {1, 2, 1, 3, 0, 0, 0, 4},
+            {1, 2, 3, 0, 1, 0, 0, 6}, {2, 2, 2, 2, 2, 1, 0, 6}
     };
     int required_players = elevation_requirements[level][RESOURCE_COUNT];
 
-    if (!has_required_resources(tile, level) ||
-        count_same_level_players(tile, level) < required_players) {
-        for (list_t *node = tile->players_on_tile; node; node = node->next) {
-            player_t *p = node->player;
-            if (p && p->is_waiting_level_up && p->level == level) {
-                p->is_waiting_level_up = false;
-                p->is_incanting = false;
-                dprintf(p->socket, "ko\n");
-            }
-        }
+    if (level >= 8 || !has_required_resources(tile, level,
+        elevation_requirements) || count_same_level_players(tile, level) <
+        required_players) {
+        strcpy(response, "ko\n");
         return;
     }
+    start_level_up(tile, level);
+    add_action_to_queue(player, "Incantation", server->freq);
+    strcpy(response, "Elevation underway\n");
+    //send_gui_pic(server, player->x, player->y, 1);
+}
+
+static void cancel_incantation(tile_t *tile, int level)
+{
+    player_t *p;
+
     for (list_t *node = tile->players_on_tile; node; node = node->next) {
-        player_t *p = node->player;
+        p = node->player;
+        if (p && p->is_waiting_level_up && p->level == level) {
+            p->is_waiting_level_up = false;
+            p->is_incanting = false;
+            dprintf(p->socket, "ko\n");
+        }
+    }
+}
+
+static void increase_level(tile_t *tile, int level)
+{
+    player_t *p;
+
+    for (list_t *node = tile->players_on_tile; node; node = node->next) {
+        p = node->player;
         if (p && p->is_waiting_level_up && p->level == level) {
             p->level++;
             p->is_waiting_level_up = false;
@@ -116,6 +99,28 @@ void finish_incantation(player_t *player, server_t *server)
             dprintf(p->socket, "Current level: %d\n", p->level);
         }
     }
+}
+
+void finish_incantation(player_t *player, server_t *server)
+{
+    int level = player->level;
+    tile_t *tile = get_tile(server->map, player->x, player->y);
+    const int elevation_requirements[8][RESOURCE_COUNT + 1] = {
+            {0, 0, 0, 0, 0, 0, 0, 1}, {1, 0, 0, 0, 0, 0, 0, 1},
+            {1, 1, 1, 0, 0, 0, 0, 2}, {2, 0, 1, 0, 2, 0, 0, 2},
+            {1, 1, 2, 0, 1, 0, 0, 4}, {1, 2, 1, 3, 0, 0, 0, 4},
+            {1, 2, 3, 0, 1, 0, 0, 6}, {2, 2, 2, 2, 2, 1, 0, 6}
+    };
+    int required_players = elevation_requirements[level][RESOURCE_COUNT];
+
+    if (!has_required_resources(tile, level, elevation_requirements) ||
+        count_same_level_players(tile, level) < required_players) {
+        cancel_incantation(tile, level);
+        send_gui_pie(server, player->x, player->y, 0);
+        return;
+    }
+    increase_level(tile, level);
     for (int i = 0; i < RESOURCE_COUNT; i++)
         tile->resources[i] -= elevation_requirements[level][i];
+    send_gui_pie(server, player->x, player->y, 1);
 }

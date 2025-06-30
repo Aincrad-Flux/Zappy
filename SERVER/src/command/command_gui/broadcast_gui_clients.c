@@ -19,11 +19,8 @@ void send_to_gui_client(int socket, const char *message)
 
 void broadcast_to_gui_clients(server_t *server, const char *message)
 {
-    for (int i = 0; i < server->num_players; i++) {
-        if (server->players[i].team_id == -1) {
-            send_to_gui_client(server->players[i].socket, message);
-        }
-    }
+    if (server->graphic_fd != -1)
+        send_to_gui_client(server->graphic_fd, message);
 }
 
 static void send_to_ai_client(int socket, const char *message)

@@ -36,5 +36,5 @@ void send_gui_ppo(server_t *server, int player_id)
     player = &server->players[player_id];
     snprintf(buffer, sizeof(buffer), "ppo #%d %d %d %d\n",
         player_id, player->x, player->y, player->orientation + 1);
-    send_to_gui_client(server->graphic_fd, buffer);
+    broadcast_to_gui_clients(server, buffer);
 }
