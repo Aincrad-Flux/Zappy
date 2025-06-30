@@ -21,11 +21,12 @@ static void cleanup_player_resources(player_t *player)
 static void cleanup_player_actions(player_t *player)
 {
     action_t *current_action = player->action_queue;
-    
+    action_t *next_action;
+
     while (current_action != NULL) {
-        action_t *next = current_action->next;
+        next_action = current_action->next;
         free(current_action);
-        current_action = next;
+        current_action = next_action;
     }
     player->action_queue = NULL;
 }
@@ -40,7 +41,8 @@ static void update_max_fd(server_t *server, int excluded_index)
         server->max_fd = server->server_socket;
 }
 
-static void cleanup_player_socket(server_t *server, player_t *player, int player_index)
+static void cleanup_player_socket(server_t *server, player_t *player,
+    int player_index)
 {
     if (player->socket == -1)
         return;

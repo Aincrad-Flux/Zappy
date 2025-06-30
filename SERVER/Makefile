@@ -23,7 +23,7 @@ SRC = 	src/server_init.c \
 	src/command/command_server/incantation.c \
 	src/command/command_server/eject.c \
 	src/command/command_server/fork.c \
-	src/command/command_server/Look.c \
+	src/command/command_server/look.c \
 	src/command/command_gui/commands_gui_egg.c \
 	src/command/command_gui/commands_gui_extended_2.c \
 	src/command/command_gui/commands_gui_extended.c \
