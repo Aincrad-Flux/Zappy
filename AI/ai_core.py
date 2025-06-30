@@ -73,7 +73,10 @@ class AICore:
         self.use_ui = use_ui
         self.logger = get_logger(bot_id=bot_id, team_name=name, log_to_console=not use_ui)
         self.fork = 1
-        self.ready_bots = 0  # compteur pour les bots prêts
+        self.ready_bots = 0
+        self.team_size = 1
+        self.alive_bots = set()
+        self.awaiting_alive = False
 
     def can_perform_ritual(self) -> bool:
         """
@@ -134,18 +137,64 @@ class AICore:
         return chosen_resource
 
 
-    def xor_encrypt(self, key: str, text: str) -> str:
+    def simple_team_hash(self, text: str) -> str:
         """
-        Encrypt a message using XOR with the provided key.
+        Hash a message by concatenating the team name and the message, then returning a simple checksum (sum of ASCII codes modulo 256).
 
         Args:
-            key (str): The encryption key
-            text (str): The plain text to encrypt
+            text (str): The plain text to hash
 
         Returns:
-            str: The encrypted message
+            str: The hashed message as a string
         """
-        return ''.join(chr(ord(c)^ord(k)) for c,k in zip(text, cycle(key)))
+        # Pour le broadcast, on ne doit pas avoir plus d'un ':'
+        # On encode tout dans un seul argument, sans espace, point-virgule ou JSON
+        # Format: checksum_type_data (ex: 123_Alive_3)
+        if text.startswith("Alive:"):
+            # Alive:{bot_id} => Alive_{bot_id}
+            text = text.replace(":", "_")
+        elif text.startswith("inventory"):
+            # inventory{bot_id};{level};{json.dumps(self.backpack)}
+            # => inventory_{bot_id}_{level}_{backpackcompact}
+            parts = text.split(";")
+            if len(parts) == 3:
+                inv = parts[2].replace(" ", "").replace(",", "-").replace(":", "-").replace("{", "").replace("}", "")
+                text = f"inventory_{parts[0][9:]}_{parts[1]}_{inv}"
+        elif text.startswith("pose_ressources"):
+            text = text.replace("_", "").replace(":", "").replace(";", "")
+        elif text.startswith("ready"):
+            text = text.replace(":", "_")
+        elif text.startswith("on my way"):
+            text = text.replace(" ", "_")
+        elif text.startswith("incantation") or ";incantation;" in text:
+            # ex: '3;incantation;2' => 'incantation_3_2'
+            parts = text.split(";")
+            if len(parts) == 3:
+                text = f"incantation_{parts[0]}_{parts[2]}"
+        data = (self.team_name + text)
+        checksum = sum(ord(c) for c in data) % 256
+        return f"{checksum}:{text}"
+
+    def simple_team_unhash(self, hashed: str) -> str:
+        """
+        Retrieve the message if the checksum matches, else return an empty string.
+        Handles trailing newlines or spaces.
+        Args:
+            hashed (str): The hashed message
+
+        Returns:
+            str: The original message if valid, else empty string
+        """
+        try:
+            hashed = hashed.strip()
+            checksum, text = hashed.split(":", 1)
+            data = (self.team_name + text)
+            if int(checksum) == sum(ord(c) for c in data) % 256:
+                return text
+            else:
+                return ""
+        except Exception:
+            return ""
 
     def parse_backpack(self, data):
         """
@@ -405,21 +454,30 @@ class AICore:
     def handle_message(self, message):
         direction = int(message[8])
         encrypted_message = message[11:]
-        decrypted_message = self.xor_encrypt(self.team_name, bytes.fromhex(encrypted_message).decode("utf-8"))
-
+        decrypted_message = self.simple_team_unhash(encrypted_message)
         self.logger.log_message(decrypted_message, direction)
 
-        if "inventory" in decrypted_message:
+        # Gestion du recensement Alive
+        if decrypted_message.startswith("Alive_"):
+            sender_id = int(decrypted_message.split("_")[1])
+            if self.ritual_leader >= 1 and self.awaiting_alive:
+                self.alive_bots.add(sender_id)
+                self.logger.info(f"Alive reçu de {sender_id}, total: {len(self.alive_bots)}")
+            elif self.ritual_leader < 1:
+                # Tous les bots répondent, même hors élévation
+                reply = self.simple_team_hash(f"Alive_{self.bot_id}")
+                self.action = f"Broadcast {reply}\n"
+                self.logger.info(f"Bot {self.bot_id} répond 'Alive' au leader")
+            return
+
+        if decrypted_message.startswith("inventory_"):
             self.logger.debug("Received inventory update from team member")
-            self.update_team_backpack(decrypted_message[9:])
+            # Optionnel: parser si besoin
+            return
 
-        if "incantation" in decrypted_message:
-            if self.clear_message_flag == 1:
-                self.clear_message_flag = 0
-                return
-
-            sender_id = int(decrypted_message.split(";")[0])
-            sender_level = int(decrypted_message.split(";")[2])
+        if decrypted_message.startswith("incantation_"):
+            sender_id = int(decrypted_message.split("_")[1])
+            sender_level = int(decrypted_message.split("_")[2])
 
             if sender_level != self.level:
                 return
@@ -460,11 +518,16 @@ class AICore:
 
         if "ready" in decrypted_message and self.ritual_leader >= 1:
             self.ready_bots += 1
-            self.logger.info(f"Bot ready for ritual, ready bots: {self.ready_bots}")
+            total_ready = self.ready_bots
+            if self.ritual_leader == self.bot_id or self.ritual_leader >= 1:
+                total_ready += 1
+            self.logger.info(f"Bot ready for ritual, ready bots (including leader): {total_ready}")
 
-            players_needed = max(5, self.get_required_players_for_level())  # force minimum 5
-            if self.ready_bots >= players_needed and self.state == 6:
-                self.logger.info("Required players reached (min 5), can start incantation")
+            players_needed = self.get_required_players_for_level()
+            self.logger.info(f"Players needed for ritual: {players_needed}")
+            self.logger.info(f"Total ready bots (including leader): {total_ready}")
+            self.logger.info(f"State: {self.state}")
+            if total_ready >= (players_needed - 1) and self.state == 6:
                 if self.check_resources_on_tile():
                     self.begin_ritual()
 
@@ -473,7 +536,7 @@ class AICore:
             return []
         actions = []
         if (direction == 0):
-            message = bytes(self.xor_encrypt(self.team_name, ("ready")), "utf-8").hex()
+            message = self.simple_team_hash("ready")
             self.action = "Broadcast " + message + "\n"
             self.source_direction = 0
             self.ritual_ready = 1
@@ -487,19 +550,19 @@ class AICore:
         return actions
 
     def place_resources_for_ritual(self):
-        # Seul le leader donne l'ordre de poser, les autres attendent l'ordre
+        self.logger.info("Placing resources for ritual...")
+        self.logger.info(f"Ritual leader: {self.ritual_leader}, Ritual mode: {self.ritual_mode}")
         if self.action_queue:
             return
-        # Si pas leader et pas reçu l'ordre, on ne fait rien
         if self.ritual_leader < 1 and self.ritual_mode != 2:
             self.logger.info("En attente de l'ordre du leader pour poser les ressources...")
             return
-        # Si leader, broadcast l'ordre de pose si pas déjà fait
         if self.ritual_leader >= 1 and self.ritual_mode != 2:
-            message = bytes(self.xor_encrypt(self.team_name, "pose_ressources"), "utf-8").hex()
+            message = self.simple_team_hash("pose_ressources")
             self.action = "Broadcast " + message + "\n"
             self.ritual_mode = 2
-            self.logger.info("Leader : envoi de l'ordre de poser les ressources")
+            self.logger.info("Leader : envoi de l'ordre de poser les ressources (état 6)")
+            self.state = 6
             return
         data = self.vision.split(",")[0]
         while True:
@@ -621,10 +684,10 @@ class AICore:
         elif self.state == 1:
             if self.found_new_item:
                 if not self.can_perform_ritual():
-                    message = bytes(self.xor_encrypt(self.team_name, ("inventory" + str(self.bot_id) + ";" + str(self.level) + ";" + str(json.dumps(self.backpack)))), "utf-8").hex()
+                    message = self.simple_team_hash("inventory" + str(self.bot_id) + ";" + str(self.level) + ";" + str(json.dumps(self.backpack)))
                     self.action = "Broadcast " + message + "\n"
                 else:
-                    message = bytes(self.xor_encrypt(self.team_name, (str(self.bot_id) + ";incantation;" + str(self.level))), "utf-8").hex()
+                    message = self.simple_team_hash(str(self.bot_id) + ";incantation;" + str(self.level))
                     self.action = "Broadcast " + message + "\n"
                     self.ritual_leader = 1
                     self.state = 4
@@ -649,8 +712,21 @@ class AICore:
                 self.action_queue = self.analyze_vision(self.vision, self.target_resource)
                 self.state = 0
         elif self.state == 4:
+            if (
+                self.ritual_leader >= 1
+                and self.ritual_mode == 1
+                and self.ready_bots >= self.get_required_players_for_level() - 1
+                and self.count_players_on_tile() >= len(self.alive_bots)
+            ):
+                self.logger.info(f"Number alive bots: {self.alive_bots}, ready bots: {self.ready_bots}")
+                self.logger.info("Tous les bots vivants sont prêts ET présents, passage en state 6 pour poser les ressources")
+                self.logger.info(f"Ritual leader: {self.ritual_leader}, Ritual mode: {self.ritual_mode}",
+                                 f"Ready bots: {self.ready_bots}, Alive bots: {len(self.alive_bots)}",
+                                 f"Players on tile: {self.count_players_on_tile()}")
+                self.state = 6
+                return
             if self.ritual_mode == 0:
-                data = bytes(self.xor_encrypt(self.team_name, str(self.bot_id) + " on my way"), "utf-8").hex()
+                data = self.simple_team_hash(str(self.bot_id) + " on my way")
                 self.action = "Broadcast " + data + "\n"
                 self.ritual_mode = 1
                 return
@@ -674,14 +750,12 @@ class AICore:
             self.action = "Look\n"
             self.state += 1
         elif self.state == 6:
-            self.clear_message_flag = 0
-
-            # Correction : le leader broadcast l'ordre de poser dès l'entrée en état 6
             if self.ritual_leader >= 1 and self.ritual_mode != 2:
-                message = bytes(self.xor_encrypt(self.team_name, "pose_ressources"), "utf-8").hex()
+                message = self.simple_team_hash("pose_ressources")
                 self.action = "Broadcast " + message + "\n"
                 self.ritual_mode = 2
                 self.logger.info("Leader : envoi de l'ordre de poser les ressources (état 6)")
+                self.state = 6  # Ajout : le leader passe en step 6 après l'ordre
                 return
 
             if self.vision:
@@ -694,7 +768,6 @@ class AICore:
                 self.logger.info(f"Ritual status: {players_present} players présents sur {players_needed} nécessaires")
                 self.logger.info(f"Ressources pour incantation prêtes: {resources_ready}")
 
-                # Ajout : si 5 joueurs sur la case, on lance l'incantation (en dur)
                 if players_present >= 5 and resources_ready:
                     self.logger.info("Force: 5 joueurs présents, lancement de l'incantation !")
                     self.begin_ritual()
@@ -771,9 +844,20 @@ class AICore:
             self.state += 1
         elif self.state == 10:
 
-            message = bytes(self.xor_encrypt(self.team_name, ("inventory" + str(self.bot_id) + ";" + str(self.level) + ";" + str(json.dumps(self.backpack)))), "utf-8").hex()
+            message = self.simple_team_hash(f"inventory_{self.bot_id}_{self.level}_{str(self.backpack).replace(' ', '').replace(',', '-')}")
             self.action = "Broadcast " + message + "\n"
             self.state = 0
+
+    def count_team_members(self):
+        """
+        Lance un recensement de la team via broadcast 'Alive'.
+        Le leader envoie 'Alive', les autres répondent, et on compte les réponses.
+        """
+        self.alive_bots = set([self.bot_id])  # Le leader s'ajoute lui-même
+        self.awaiting_alive = True
+        message = self.simple_team_hash(f"Alive_{self.bot_id}")  # Format corrigé
+        self.action = f"Broadcast {message}\n"
+        self.logger.info("Leader: broadcast 'Alive' pour recensement de la team")
 
     def get_required_players_for_level(self) -> int:
         """

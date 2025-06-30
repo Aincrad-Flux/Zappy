@@ -53,11 +53,9 @@ if __name__ == "__main__":
     """
     hostname, port, name, bot_id, use_ui = main()
 
-    # Configure network client with UI mode parameter to disable console logging when UI is active
     client = NetworkClient(hostname, port, name, bot_id, use_ui)
     client.establish_connection()
 
-    # Initialize UI if flag is set
     ui = None
     if use_ui:
         from AI.terminal_ui import TerminalUI
@@ -67,10 +65,8 @@ if __name__ == "__main__":
     try:
         client.run_client()
     finally:
-        # Clean up resources
         client.check_server_capacity()
         client.disconnect()
 
-        # Stop UI if it was started
         if ui:
             ui.stop()

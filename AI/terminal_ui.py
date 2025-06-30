@@ -62,7 +62,6 @@ class TerminalUI:
         """Main UI loop running in a separate thread."""
         stdscr = None
         try:
-            # Initialize curses
             stdscr = curses.initscr()
             curses.start_color()
             curses.use_default_colors()
@@ -122,14 +121,12 @@ class TerminalUI:
                 except:
                     pass
 
-                # Refresh the screen
                 stdscr.refresh()
                 time.sleep(self.refresh_rate)
 
         except Exception as e:
             self.logger.error(f"UI Error: {str(e)}")
         finally:
-            # Clean up curses
             if stdscr:
                 curses.nocbreak()
                 stdscr.keypad(False)
@@ -202,9 +199,8 @@ class TerminalUI:
         """Wrap text to fit within a specified width."""
         lines = []
         while len(text) > width:
-            # Find last space before width
             space_pos = text[:width].rfind(' ')
-            if space_pos == -1:  # No space found
+            if space_pos == -1:
                 lines.append(text[:width])
                 text = text[width:]
             else:
