@@ -59,4 +59,5 @@ zappy_gui: $(GUI_BIN)
 
 zappy_ai: $(AI_BIN)
 
-.PHONY: all clean fclean re debug install-deps tests_run help init zappy_server zappy_gui zappy_ai zappy_ia
+.PHONY: all clean fclean re debug install-deps tests_run help init \
+		zappy_server zappy_gui zappy_ai zappy_ia
