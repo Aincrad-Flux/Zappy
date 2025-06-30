@@ -42,14 +42,14 @@ void init_ressources(map_t *map)
     distribute_resource(map, num_tiles * 0.05, THYSTAME);
 }
 
-void count_tile(tile_t *tile, int *counts)
+static void count_tile(tile_t *tile, int *counts)
 {
     for (int i = 0; i < RESOURCE_COUNT; i++) {
         counts[i] += tile->resources[i];
     }
 }
 
-void count_resources(map_t *map, int *counts)
+static void count_resources(map_t *map, int *counts)
 {
     tile_t *tile;
 
@@ -82,4 +82,46 @@ void respawn_resource(map_t *map)
         if (missing > 0)
             distribute_resource(map, missing, i);
     }
+}
+
+static void delete_player_on_tile(list_t *prev, tile_t *tile, list_t *curr)
+{
+    if (prev)
+        prev->next = curr->next;
+    else
+        tile->players_on_tile = curr->next;
+}
+
+void remove_player_from_tile(tile_t *tile, player_t *player)
+{
+    list_t *prev = NULL;
+    list_t *curr = tile->players_on_tile;
+
+    while (curr) {
+        if (curr->player == player) {
+            delete_player_on_tile(prev, tile, curr);
+            free(curr);
+            return;
+        }
+        prev = curr;
+        curr = curr->next;
+    }
+}
+
+void add_player_to_tile(tile_t *tile, player_t *player)
+{
+    list_t *node = malloc(sizeof(list_t));
+
+    if (!node)
+        return;
+    node->player = player;
+    node->next = tile->players_on_tile;
+    tile->players_on_tile = node;
+}
+
+tile_t *get_tile(map_t *map, int x, int y)
+{
+    x = (x + map->width) % map->width;
+    y = (y + map->height) % map->height;
+    return &map->tiles[y][x];
 }

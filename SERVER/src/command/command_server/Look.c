@@ -32,13 +32,6 @@ static void append_tile_content(char *buffer, tile_t *tile)
     }
 }
 
-static tile_t *get_tile(map_t *map, int x, int y)
-{
-    x = (x + map->width) % map->width;
-    y = (y + map->height) % map->height;
-    return &map->tiles[y][x];
-}
-
 static tile_t *tile_orientation(player_t *player , server_t *server, int depth,
     int offset)
 {

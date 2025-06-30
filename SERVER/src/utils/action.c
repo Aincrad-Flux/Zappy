@@ -58,6 +58,15 @@ void next_action(action_t **action_queue)
     free(to_remove);
 }
 
+void verif_incantation(player_t *player, server_t *server, action_t
+    *current_action)
+{
+    if (player->is_incanting == true)
+        finish_incantation(player, server);
+    else
+        process_player_command(player, server, current_action->command);
+}
+
 static void handle_action(server_t *server, int i)
 {
     player_t *player = &server->players[i];
@@ -69,9 +78,9 @@ static void handle_action(server_t *server, int i)
     current_action = player->action_queue;
     now = time(NULL);
     if (now >= current_action->end_time) {
-        printf("handle action\n");
+        printf("handle action %s\n", current_action->command);
         if (strcmp(current_action->command, "Incantation") == 0) {
-            finish_incantation(player, server);
+            verif_incantation(player, server, current_action);
         } else {
             process_player_command(player, server, current_action->command);
         }

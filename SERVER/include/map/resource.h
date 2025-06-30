@@ -30,5 +30,8 @@ typedef enum {
 
 void init_ressources(map_t *map);
 void respawn_resource(map_t *map);
+void add_player_to_tile(tile_t *tile, player_t *player);
+void remove_player_from_tile(tile_t *tile, player_t *player);
+tile_t *get_tile(map_t *map, int x, int y);
 
 #endif

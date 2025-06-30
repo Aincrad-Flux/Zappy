@@ -8,11 +8,22 @@
 #include "server.h"
 #include "player.h"
 #include "command/gui_commands.h"
+#include "map/resource.h"
+
+
+static void new_pos(server_t *server, player_t *player)
+{
+    tile_t *tile = get_tile(server->map, player->x, player->y);
+
+    add_player_to_tile(tile, player);
+}
 
 void move_player_forward(player_t *player, server_t *server)
 {
     int player_id = player - server->players;
+    tile_t *tile = get_tile(server->map, player->x, player->y);
 
+    remove_player_from_tile(tile, player);
     switch (player->orientation) {
         case 0:
             player->y = (player->y - 1 + server->height) % server->height;
@@ -27,6 +38,6 @@ void move_player_forward(player_t *player, server_t *server)
             player->x = (player->x - 1 + server->width) % server->width;
             break;
     }
-    printf("played id %d x %d y %d", player_id, player->x, player->y);
+    new_pos(server, player);
     send_gui_ppo(server, player_id);
 }

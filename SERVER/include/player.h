@@ -41,7 +41,6 @@ typedef struct player_init_s {
 } player_init_t;
 
 void init_player(player_t *player, player_init_t config, server_t *server);
-void set_player_position(player_t *player, server_t *server);
 void set_player_resources(player_t *player);
 int find_player_by_socket(server_t *server, int socket);
 void remove_player(server_t *server, int player_index);

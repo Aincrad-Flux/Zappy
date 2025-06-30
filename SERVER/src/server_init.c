@@ -29,6 +29,7 @@ static void init_server_defaults(server_t *server)
     server->height = 10;
     server->freq = 100;
     server->num_teams = 0;
+    server->graphic_fd = -1;
 }
 
 static int handle_parse_port(server_t *server, char *optarg)
